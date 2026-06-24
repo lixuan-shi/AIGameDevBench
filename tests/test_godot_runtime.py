@@ -6,8 +6,47 @@ import pytest
 
 from aigamedevbench.testcase import Testcase
 from aigamedevbench.verifiers.godot_runtime import (
-    GodotSceneTreeVerifier, parse_assertion_json,
+    GodotSceneTreeVerifier, parse_assertion_json, check_class_cache,
 )
+
+
+def _write(p, text):
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(text, encoding="utf-8")
+
+
+def test_class_cache_ok_when_all_registered(tmp_path):
+    _write(tmp_path / "components" / "state.gd", "class_name State\nextends RefCounted\n")
+    _write(tmp_path / ".godot" / "global_script_class_cache.cfg",
+           'list=[{\n"class": &"State",\n"path": "res://components/state.gd"\n}]')
+    assert check_class_cache(tmp_path) is None
+
+
+def test_class_cache_none_when_no_global_classes(tmp_path):
+    _write(tmp_path / "a.gd", "extends Node\nfunc f():\n\tpass\n")
+    assert check_class_cache(tmp_path) is None
+
+
+def test_class_cache_missing_file_is_reported(tmp_path):
+    _write(tmp_path / "components" / "state.gd", "class_name State\nextends RefCounted\n")
+    msg = check_class_cache(tmp_path)
+    assert msg is not None and "import cache incomplete" in msg and "State" in msg
+
+
+def test_class_cache_unregistered_symbol_is_reported(tmp_path):
+    _write(tmp_path / "components" / "state.gd", "class_name State\nextends RefCounted\n")
+    _write(tmp_path / "components" / "fsm.gd", "class_name FiniteStateMachine\nextends RefCounted\n")
+    _write(tmp_path / ".godot" / "global_script_class_cache.cfg",
+           'list=[{\n"class": &"State",\n"path": "res://components/state.gd"\n}]')
+    msg = check_class_cache(tmp_path)
+    assert msg is not None and "FiniteStateMachine" in msg
+
+
+def test_class_cache_ignores_injected_verifier(tmp_path):
+    # The injected verifier file declaring class_name must not be counted as a
+    # project class (it is removed after the run and never import-scanned).
+    _write(tmp_path / ".aigdbench_verify_abc.gd", "class_name Injected\nextends Node\n")
+    assert check_class_cache(tmp_path) is None
 
 
 def test_parse_assertion_json():
@@ -45,6 +84,37 @@ def test_real_godot_runs(tmp_path):
                   "verifier.gd", "checkpoints", tc_dir)
     result = GodotSceneTreeVerifier().verify(tc, ws)
     assert result.status == "pass"
+
+
+def test_verifier_passes_quit_after(tmp_path, monkeypatch):
+    # Every verifier godot subprocess must carry --quit-after so a crashed
+    # verifier (e.g. load() == null) is bounded to a few frames instead of
+    # hanging the booted main scene until the wall-clock timeout.
+    import aigamedevbench.verifiers.godot_runtime as gr
+
+    monkeypatch.setattr(gr.shutil, "which", lambda _: "/usr/bin/godot")
+    captured = {}
+
+    class _Proc:
+        returncode = 0
+        stdout = '{"assertions": [{"name": "ok", "pass": true}]}'
+        stderr = ""
+
+    def _fake_run(argv, *a, **k):
+        captured["argv"] = argv
+        return _Proc()
+
+    monkeypatch.setattr(gr.subprocess, "run", _fake_run)
+    tc_dir = tmp_path / "tc"; tc_dir.mkdir()
+    (tc_dir / "verifier.gd").write_text("extends SceneTree\n", encoding="utf-8")
+    ws = tmp_path / "ws"; ws.mkdir()
+    tc = Testcase("t", "behavior_logic", "ref", "task", "godot_scenetree",
+                  "verifier.gd", "checkpoints", tc_dir)
+    result = GodotSceneTreeVerifier().verify(tc, ws)
+    assert result.status == "pass"
+    argv = captured["argv"]
+    assert "--quit-after" in argv
+    assert argv[argv.index("--quit-after") + 1] == str(gr._QUIT_AFTER_FRAMES)
 
 
 def test_interaction_routing_registered():

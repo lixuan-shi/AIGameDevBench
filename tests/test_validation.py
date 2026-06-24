@@ -75,6 +75,56 @@ def test_run_validation_calls_godot_import_before_l0(tmp_path, monkeypatch):
 
 
 def test_godot_import_noop_without_binary(tmp_path, monkeypatch):
-    # No godot on PATH -> import is a silent no-op, never raises.
+    # No godot on PATH -> import is a silent no-op, never raises, returns None.
     monkeypatch.setattr(validation.shutil, "which", lambda _: None)
-    validation.godot_import(tmp_path)  # must not raise
+    assert validation.godot_import(tmp_path) is None
+
+
+def test_godot_import_skips_non_godot_project(tmp_path, monkeypatch):
+    # A directory with no project.godot (e.g. a py_config data repo) is not a
+    # Godot project: import must be skipped, never run, and report no error.
+    monkeypatch.setattr(validation.shutil, "which", lambda _: "/usr/bin/godot")
+    ran = []
+    monkeypatch.setattr(validation.subprocess, "run",
+                        lambda *a, **k: ran.append(a) or None)
+    assert validation.godot_import(tmp_path) is None
+    assert ran == []
+
+
+def test_godot_import_reports_nonzero_exit(tmp_path, monkeypatch):
+    # A non-zero --import exit must be reported (not swallowed) so an incomplete
+    # cache becomes a visible diagnostic instead of a later verifier hang.
+    (tmp_path / "project.godot").write_text("config_version=5\n", encoding="utf-8")
+    monkeypatch.setattr(validation.shutil, "which", lambda _: "/usr/bin/godot")
+
+    class _Proc:
+        returncode = 1
+        stderr = "boom: could not import\n"
+
+    monkeypatch.setattr(validation.subprocess, "run", lambda *a, **k: _Proc())
+    msg = validation.godot_import(tmp_path)
+    assert msg is not None and "exited 1" in msg
+
+
+def test_godot_import_reports_timeout(tmp_path, monkeypatch):
+    (tmp_path / "project.godot").write_text("config_version=5\n", encoding="utf-8")
+    monkeypatch.setattr(validation.shutil, "which", lambda _: "/usr/bin/godot")
+
+    def _raise(*a, **k):
+        raise validation.subprocess.TimeoutExpired(cmd="godot", timeout=120)
+
+    monkeypatch.setattr(validation.subprocess, "run", _raise)
+    msg = validation.godot_import(tmp_path)
+    assert msg is not None and "timed out" in msg
+
+
+def test_run_validation_fails_gate_on_import_error(tmp_path, monkeypatch):
+    # When import fails, the L0 gate must fail and carry the import diagnostic.
+    monkeypatch.setattr(validation, "godot_import",
+                        lambda root, binary="godot": "godot --import exited 1: boom")
+    monkeypatch.setattr(validation, "run_l0",
+                        lambda root, scenes, binary="godot": (True, []))
+    monkeypatch.setattr(validation, "run_l1", lambda root, changed: (True, []))
+    result = run_validation(tmp_path, ["scenes/x.tscn"], {})
+    assert result.l0_pass is False
+    assert any("import:" in d for d in result.l0_details)

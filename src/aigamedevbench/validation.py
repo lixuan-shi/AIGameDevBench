@@ -26,7 +26,7 @@ class VerificationResult:
 # --- Godot import cache ---
 
 def godot_import(project_root: Path, godot_binary: str = "godot",
-                 timeout: int = 120) -> None:
+                 timeout: int = 120) -> str | None:
     """Build the Godot import cache (.godot/imported/*) for the workspace.
 
     Folder-type baselines ship without .godot/ (the importer strips it), so any
@@ -34,19 +34,33 @@ def godot_import(project_root: Path, godot_binary: str = "godot",
     to load until an import pass runs. This must happen before L0 boots changed
     scenes AND before the runtime verifier boots its scene; both share the same
     workspace, so a single pass here covers both. Idempotent: if the cache is
-    already present Godot re-imports nothing. Best-effort — a failure here just
-    leaves the cache absent, and the downstream load error is reported normally.
+    already present Godot re-imports nothing.
+
+    Returns None on success, or a short diagnostic string on failure. A failure
+    here (timeout, missing binary, non-zero exit) leaves the cache incomplete,
+    which later makes a verifier's load() return null, crash before
+    get_tree().quit(), and hang until the verifier timeout — surfacing as a
+    misleading "godot timed out". Reporting the import failure up front turns
+    that silent root cause into a visible diagnostic.
     """
     if shutil.which(godot_binary) is None:
-        return
+        return None  # no godot: not an import failure; downstream skips godot too
+    if not (project_root / "project.godot").exists():
+        return None  # not a Godot project (e.g. a py_config data repo): nothing to import
     try:
-        subprocess.run(
+        proc = subprocess.run(
             [godot_binary, "--headless", "--path", str(project_root), "--import"],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
             timeout=timeout,
         )
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        pass
+    except subprocess.TimeoutExpired:
+        return f"godot --import timed out after {timeout}s (import cache may be incomplete)"
+    except FileNotFoundError:
+        return None
+    if proc.returncode != 0:
+        tail = (proc.stderr or "").strip().splitlines()[-1:] or [""]
+        return f"godot --import exited {proc.returncode}: {tail[0]}"
+    return None
 
 
 # --- L0: GDScript syntax + headless scene load ---
@@ -194,9 +208,14 @@ def run_validation(repo_root: Path, changed_files: list[str], config: dict) -> V
     godot_binary = config.get("global", {}).get("godot", {}).get("binary", "godot")
     # Build the import cache once before any headless boot (L0 here, and the
     # runtime verifier later) so scenes with imported resources can load.
-    godot_import(repo_root, godot_binary)
+    import_error = godot_import(repo_root, godot_binary)
     scenes = [f for f in changed_files if f.endswith(".tscn")]
     l0_pass, l0_details = run_l0(repo_root, scenes, godot_binary)
+    if import_error is not None:
+        # An incomplete import cache is the upstream cause of later "load() == null"
+        # verifier hangs; record it on L0 (and fail the gate) so it is visible.
+        l0_details = [f"import: {import_error}", *l0_details]
+        l0_pass = False
     l1_pass, l1_details = run_l1(repo_root, changed_files)
     return VerificationResult(
         l0_pass=l0_pass, l1_pass=l1_pass,
