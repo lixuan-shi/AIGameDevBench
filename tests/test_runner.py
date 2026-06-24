@@ -88,3 +88,45 @@ def test_folder_testcase_uses_folder_workspace(tmp_path):
     result = run_testcase(None, tc, PatchDriver(patch), "patch", config={})
     assert result.score == 1.0
     assert result.verifier_result.status == "pass"
+
+
+_CHAR_PATCH = (
+    "diff --git a/data/char.json b/data/char.json\n"
+    "--- a/data/char.json\n"
+    "+++ b/data/char.json\n"
+    "@@ -1 +1 @@\n"
+    '-{"attack": 50}\n'
+    '+{"attack": 60}\n'
+)
+
+
+def test_run_captures_diff(tmp_path):
+    tc = _folder_testcase(tmp_path)
+    result = run_testcase(None, tc, PatchDriver(_CHAR_PATCH), "patch", config={})
+    # The harness's change is captured on the result for logging/reporting.
+    assert '+{"attack": 60}' in result.diff
+    assert "data/char.json" in result.diff
+
+
+def test_run_saves_artifacts(tmp_path):
+    tc = _folder_testcase(tmp_path)
+    art = tmp_path / "artifacts"
+    result = run_testcase(None, tc, PatchDriver(_CHAR_PATCH), "patch", config={},
+                          artifacts_dir=art)
+    dest = art / "gdb-x"
+    # A diff file and a copy of the post-edit changed file are persisted.
+    assert (dest / "changes.diff").read_text(encoding="utf-8").strip() != ""
+    saved = dest / "files" / "data" / "char.json"
+    assert saved.exists()
+    assert '"attack": 60' in saved.read_text(encoding="utf-8")
+    assert result.artifacts_path == str(dest)
+
+
+def test_noop_run_has_empty_diff_and_no_artifacts(tmp_path):
+    tc = _folder_testcase(tmp_path)
+    art = tmp_path / "artifacts"
+    result = run_testcase(None, tc, NoOpDriver(), "noop", config={},
+                          artifacts_dir=art)
+    # Doing nothing produces no diff; the changes.diff is written but empty.
+    assert result.diff.strip() == ""
+    assert (art / "gdb-x" / "changes.diff").read_text(encoding="utf-8").strip() == ""

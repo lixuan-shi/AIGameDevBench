@@ -45,6 +45,44 @@ def _echo_harness_failure(testcase_id: str, outcome: dict, tail_lines: int = 30)
         click.echo(f"     | {line}", err=True)
 
 
+def _echo_verifier_result(verifier_result, tail_detail: int = 200) -> None:
+    """Print the verifier's per-check breakdown (and any error) to the screen so
+    the user can see *why* a testcase scored what it did, not just the score."""
+    if verifier_result.error:
+        click.echo(f"     verifier error: {verifier_result.error}", err=True)
+    for c in verifier_result.checks:
+        mark = "PASS" if c.passed else "FAIL"
+        line = f"     [{mark}] {c.name}"
+        detail = (c.detail or "").strip()
+        if detail:
+            if len(detail) > tail_detail:
+                detail = detail[:tail_detail] + "..."
+            line += f" - {detail}"
+        click.echo(line, err=True)
+
+
+def _echo_diff(result, max_lines: int = 40) -> None:
+    """Log what the harness changed: a per-file summary plus a capped preview of
+    the diff, so the modification is visible on screen and in the log without
+    dumping a huge patch. The full diff lives in the report and --artifacts-dir."""
+    diff = result.diff or ""
+    if not diff.strip():
+        click.echo("     changes: (none)", err=True)
+        return
+    files = [ln[len("+++ b/"):] for ln in diff.splitlines()
+             if ln.startswith("+++ b/") and not ln.endswith("/dev/null")]
+    if files:
+        click.echo(f"     changed {len(files)} file(s): {', '.join(files)}", err=True)
+    lines = diff.splitlines()
+    click.echo("     --- diff ---", err=True)
+    for ln in lines[:max_lines]:
+        click.echo(f"     | {ln}", err=True)
+    if len(lines) > max_lines:
+        click.echo(f"     | ... ({len(lines) - max_lines} more lines)", err=True)
+    if result.artifacts_path:
+        click.echo(f"     saved: {result.artifacts_path}", err=True)
+
+
 @click.group()
 @click.version_option()
 def main():
@@ -83,13 +121,19 @@ def list_cmd(testcases_dir: str):
 @click.option("--workspace-root", "workspace_root", default=None, type=click.Path(),
               help="Where to create per-testcase workspaces (default: OS temp dir). "
                    "Use a path your harness trusts if it gates edits under temp.")
+@click.option("--artifacts-dir", "artifacts_dir", default=None, type=click.Path(),
+              help="Persist each testcase's harness output here (a changes.diff and a "
+                   "files/ copy of every changed file) for later re-verification. The "
+                   "throwaway workspace is deleted after the run, so without this the "
+                   "agent's code is lost.")
 @click.option("--stream/--no-stream", "stream", default=True,
               help="Stream harness output live to the screen (default: on).")
 @click.option("--godot-binary", default="godot", help="Godot executable for L0/runtime verifiers")
 def run_cmd(testcases_dir: str, testcase_id: str | None, harness_id: str,
             driver: str, patch_file: str | None, harness_cmd: str | None,
             timeout: float, stall_timeout: float, log_dir: str, report_file: str | None,
-            workspace_root: str | None, stream: bool, godot_binary: str):
+            workspace_root: str | None, artifacts_dir: str | None,
+            stream: bool, godot_binary: str):
     """Run testcases against a harness driver (executed inside the target game repo)."""
     from aigamedevbench.testcase import discover_testcases
     from aigamedevbench.runner import run_testcase
@@ -144,7 +188,8 @@ def run_cmd(testcases_dir: str, testcase_id: str | None, harness_id: str,
             drv.label = tc.id
         try:
             result = run_testcase(repo_root, tc, drv, harness_id, config,
-                                  workspace_root=workspace_root)
+                                  workspace_root=workspace_root,
+                                  artifacts_dir=artifacts_dir)
         except Exception as e:
             # One un-runnable testcase (e.g. a git-type case with no repo root,
             # or a bad baseline_ref) must not kill the rest of the batch.
@@ -154,6 +199,8 @@ def run_cmd(testcases_dir: str, testcase_id: str | None, harness_id: str,
             continue
         total += result.score
         click.echo(f"{tc.id}\t{tc.category}\t{result.verifier_result.status}\t{result.score:.2f}")
+        _echo_verifier_result(result.verifier_result)
+        _echo_diff(result)
         # Surface harness failures on screen immediately (don't make the user dig
         # through log files): if the command harness timed out or exited non-zero,
         # echo the tail of its log right after the result row.

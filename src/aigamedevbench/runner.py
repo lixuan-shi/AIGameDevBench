@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -23,6 +24,8 @@ class RunResult:
     l0_l1_pass: bool
     verifier_result: VerifierResult
     score: float
+    diff: str = ""
+    artifacts_path: str | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -32,6 +35,8 @@ class RunResult:
             "l0_l1_pass": self.l0_l1_pass,
             "score": self.score,
             "verifier_result": self.verifier_result.to_dict(),
+            "diff": self.diff,
+            "artifacts_path": self.artifacts_path,
         }
 
 
@@ -50,12 +55,23 @@ def _workspace_for(repo_root: Path | None, testcase: Testcase,
 
 def run_testcase(repo_root: Path | None, testcase: Testcase, driver: HarnessDriver,
                  harness_id: str, config: dict | None = None,
-                 workspace_root: Path | str | None = None) -> RunResult:
+                 workspace_root: Path | str | None = None,
+                 artifacts_dir: Path | str | None = None) -> RunResult:
     config = config or {}
     with _workspace_for(repo_root, testcase, workspace_root) as workspace:
         driver.run(testcase.task, workspace)
 
         changed_files = _list_changed(workspace)
+        # Snapshot the harness's work BEFORE validation runs: godot_import writes
+        # a .godot/ cache into the workspace, which would pollute both the diff
+        # and the saved tree. Capturing here preserves exactly what the harness
+        # produced, for later re-verification and for logging the change.
+        diff = capture_diff(workspace)
+        artifacts_path = None
+        if artifacts_dir is not None:
+            artifacts_path = _save_artifacts(
+                Path(artifacts_dir), testcase.id, workspace, diff, changed_files)
+
         verification = run_validation(workspace, changed_files, config)
         gate_pass = verification.l0_pass and verification.l1_pass
 
@@ -64,13 +80,15 @@ def run_testcase(repo_root: Path | None, testcase: Testcase, driver: HarnessDriv
                                     category=testcase.category,
                                     error="L0/L1 gate failed")
             return RunResult(testcase.id, harness_id, testcase.category,
-                             False, failed, 0.0)
+                             False, failed, 0.0, diff=diff,
+                             artifacts_path=artifacts_path)
 
         verifier = get_verifier(testcase.verifier_type)
         vr = verifier.verify(testcase, workspace)
         score = 0.0 if vr.status == "error" else vr.score
         return RunResult(testcase.id, harness_id, testcase.category,
-                         True, vr, score)
+                         True, vr, score, diff=diff,
+                         artifacts_path=artifacts_path)
 
 
 def _list_changed(workspace: Path) -> list[str]:
@@ -81,3 +99,38 @@ def _list_changed(workspace: Path) -> list[str]:
         if len(line) > 3:
             files.append(line[3:].strip())
     return files
+
+
+def capture_diff(workspace: Path) -> str:
+    """Unified diff of the harness's changes against the committed baseline.
+
+    Includes untracked files (--no-index would miss them); `git add -N` registers
+    them as intent-to-add so `git diff` emits their full content as additions."""
+    from aigamedevbench.git_ops import git_run
+    try:
+        git_run(["add", "-A", "-N"], cwd=workspace)
+    except Exception:
+        pass
+    return git_run(["diff"], cwd=workspace)
+
+
+def _save_artifacts(artifacts_dir: Path, testcase_id: str, workspace: Path,
+                    diff_text: str, changed_files: list[str]) -> str | None:
+    """Persist the harness's output for later re-verification: a unified diff and
+    a copy of every changed file's post-edit content. Returns the destination dir
+    (str) or None on failure (artifact capture must never abort a run)."""
+    try:
+        dest = artifacts_dir / testcase_id
+        dest.mkdir(parents=True, exist_ok=True)
+        (dest / "changes.diff").write_text(diff_text, encoding="utf-8")
+        files_root = dest / "files"
+        for rel in changed_files:
+            src = workspace / rel
+            if not src.is_file():
+                continue  # deleted or a directory entry: the diff already records it
+            out = files_root / rel
+            out.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, out)
+        return str(dest)
+    except Exception:
+        return None
