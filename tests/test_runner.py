@@ -122,6 +122,30 @@ def test_run_saves_artifacts(tmp_path):
     assert result.artifacts_path == str(dest)
 
 
+def test_gate_failure_carries_l0_l1_details(tmp_path):
+    # A failed L0/L1 gate must explain WHY in the error (the l0/l1 details), not
+    # just say "L0/L1 gate failed". Otherwise the JSON report is undebuggable —
+    # exactly the case where report.json showed a bare gate failure with no reason.
+    tc = _folder_testcase(tmp_path)
+    # Add a .gd file with an unclosed paren so the L0 syntax check fails the gate.
+    bad_patch = (
+        "diff --git a/broken.gd b/broken.gd\n"
+        "new file mode 100644\n"
+        "--- /dev/null\n"
+        "+++ b/broken.gd\n"
+        "@@ -0,0 +1,3 @@\n"
+        "+extends Node\n"
+        "+func f():\n"
+        "+\tvar x = foo(1, 2\n"
+    )
+    result = run_testcase(None, tc, PatchDriver(bad_patch), "patch", config={})
+    assert result.score == 0.0
+    assert result.verifier_result.status == "fail"
+    err = result.verifier_result.error
+    assert "L0/L1 gate failed" in err
+    assert "unclosed" in err and "broken.gd" in err
+
+
 def test_noop_run_has_empty_diff_and_no_artifacts(tmp_path):
     tc = _folder_testcase(tmp_path)
     art = tmp_path / "artifacts"

@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import json
 import re
-import shutil
 import subprocess
 import uuid
 from pathlib import Path
 
+from aigamedevbench.godot_bin import resolve_godot_binary
 from aigamedevbench.result import CheckResult, VerifierResult
 from aigamedevbench.testcase import Testcase
 from aigamedevbench.verifiers.base import register
@@ -74,7 +74,9 @@ def parse_assertion_json(stdout: str) -> list[CheckResult]:
     data = json.loads(match.group(0))
     checks = []
     for a in data.get("assertions", []):
-        checks.append(CheckResult(a["name"], bool(a["pass"]), detail=a.get("detail", "")))
+        checks.append(CheckResult(
+            a["name"], bool(a["pass"]), detail=a.get("detail", ""),
+            expected=a.get("expected"), actual=a.get("actual")))
     return checks
 
 
@@ -103,8 +105,10 @@ def parse_scene_output(stdout: str) -> list[CheckResult]:
 
 def _run_godot_script(testcase: Testcase, workspace: Path,
                       godot_binary: str = "godot", timeout: int = 30) -> VerifierResult:
-    if shutil.which(godot_binary) is None:
+    resolved = resolve_godot_binary(godot_binary)
+    if resolved is None:
         return VerifierResult.error_result(testcase.category, f"godot binary '{godot_binary}' not found")
+    godot_binary = resolved
     cache_issue = check_class_cache(workspace)
     if cache_issue is not None:
         return VerifierResult.error_result(testcase.category, cache_issue)
@@ -144,8 +148,10 @@ def _run_godot_scene(testcase: Testcase, workspace: Path,
     verifier_entry (the scene): the scene file and a sibling `verifier.gd`.
     Both are injected into the workspace, run, then removed.
     """
-    if shutil.which(godot_binary) is None:
+    resolved = resolve_godot_binary(godot_binary)
+    if resolved is None:
         return VerifierResult.error_result(testcase.category, f"godot binary '{godot_binary}' not found")
+    godot_binary = resolved
     cache_issue = check_class_cache(workspace)
     if cache_issue is not None:
         return VerifierResult.error_result(testcase.category, cache_issue)
@@ -189,8 +195,9 @@ def _run_godot_scene(testcase: Testcase, workspace: Path,
 
 @register("godot_scenetree")
 class GodotSceneTreeVerifier:
-    def verify(self, testcase: Testcase, workspace: Path) -> VerifierResult:
-        return _run_godot_script(testcase, workspace)
+    def verify(self, testcase: Testcase, workspace: Path,
+               godot_binary: str = "godot") -> VerifierResult:
+        return _run_godot_script(testcase, workspace, godot_binary)
 
 
 @register("godot_scene_assert")
@@ -201,15 +208,17 @@ class GodotSceneAssertVerifier:
     which prints {"assertions":[...]}, and scores per-checkpoint.
     """
 
-    def verify(self, testcase: Testcase, workspace: Path) -> VerifierResult:
-        return _run_godot_scene(testcase, workspace)
+    def verify(self, testcase: Testcase, workspace: Path,
+               godot_binary: str = "godot") -> VerifierResult:
+        return _run_godot_scene(testcase, workspace, godot_binary)
 
 
 @register("visual_static")
 class VisualStaticVerifier:
-    def verify(self, testcase: Testcase, workspace: Path) -> VerifierResult:
+    def verify(self, testcase: Testcase, workspace: Path,
+               godot_binary: str = "godot") -> VerifierResult:
         # Structured layer only; screenshot/SSIM layer is a separate (deferred) plan.
-        return _run_godot_script(testcase, workspace)
+        return _run_godot_script(testcase, workspace, godot_binary)
 
 
 @register("interaction_routing")
@@ -222,5 +231,6 @@ class InteractionRoutingVerifier:
     can route GUI input on the team CI image before relying on this verifier.
     """
 
-    def verify(self, testcase: Testcase, workspace: Path) -> VerifierResult:
-        return _run_godot_script(testcase, workspace)
+    def verify(self, testcase: Testcase, workspace: Path,
+               godot_binary: str = "godot") -> VerifierResult:
+        return _run_godot_script(testcase, workspace, godot_binary)

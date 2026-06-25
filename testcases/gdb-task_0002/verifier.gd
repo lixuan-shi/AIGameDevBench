@@ -24,6 +24,8 @@ func run_validation():
 		"name": "offscreen_removal",
 		"pass": projectile.is_queued_for_deletion(),
 		"detail": "projectile should queue_free when leaving the play area",
+		"expected": true,
+		"actual": projectile.is_queued_for_deletion(),
 	})
 
 	# Checkpoint 2: reacts to enemies via _on_area_entered
@@ -39,25 +41,32 @@ func run_validation():
 		"name": "has_on_area_entered",
 		"pass": has_handler,
 		"detail": "projectile must define _on_area_entered to react to enemies",
+		"expected": true,
+		"actual": has_handler,
 	})
 
 	# Checkpoints 3 & 4 depend on the handler existing.
 	var step_pass = false
 	var hit_removal_pass = false
+	var after = null
 	if has_handler:
 		projectile._on_area_entered(enemy)
-		var after = qm.get_player_quest("Shoot Em Up").quest_steps[quest.first_step].collected
+		after = qm.get_player_quest("Shoot Em Up").quest_steps[quest.first_step].collected
 		step_pass = after == before + 1
 		hit_removal_pass = projectile.is_queued_for_deletion()
 	checks.append({
 		"name": "kill_step_increment",
 		"pass": step_pass,
 		"detail": "colliding with an enemy must advance the kill step by exactly 1",
+		"expected": before + 1,
+		"actual": after,
 	})
 	checks.append({
 		"name": "self_removal_on_hit",
 		"pass": hit_removal_pass,
 		"detail": "projectile must queue_free after damaging an enemy",
+		"expected": true,
+		"actual": hit_removal_pass,
 	})
 
 	qm.wipe_player_data()

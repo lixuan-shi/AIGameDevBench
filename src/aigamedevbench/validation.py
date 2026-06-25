@@ -6,6 +6,16 @@ import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from aigamedevbench.godot_bin import resolve_godot_binary
+
+
+def _is_explicit_binary(binary: str) -> bool:
+    """A path-like binary (has a separator or drive colon) was deliberately
+    specified; a bare name like 'godot' is the default-on-PATH lookup. An
+    unresolvable explicit binary is a misconfiguration to report, whereas a
+    missing bare 'godot' just means godot isn't installed (skip silently)."""
+    return any(sep in binary for sep in ("/", "\\", ":"))
+
 
 @dataclass
 class VerificationResult:
@@ -43,13 +53,16 @@ def godot_import(project_root: Path, godot_binary: str = "godot",
     misleading "godot timed out". Reporting the import failure up front turns
     that silent root cause into a visible diagnostic.
     """
-    if shutil.which(godot_binary) is None:
+    resolved = resolve_godot_binary(godot_binary)
+    if resolved is None:
+        if _is_explicit_binary(godot_binary):
+            return f"godot binary '{godot_binary}' not found (check --godot-binary)"
         return None  # no godot: not an import failure; downstream skips godot too
     if not (project_root / "project.godot").exists():
         return None  # not a Godot project (e.g. a py_config data repo): nothing to import
     try:
         proc = subprocess.run(
-            [godot_binary, "--headless", "--path", str(project_root), "--import"],
+            [resolved, "--headless", "--path", str(project_root), "--import"],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
             timeout=timeout,
         )
@@ -126,11 +139,14 @@ def run_l0(project_root: Path, scenes: list[str], godot_binary: str = "godot") -
     gd_files = [str(p.relative_to(project_root)) for p in project_root.rglob("*.gd")]
     issues.extend(check_gd_syntax(project_root, gd_files))
 
-    if shutil.which(godot_binary):
+    resolved = resolve_godot_binary(godot_binary)
+    if resolved is None and _is_explicit_binary(godot_binary):
+        issues.append(f"godot binary '{godot_binary}' not found (check --godot-binary)")
+    elif resolved:
         for scene in scenes:
             try:
                 result = subprocess.run(
-                    [godot_binary, "--headless", "--path", str(project_root), scene, "--quit-after", "2"],
+                    [resolved, "--headless", "--path", str(project_root), scene, "--quit-after", "2"],
                     capture_output=True, text=True, encoding="utf-8", errors="replace",
                     timeout=10,
                 )
@@ -164,24 +180,50 @@ def check_script_references(project_root: Path, tscn_files: list[str]) -> list[s
     return issues
 
 
+_FUNC_RE = re.compile(r"^func\s+(\w+)\s*\(", re.MULTILINE)
+_EXT_SCRIPT_RE = re.compile(r'\[ext_resource\s.*?type="Script"\s.*?path="res://([^"]+)"')
+_EXT_PACKED_SCENE_RE = re.compile(
+    r'\[ext_resource\s.*?type="PackedScene"\s.*?path="res://([^"]+)"')
+
+
+def _scene_methods(project_root: Path, scene_rel: str,
+                   _seen: set[str] | None = None) -> set[str]:
+    """All method names reachable from a scene: methods on scripts the scene
+    references directly, plus (recursively) the root scripts of any PackedScene
+    it instances. A signal connection in main.tscn can target a method on an
+    instanced sub-scene's node (e.g. PlayerBody), whose script is not a direct
+    ext_resource of main.tscn — so following PackedScene instances is required
+    to avoid false 'method not defined' positives."""
+    _seen = _seen if _seen is not None else set()
+    if scene_rel in _seen:
+        return set()
+    _seen.add(scene_rel)
+    scene_path = project_root / scene_rel
+    if not scene_path.exists():
+        return set()
+    content = scene_path.read_text(encoding="utf-8", errors="replace")
+    methods: set[str] = set()
+    for sp in _EXT_SCRIPT_RE.findall(content):
+        script_full = project_root / sp
+        if script_full.exists():
+            methods.update(_FUNC_RE.findall(
+                script_full.read_text(encoding="utf-8", errors="replace")))
+    for sub in _EXT_PACKED_SCENE_RE.findall(content):
+        methods.update(_scene_methods(project_root, sub, _seen))
+    return methods
+
+
 def check_signal_targets(project_root: Path, tscn_files: list[str]) -> list[str]:
     issues = []
     connection_re = re.compile(
         r'\[connection\s+signal="([^"]+)"\s+from="([^"]+)"\s+to="([^"]+)"\s+method="([^"]+)"\]'
     )
-    ext_script_re = re.compile(r'\[ext_resource\s.*?type="Script"\s.*?path="res://([^"]+)"')
     for tscn_rel in tscn_files:
         tscn_path = project_root / tscn_rel
         if not tscn_path.exists():
             continue
         content = tscn_path.read_text(encoding="utf-8", errors="replace")
-        defined_methods: set[str] = set()
-        for sp in ext_script_re.findall(content):
-            script_full = project_root / sp
-            if script_full.exists():
-                script_content = script_full.read_text(encoding="utf-8", errors="replace")
-                func_re = re.compile(r"^func\s+(\w+)\s*\(", re.MULTILINE)
-                defined_methods.update(func_re.findall(script_content))
+        defined_methods = _scene_methods(project_root, tscn_rel)
         for match in connection_re.finditer(content):
             signal_name = match.group(1)
             method_name = match.group(4)

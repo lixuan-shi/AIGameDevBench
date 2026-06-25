@@ -66,7 +66,8 @@ def _matches(value, expected, tol) -> bool:
 
 @register("py_config")
 class ConfigVerifier:
-    def verify(self, testcase: Testcase, workspace: Path) -> VerifierResult:
+    def verify(self, testcase: Testcase, workspace: Path,
+               godot_binary: str = "godot") -> VerifierResult:
         spec_path = testcase.dir / "expected.json"
         if not spec_path.exists():
             return VerifierResult.error_result(testcase.category, "missing expected.json")

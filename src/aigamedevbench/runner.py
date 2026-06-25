@@ -76,15 +76,23 @@ def run_testcase(repo_root: Path | None, testcase: Testcase, driver: HarnessDriv
         gate_pass = verification.l0_pass and verification.l1_pass
 
         if not gate_pass:
+            # Carry the l0/l1 reasons in the error so a JSON report explains WHY
+            # the gate failed, not just that it did. A bare "L0/L1 gate failed"
+            # is undebuggable from the report alone.
+            reasons = [*verification.l0_details, *verification.l1_details]
+            error = "L0/L1 gate failed"
+            if reasons:
+                error += ": " + "; ".join(reasons)
             failed = VerifierResult(score=0.0, status="fail", checks=[],
                                     category=testcase.category,
-                                    error="L0/L1 gate failed")
+                                    error=error)
             return RunResult(testcase.id, harness_id, testcase.category,
                              False, failed, 0.0, diff=diff,
                              artifacts_path=artifacts_path)
 
         verifier = get_verifier(testcase.verifier_type)
-        vr = verifier.verify(testcase, workspace)
+        godot_binary = config.get("global", {}).get("godot", {}).get("binary", "godot")
+        vr = verifier.verify(testcase, workspace, godot_binary)
         score = 0.0 if vr.status == "error" else vr.score
         return RunResult(testcase.id, harness_id, testcase.category,
                          True, vr, score, diff=diff,

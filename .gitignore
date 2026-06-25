@@ -8,5 +8,9 @@ dist/
 
 # Benchmark run outputs
 artifacts/
+harness-artifacts/
 harness-logs/
+harness-*-logs/
+report.json
+report_*.json
 *.report.json

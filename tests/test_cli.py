@@ -5,8 +5,34 @@ import sys
 
 from click.testing import CliRunner
 
-from aigamedevbench.cli import main
+from aigamedevbench.cli import main, _echo_verifier_result
 from aigamedevbench.git_ops import git_run
+from aigamedevbench.result import CheckResult, VerifierResult
+
+
+def test_echo_verifier_result_shows_expected_actual(capsys):
+    # A failed check must show expected vs actual on screen so the user sees
+    # WHAT was wrong, not just that it failed.
+    vr = VerifierResult(score=0.0, status="fail", checks=[
+        CheckResult("state", False, detail="wrong state",
+                    expected="CardBaseState", actual="CardClickedState"),
+    ])
+    _echo_verifier_result(vr)
+    err = capsys.readouterr().err
+    assert "[FAIL] state" in err
+    assert "CardBaseState" in err and "CardClickedState" in err
+    assert "expected" in err.lower() and "actual" in err.lower()
+
+
+def test_echo_verifier_result_omits_expected_actual_when_absent(capsys):
+    # A passing check with no expected/actual must not print empty expected/actual.
+    vr = VerifierResult(score=1.0, status="pass", checks=[
+        CheckResult("ok", True, detail="fine"),
+    ])
+    _echo_verifier_result(vr)
+    err = capsys.readouterr().err
+    assert "[PASS] ok" in err
+    assert "expected" not in err.lower() and "actual" not in err.lower()
 
 
 def _repo_and_testcases(tmp_path):

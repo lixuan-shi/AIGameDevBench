@@ -58,6 +58,8 @@ def _echo_verifier_result(verifier_result, tail_detail: int = 200) -> None:
             if len(detail) > tail_detail:
                 detail = detail[:tail_detail] + "..."
             line += f" - {detail}"
+        if c.expected is not None or c.actual is not None:
+            line += f" (expected: {c.expected!r}, actual: {c.actual!r})"
         click.echo(line, err=True)
 
 
@@ -221,3 +223,81 @@ def run_cmd(testcases_dir: str, testcase_id: str | None, harness_id: str,
                   "mean_score": mean, "testcases": records}
         Path(report_file).write_text(json.dumps(report, indent=2), encoding="utf-8")
         click.echo(f"--- report written to {report_file}")
+
+
+@main.command("serve")
+@click.option("--reports-dir", default=".", type=click.Path(exists=True),
+              help="Directory to scan for *.json benchmark reports (default: cwd)")
+@click.option("--port", default=8000, type=int)
+@click.option("--host", default="127.0.0.1")
+@click.option("--open-browser/--no-open-browser", default=True,
+              help="Open the dashboard in a browser on startup (default: on)")
+def serve_cmd(reports_dir: str, port: int, host: str, open_browser: bool):
+    """Serve a local web dashboard to view and compare benchmark reports.
+
+    Scans --reports-dir for report JSON files on every request, so re-running a
+    benchmark and refreshing the page shows the new run immediately. Pure
+    stdlib, fully offline; charts are drawn with native SVG/CSS.
+    """
+    import json
+    import webbrowser
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    from urllib.parse import urlparse, parse_qs
+
+    from aigamedevbench.webreport import (
+        INDEX_HTML, load_reports, build_summary, report_detail,
+    )
+
+    root = Path(reports_dir)
+
+    class Handler(BaseHTTPRequestHandler):
+        def _send(self, code: int, body: bytes, content_type: str) -> None:
+            self.send_response(code)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def _json(self, obj, code: int = 200) -> None:
+            self._send(code, json.dumps(obj).encode("utf-8"),
+                       "application/json; charset=utf-8")
+
+        def do_GET(self) -> None:  # noqa: N802 (http.server API)
+            parsed = urlparse(self.path)
+            path = parsed.path
+            if path == "/":
+                self._send(200, INDEX_HTML.encode("utf-8"),
+                           "text/html; charset=utf-8")
+                return
+            if path == "/api/summary":
+                self._json(build_summary(load_reports(root)))
+                return
+            if path == "/api/detail":
+                q = parse_qs(parsed.query)
+                run = (q.get("run") or [""])[0]
+                tc = (q.get("testcase") or [""])[0]
+                for r in load_reports(root):
+                    if r["_run_id"] == run:
+                        detail = report_detail(r, tc)
+                        if detail is not None:
+                            self._json(detail)
+                            return
+                        break
+                self._json({"error": "not found"}, code=404)
+                return
+            self._json({"error": "not found"}, code=404)
+
+        def log_message(self, *args) -> None:
+            pass  # keep the console quiet; failures still raise
+
+    server = ThreadingHTTPServer((host, port), Handler)
+    url = f"http://{host}:{port}/"
+    click.echo(f"--- serving {root.resolve()} at {url} (Ctrl-C to stop)")
+    if open_browser:
+        webbrowser.open(url)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        click.echo("\n--- stopped")
+    finally:
+        server.server_close()

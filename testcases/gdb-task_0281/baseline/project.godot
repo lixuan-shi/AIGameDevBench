@@ -15,6 +15,13 @@ run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.2")
 config/icon="res://icon.png"
 
+[autoload]
+
+Events="*res://global/events.gd"
+Shaker="*res://global/shaker.gd"
+MusicPlayer="*res://global/music_player.tscn"
+SFXPlayer="*res://global/sfx_player.tscn"
+
 [display]
 
 window/size/viewport_width=256

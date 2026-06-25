@@ -84,6 +84,15 @@ aigdbench run --testcases-dir ./testcases \
   --workspace-root ./bench-workspaces \
   --report ./report.json
 ```
+aigdbench run --testcases-dir ./testcases \
+  --driver command \
+  --harness-cmd 'claude -p {task} --dangerously-skip-permissions' \
+  --harness my-claude-code \
+  --timeout 900 \
+  --godot-binary /D/Godot/godot/bin \
+  --log-dir ./harness-logs \
+  --workspace-root ./bench-workspaces \
+  --report ./report.json
 
 **The harness must run fully autonomously.** `--driver command` runs the harness
 with no TTY and stdin closed, so any interactive prompt has no way to be

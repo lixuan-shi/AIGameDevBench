@@ -11,7 +11,8 @@ from aigamedevbench.verifiers.base import register
 
 @register("py_tscn_diff")
 class TscnDiffVerifier:
-    def verify(self, testcase: Testcase, workspace: Path) -> VerifierResult:
+    def verify(self, testcase: Testcase, workspace: Path,
+               godot_binary: str = "godot") -> VerifierResult:
         spec_path = testcase.dir / "expected_delta.json"
         if not spec_path.exists():
             return VerifierResult.error_result(testcase.category, "missing expected_delta.json")

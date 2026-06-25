@@ -57,8 +57,28 @@ def test_parse_assertion_json():
     assert checks[1].passed is False
 
 
+def test_parse_assertion_json_carries_expected_actual():
+    # A verifier reports expected vs actual per checkpoint so the report explains
+    # WHAT was wrong, not just that a check failed. The parser must surface them.
+    out = ('{"assertions": [{"name": "state", "pass": false, '
+           '"detail": "wrong state", "expected": "CardBaseState", '
+           '"actual": "CardClickedState"}]}')
+    checks = parse_assertion_json(out)
+    assert len(checks) == 1
+    assert checks[0].expected == "CardBaseState"
+    assert checks[0].actual == "CardClickedState"
+
+
+def test_parse_assertion_json_expected_actual_default_none():
+    # Assertions that omit expected/actual leave them None (back-compat).
+    out = '{"assertions": [{"name": "x", "pass": true}]}'
+    checks = parse_assertion_json(out)
+    assert checks[0].expected is None
+    assert checks[0].actual is None
+
+
 def test_missing_binary_is_error(tmp_path, monkeypatch):
-    monkeypatch.setattr("aigamedevbench.verifiers.godot_runtime.shutil.which",
+    monkeypatch.setattr("aigamedevbench.verifiers.godot_runtime.resolve_godot_binary",
                         lambda _: None)
     tc_dir = tmp_path / "tc"; tc_dir.mkdir()
     (tc_dir / "verifier.gd").write_text("extends SceneTree\n", encoding="utf-8")
@@ -92,7 +112,7 @@ def test_verifier_passes_quit_after(tmp_path, monkeypatch):
     # hanging the booted main scene until the wall-clock timeout.
     import aigamedevbench.verifiers.godot_runtime as gr
 
-    monkeypatch.setattr(gr.shutil, "which", lambda _: "/usr/bin/godot")
+    monkeypatch.setattr(gr, "resolve_godot_binary", lambda _: "/usr/bin/godot")
     captured = {}
 
     class _Proc:
@@ -115,6 +135,38 @@ def test_verifier_passes_quit_after(tmp_path, monkeypatch):
     argv = captured["argv"]
     assert "--quit-after" in argv
     assert argv[argv.index("--quit-after") + 1] == str(gr._QUIT_AFTER_FRAMES)
+
+
+def test_verifier_resolves_msys_path(tmp_path, monkeypatch):
+    # An MSYS /d/... binary that which() can't resolve directly must still run
+    # the verifier via its native d:/... form, not error as "not found".
+    import aigamedevbench.verifiers.godot_runtime as gr
+    from aigamedevbench import godot_bin
+
+    def fake_which(b):
+        return r"D:\Godot\godot.exe" if b == "d:/Godot/godot/bin/godot" else None
+
+    monkeypatch.setattr(godot_bin.shutil, "which", fake_which)
+    captured = {}
+
+    class _Proc:
+        returncode = 0
+        stdout = '{"assertions": [{"name": "ok", "pass": true}]}'
+        stderr = ""
+
+    def _fake_run(argv, *a, **k):
+        captured["argv"] = argv
+        return _Proc()
+
+    monkeypatch.setattr(gr.subprocess, "run", _fake_run)
+    tc_dir = tmp_path / "tc"; tc_dir.mkdir()
+    (tc_dir / "verifier.gd").write_text("extends SceneTree\n", encoding="utf-8")
+    ws = tmp_path / "ws"; ws.mkdir()
+    tc = Testcase("t", "behavior_logic", "ref", "task", "godot_scenetree",
+                  "verifier.gd", "checkpoints", tc_dir)
+    result = GodotSceneTreeVerifier().verify(tc, ws, godot_binary="/d/Godot/godot/bin/godot")
+    assert result.status == "pass"
+    assert captured["argv"][0] == r"D:\Godot\godot.exe"
 
 
 def test_interaction_routing_registered():
