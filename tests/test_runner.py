@@ -90,6 +90,17 @@ def test_folder_testcase_uses_folder_workspace(tmp_path):
     assert result.verifier_result.status == "pass"
 
 
+def test_git_testcase_uses_manifest_source_repo(tmp_path):
+    repo, head = _make_repo_with_config(tmp_path)
+    tc = _config_testcase(tmp_path, head)
+    tc.source_repo = str(repo)
+    # repo_root is None: source_repo in the manifest should make exported Survey
+    # testcases runnable from the Bench repo instead of the game repo.
+    result = run_testcase(None, tc, NoOpDriver(), "noop", config={})
+    assert result.testcase_id == "bench-x"
+    assert result.score == 0.0
+
+
 _CHAR_PATCH = (
     "diff --git a/data/char.json b/data/char.json\n"
     "--- a/data/char.json\n"

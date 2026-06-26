@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-codex_2026-06-25_019efd92-e56c-7503-8449-a83184624e21"
+category = "precise_edit"
+source_kind = "git"
+baseline_ref = "540455d48561607edcac769a2f34de532d5742bf"
+source_repo = "C:\\Users\\WinterZhao\\Codes\\godot_demo"
+task = "制作一个简单的2d godot项目，内容是玩家可以操纵主角蓝格子左右移动，每走两格就播一个动画，动画内容实际置空，在动画内置轨道动画播放开始时主角变为红色，第2s变回蓝色。提交入git commit.\n\nFollow-up user turns from the original session:\n- 把动画改成第0s变蓝，第1s变绿，第2s变红。自动提交commit。\n\nRegression target: avoid the original Survey bad case (C1): human_intervention_ratio=1.00"
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "codex_2026-06-25_019efd92-e56c-7503-8449-a83184624e21"
+bad_case_type = "C1"
+captured_harness = "codex"
+transcript_session_id = "codex_2026-06-25_019efd92-e56c-7503-8449-a83184624e21"
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

@@ -76,15 +76,56 @@ INDEX_HTML = r"""<!DOCTYPE html>
   .empty { color:var(--muted); padding:20px; text-align:center; }
   .err { color:#f0a0a0; white-space:pre-wrap; }
   a { color:var(--accent); }
+  .tabs { display:flex; gap:6px; }
+  .tab { background:transparent; border:1px solid var(--line); }
+  .tab.active { background:#222634; border-color:var(--accent); color:var(--fg); }
+  .tc-layout { display:grid; grid-template-columns:260px 1fr; gap:14px; }
+  .tc-list { display:flex; flex-direction:column; gap:4px; max-height:70vh;
+             overflow:auto; }
+  .tc-item { text-align:left; border:1px solid var(--line); border-radius:6px;
+             padding:7px 10px; cursor:pointer; }
+  .tc-item:hover { border-color:var(--accent); }
+  .tc-item.active { background:#222634; border-color:var(--accent); }
+  .tc-item small { color:var(--muted); display:block; }
+  .tc-detail { border:1px solid var(--line); border-radius:8px; padding:14px;
+               min-height:200px; }
+  .kv { display:grid; grid-template-columns:120px 1fr; gap:4px 10px;
+        margin-bottom:12px; }
+  .kv .k { color:var(--muted); }
+  .task-box { background:#0c0e14; border:1px solid var(--line); border-radius:6px;
+              padding:10px; white-space:pre-wrap; margin-bottom:12px; }
+  .files { list-style:none; padding:0; margin:0; columns:2; }
+  .files li { padding:1px 0; color:var(--fg); break-inside:avoid; }
+  .files li small { color:var(--muted); }
+  .pill { display:inline-block; padding:1px 8px; border:1px solid var(--line);
+          border-radius:10px; font-size:12px; }
+  .act { margin-top:12px; }
+  .act h3 { font-size:12px; text-transform:uppercase; letter-spacing:.05em;
+            color:var(--muted); margin:10px 0 6px; }
+  details.turn { border:1px solid var(--line); border-radius:6px; margin:6px 0;
+                 padding:6px 10px; }
+  details.turn > summary { cursor:pointer; color:var(--fg); }
+  details.turn[open] > summary { margin-bottom:6px; }
+  .turn .lbl { color:var(--muted); margin:6px 0 2px; }
+  .logbox { background:#0c0e14; border:1px solid var(--line); border-radius:6px;
+            padding:10px; max-height:320px; overflow:auto; white-space:pre-wrap;
+            word-break:break-word; font-size:12px; color:#cdd3df; }
+  .tools { list-style:none; padding:0; margin:4px 0 0; }
+  .tools li { font-size:12px; color:#9fb4d8; padding:1px 0;
+              white-space:pre-wrap; word-break:break-word; }
 </style>
 </head>
 <body>
 <header>
-  <h1>AIGameDevBench Reports</h1>
+  <h1>AIGameDevBench</h1>
+  <nav class="tabs">
+    <button id="tab-reports" class="tab active">Reports</button>
+    <button id="tab-testcases" class="tab">Testcases</button>
+  </nav>
   <button id="refresh">Refresh</button>
   <span id="status" style="color:var(--muted)"></span>
 </header>
-<div class="wrap">
+<div id="view-reports" class="wrap">
   <div class="panel">
     <h2>Runs</h2>
     <div id="runs" class="runs"></div>
@@ -100,6 +141,17 @@ INDEX_HTML = r"""<!DOCTYPE html>
   <div class="panel">
     <h2>Timing &amp; stability</h2>
     <div id="timing"></div>
+  </div>
+</div>
+<div id="view-testcases" class="wrap" style="display:none">
+  <div class="panel">
+    <h2>Testcases</h2>
+    <div class="tc-layout">
+      <div id="tc-list" class="tc-list"></div>
+      <div id="tc-detail" class="tc-detail">
+        <span class="empty">Select a testcase.</span>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -225,7 +277,7 @@ function renderMatrix() {
   h += "</tbody></table>";
   el.innerHTML = h;
   el.querySelectorAll("td.cell[data-tc]").forEach(td =>
-    td.addEventListener("click", () => openDetail(td.dataset.tc)));
+    td.addEventListener("click", () => openDetail(td.dataset.tc, td.dataset.run)));
 }
 
 function renderTiming() {
@@ -251,9 +303,16 @@ function renderTiming() {
   el.innerHTML = h;
 }
 
-async function openDetail(tc) {
-  const runs = selectedRuns();
-  $("#modal-title").textContent = tc;
+async function openDetail(tc, runId) {
+  // If a specific cell was clicked (runId given), scope the drill-down to that
+  // single run; otherwise compare across all selected runs.
+  let runs = selectedRuns();
+  if (runId) {
+    const one = SUMMARY.runs.find(r => r.run_id === runId);
+    if (one) runs = [one];
+  }
+  $("#modal-title").textContent = runId
+    ? `${tc} — ${runs[0] ? runs[0].harness : ""}` : tc;
   $("#modal-body").innerHTML = "loading...";
   $("#overlay").classList.add("show");
   const details = await Promise.all(runs.map(r =>
@@ -278,13 +337,110 @@ async function openDetail(tc) {
               actual <b>${esc(c.actual)}</b></div>`;
       h += "</div>";
     }
+    h += renderActivity(detail);
     h += "</div>";
   }
   h += "</div>";
   $("#modal-body").innerHTML = h;
 }
 
-$("#refresh").addEventListener("click", load);
+// AI activity record for a run+testcase: per-turn input/output/tool_calls
+// (survey runs), the harness log tail (command runs), and the diff.
+function renderActivity(detail) {
+  let h = "";
+  const turns = detail.ai_turns || [];
+  if (turns.length) {
+    h += '<div class="act"><h3>AI activity';
+    if (detail.total_tokens) h += ` <small>(${detail.total_tokens} tokens)</small>`;
+    h += "</h3>";
+    for (const t of turns) {
+      h += `<details class="turn" open><summary>turn ${esc(t.turn)}</summary>`;
+      if (t.agent_input) h += `<div class="lbl">input</div><div class="logbox">${esc(t.agent_input)}</div>`;
+      if (t.agent_output) h += `<div class="lbl">output</div><div class="logbox">${esc(t.agent_output)}</div>`;
+      if (t.tool_calls && t.tool_calls.length) {
+        h += `<div class="lbl">tool calls (${t.tool_calls.length})</div><ul class="tools">`;
+        for (const tc of t.tool_calls) h += `<li>${esc(tc)}</li>`;
+        h += "</ul>";
+      }
+      h += "</details>";
+    }
+    h += "</div>";
+  }
+  if (detail.log_text) {
+    h += `<div class="act"><h3>Harness log${detail.log_path ? ` <small>${esc(detail.log_path)}</small>` : ""}</h3>
+      <div class="logbox">${esc(detail.log_text)}</div></div>`;
+  }
+  if (detail.diff && detail.diff.trim()) {
+    h += `<div class="act"><h3>Diff</h3><div class="logbox">${esc(detail.diff)}</div></div>`;
+  }
+  return h;
+}
+
+// ---- Testcases tab ----
+let TESTCASES = null;
+let TC_SELECTED = null;
+
+async function loadTestcases() {
+  if (TESTCASES) return;
+  const list = $("#tc-list");
+  list.innerHTML = '<span class="empty">loading...</span>';
+  try {
+    TESTCASES = await (await fetch("/api/testcases")).json();
+  } catch (e) { TESTCASES = []; }
+  renderTestcaseList();
+}
+
+function renderTestcaseList() {
+  const list = $("#tc-list");
+  if (!TESTCASES.length) {
+    list.innerHTML = '<span class="empty">No testcases.<br>Run serve with --testcases-dir.</span>';
+    return;
+  }
+  list.innerHTML = "";
+  for (const tc of TESTCASES) {
+    const b = document.createElement("button");
+    b.className = "tc-item" + (tc.id === TC_SELECTED ? " active" : "");
+    b.innerHTML = `<span>${esc(tc.id)}</span><small>${esc(tc.category)} · ${esc(tc.verifier_type)}</small>`;
+    b.addEventListener("click", () => { TC_SELECTED = tc.id; renderTestcaseList(); renderTestcaseDetail(tc); });
+    list.appendChild(b);
+  }
+  if (!TC_SELECTED) { TC_SELECTED = TESTCASES[0].id; renderTestcaseList(); renderTestcaseDetail(TESTCASES[0]); }
+}
+
+function renderTestcaseDetail(tc) {
+  let h = `<h2>${esc(tc.id)}</h2>`;
+  h += `<div class="kv">
+    <div class="k">category</div><div><span class="pill">${esc(tc.category)}</span></div>
+    <div class="k">verifier</div><div>${esc(tc.verifier_type)} <small>(${esc(tc.verifier_entry)})</small></div>
+    <div class="k">scoring</div><div>${esc(tc.scoring_mode)}</div>
+    <div class="k">source</div><div>${esc(tc.source_kind)}${tc.source_repo ? " · " + esc(tc.source_repo) : ""}</div>
+  </div>`;
+  h += `<h2>Task</h2><div class="task-box">${esc(tc.task)}</div>`;
+  if (tc.provenance && Object.keys(tc.provenance).length) {
+    h += `<h2>Provenance</h2><div class="kv">`;
+    for (const [k, v] of Object.entries(tc.provenance))
+      h += `<div class="k">${esc(k)}</div><div>${esc(v)}</div>`;
+    h += `</div>`;
+  }
+  h += `<h2>Files (${tc.files.length})</h2><ul class="files">`;
+  for (const f of tc.files) h += `<li>${esc(f)}</li>`;
+  h += `</ul>`;
+  $("#tc-detail").innerHTML = h;
+}
+
+function switchTab(name) {
+  const isTc = name === "testcases";
+  $("#view-reports").style.display = isTc ? "none" : "";
+  $("#view-testcases").style.display = isTc ? "" : "none";
+  $("#tab-reports").classList.toggle("active", !isTc);
+  $("#tab-testcases").classList.toggle("active", isTc);
+  if (isTc) loadTestcases();
+}
+$("#tab-reports").addEventListener("click", () => switchTab("reports"));
+$("#tab-testcases").addEventListener("click", () => switchTab("testcases"));
+
+$("#refresh").addEventListener("click", () => { TESTCASES = null; load();
+  if ($("#view-testcases").style.display !== "none") loadTestcases(); });
 $("#close").addEventListener("click", () => $("#overlay").classList.remove("show"));
 $("#overlay").addEventListener("click", e => {
   if (e.target.id === "overlay") $("#overlay").classList.remove("show"); });
@@ -396,11 +552,66 @@ def _timing_aggregate(testcases: list[dict]) -> dict:
     }
 
 
-def report_detail(report: dict, testcase_id: str) -> dict | None:
-    """Per-testcase drill-down: checks (with expected/actual), error, diff, log."""
+def load_testcase_catalog(testcases_dir: Path) -> list[dict]:
+    """Load every testcase under `testcases_dir` into a JSON-friendly catalog.
+
+    Each entry carries the manifest fields (id/category/task/verifier/scoring)
+    plus a sorted `files` list (relative paths) so the UI can show what the
+    testcase is made of. A directory without a parseable testcase.toml is
+    skipped so one broken testcase cannot break the catalog view.
+    """
+    from aigamedevbench.testcase import load_testcase
+
+    testcases_dir = Path(testcases_dir)
+    if not testcases_dir.is_dir():
+        return []
+    out: list[dict] = []
+    for child in sorted(testcases_dir.iterdir()):
+        if not child.is_dir() or not (child / "testcase.toml").exists():
+            continue
+        try:
+            tc = load_testcase(child)
+        except Exception:
+            continue
+        files = sorted(
+            p.relative_to(child).as_posix()
+            for p in child.rglob("*") if p.is_file()
+        )
+        out.append({
+            "id": tc.id,
+            "category": tc.category,
+            "task": tc.task,
+            "verifier_type": tc.verifier_type,
+            "verifier_entry": tc.verifier_entry,
+            "scoring_mode": tc.scoring_mode,
+            "source_kind": tc.source_kind,
+            "source_repo": tc.source_repo,
+            "provenance": tc.provenance,
+            "files": files,
+        })
+    return out
+
+
+LOG_TAIL_BYTES = 64 * 1024
+
+
+def report_detail(report: dict, testcase_id: str,
+                  reports_dir: Path | None = None) -> dict | None:
+    """Per-testcase drill-down: checks (with expected/actual), error, diff, and
+    the AI's activity record for that run.
+
+    The activity comes from two places depending on how the run was produced:
+      - survey reports carry `ai_agent_context.turns` (agent_input/output/
+        tool_calls) — surfaced as `ai_turns`.
+      - command-harness runs carry a `log_path` to the harness stdout/stderr —
+        its tail is read into `log_text` (resolved against `reports_dir`).
+    """
     for tc in report.get("testcases", []):
         if tc["testcase_id"] == testcase_id:
             vr = tc.get("verifier_result", {})
+            ctx = tc.get("ai_agent_context") or {}
+            ai_turns = ctx.get("turns", []) if isinstance(ctx, dict) else []
+            log_path = tc.get("log_path")
             return {
                 "run_id": report.get("_run_id", ""),
                 "testcase_id": testcase_id,
@@ -410,7 +621,30 @@ def report_detail(report: dict, testcase_id: str) -> dict | None:
                 "error": vr.get("error", ""),
                 "checks": vr.get("checks", []),
                 "diff": tc.get("diff", ""),
-                "log_path": tc.get("log_path"),
+                "log_path": log_path,
+                "log_text": _read_log_tail(log_path, reports_dir),
+                "ai_turns": ai_turns,
+                "total_tokens": ctx.get("total_tokens") if isinstance(ctx, dict) else None,
                 "wall_time": tc.get("wall_time"),
             }
     return None
+
+
+def _read_log_tail(log_path: str | None, reports_dir: Path | None) -> str:
+    """Read the tail of a harness log. log_path may be relative to reports_dir
+    (how the runner writes it). Returns "" if there is nothing to read."""
+    if not log_path:
+        return ""
+    p = Path(log_path)
+    if not p.is_absolute() and reports_dir is not None:
+        p = Path(reports_dir) / p
+    try:
+        data = p.read_bytes()
+    except OSError:
+        return ""
+    if len(data) > LOG_TAIL_BYTES:
+        data = data[-LOG_TAIL_BYTES:]
+        prefix = b"...(truncated)...\n"
+    else:
+        prefix = b""
+    return (prefix + data).decode("utf-8", errors="replace")

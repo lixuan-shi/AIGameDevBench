@@ -47,9 +47,10 @@ def _workspace_for(repo_root: Path | None, testcase: Testcase,
         with folder_workspace(testcase.dir / "baseline", workspace_root) as ws:
             yield ws
     else:
-        if repo_root is None:
+        source_repo = Path(testcase.source_repo) if testcase.source_repo else repo_root
+        if source_repo is None:
             raise ValueError(f"git-type testcase '{testcase.id}' requires a repo root")
-        with isolated_workspace(repo_root, testcase.baseline_ref, workspace_root) as ws:
+        with isolated_workspace(source_repo, testcase.baseline_ref, workspace_root) as ws:
             yield ws
 
 

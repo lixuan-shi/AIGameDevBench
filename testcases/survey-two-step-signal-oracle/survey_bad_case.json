@@ -1,0 +1,189 @@
+{
+  "schema": "survey.bad_case.testcase.v2",
+  "testcase_id": "survey-two-step-signal-oracle",
+  "source_repo": "C:\\tmp\\godot_demo_survey_badcase",
+  "source_repo_name": "godot_demo",
+  "baseline_ref": "ca63631db3ba54cc4e52cde4deb441ece8283795",
+  "bad_ref": "dae2701f781a599786007516fedcd546a0261a4d",
+  "good_ref": "33b4e299072f833b2b247373af3ec34fd3921cf2",
+  "bad_case_type": "A2",
+  "expected": {
+    "bad_case_type": "A2",
+    "notes": "L1 fail: signal 'two_steps_completed' connected to method '_on_player_two_steps_done' which is not defined",
+    "original_l0_pass": true,
+    "original_l1_pass": false,
+    "original_l0_details": [],
+    "original_l1_details": [
+      "scenes/main.tscn: signal 'two_steps_completed' connected to method '_on_player_two_steps_done' which is not defined"
+    ],
+    "must_change_one_of": [
+      "scripts/player.gd",
+      "scripts/main.gd",
+      "scenes/main.tscn"
+    ],
+    "minimum_changed_files": 1
+  },
+  "bench_record": {
+    "harness": "survey-godot-demo",
+    "testcase_id": "survey-two-step-signal-oracle",
+    "category": "survey:A2",
+    "score": 0.0,
+    "verifier_result": {
+      "status": "fail",
+      "error": "L1 fail: signal 'two_steps_completed' connected to method '_on_player_two_steps_done' which is not defined"
+    },
+    "ai_agent_context": {
+      "transcript_session_id": "manual-survey-two-step-signal-oracle",
+      "transcript_match_confidence": "manual",
+      "turns": [
+        {
+          "turn": 1,
+          "agent_input": "Add a two-step completion signal to godot_demo and wire it into the main scene.",
+          "agent_output": "Added a signal emit in Player and connected it from the scene.",
+          "tool_calls": [
+            "edit scripts/player.gd",
+            "edit scenes/main.tscn"
+          ]
+        },
+        {
+          "turn": 2,
+          "agent_input": "The scene signal target is invalid; fix the connection without removing the two-step behavior.",
+          "agent_output": "Added a Main script with the connected handler.",
+          "tool_calls": [
+            "edit scripts/main.gd",
+            "edit scenes/main.tscn"
+          ]
+        }
+      ]
+    },
+    "survey_session": {
+      "session_id": "survey-two-step-signal-oracle",
+      "harness": "codex",
+      "bad_case_type": "A2",
+      "notes": "L1 fail: signal 'two_steps_completed' connected to method '_on_player_two_steps_done' which is not defined",
+      "changed_files": [
+        "scripts/player.gd",
+        "scenes/main.tscn"
+      ],
+      "commits": [
+        "dae2701f781a599786007516fedcd546a0261a4d"
+      ],
+      "verification": {
+        "l0_pass": true,
+        "l1_pass": false,
+        "l0_details": [],
+        "l1_details": [
+          "scenes/main.tscn: signal 'two_steps_completed' connected to method '_on_player_two_steps_done' which is not defined"
+        ]
+      },
+      "system_context": {
+        "transcript_session_id": "manual-survey-two-step-signal-oracle",
+        "transcript_match_confidence": "manual",
+        "bad_ref": "dae2701f781a599786007516fedcd546a0261a4d",
+        "good_ref": "33b4e299072f833b2b247373af3ec34fd3921cf2"
+      },
+      "prompts": [
+        {
+          "turn": 1,
+          "user_message": "Add a two-step completion signal to godot_demo and wire it into the main scene.",
+          "assistant_summary": "Added a signal emit in Player and connected it from the scene.",
+          "tool_calls": [
+            "edit scripts/player.gd",
+            "edit scenes/main.tscn"
+          ]
+        },
+        {
+          "turn": 2,
+          "user_message": "The scene signal target is invalid; fix the connection without removing the two-step behavior.",
+          "assistant_summary": "Added a Main script with the connected handler.",
+          "tool_calls": [
+            "edit scripts/main.gd",
+            "edit scenes/main.tscn"
+          ]
+        }
+      ]
+    }
+  },
+  "bad_case_summary": "The bad commit adds a Player.two_steps_completed signal and connects it in scenes/main.tscn, but the connection targets Main._on_player_two_steps_done even though Main has no script defining that method. Survey L1 should flag the broken signal target.",
+  "visible_task": {
+    "user_request": "When the player completes every second movement step, emit a two_steps_completed(step_count) signal and connect it to the main scene so the scene records or reacts to the completed two-step event. Keep the existing two-step color flash behavior working.",
+    "agent_context": [
+      {
+        "turn": 1,
+        "agent_input": "Add a two-step completion signal to godot_demo and wire it into the main scene.",
+        "agent_output": "Added a signal emit in Player and connected it from the scene."
+      },
+      {
+        "turn": 2,
+        "agent_input": "The scene signal target is invalid; fix the connection without removing the two-step behavior.",
+        "agent_output": "Added a Main script with the connected handler."
+      }
+    ],
+    "changed_files_hint": [
+      "scripts/player.gd",
+      "scenes/main.tscn"
+    ]
+  },
+  "hidden_oracle": {
+    "bad_diff_file": "bad.diff",
+    "good_diff_file": "good.diff",
+    "bad_changed_files": [
+      "scripts/player.gd",
+      "scenes/main.tscn"
+    ],
+    "good_changed_files": [
+      "scripts/main.gd",
+      "scenes/main.tscn"
+    ],
+    "required_signals": [
+      {
+        "scene": "scenes/main.tscn",
+        "signal": "two_steps_completed",
+        "from": "Player",
+        "to": ".",
+        "method": "_on_player_two_steps_done"
+      }
+    ],
+    "required_methods": [
+      {
+        "file": "scripts/main.gd",
+        "method": "_on_player_two_steps_done",
+        "signature_contains": "step_count"
+      }
+    ],
+    "expected_validation": {
+      "bad_commit": {
+        "l0_pass": true,
+        "l1_pass": false,
+        "l1_detail_contains": "signal 'two_steps_completed' connected to method '_on_player_two_steps_done' which is not defined"
+      },
+      "good_commit": {
+        "l0_pass": true,
+        "l1_pass": true
+      },
+      "candidate": {
+        "l0_pass": true,
+        "l1_pass": true,
+        "must_not_equal_bad_diff": true,
+        "must_touch_one_of": [
+          "scripts/player.gd",
+          "scripts/main.gd",
+          "scenes/main.tscn"
+        ],
+        "ignored_paths": [
+          ".godot/",
+          "*.uid",
+          "*.import"
+        ]
+      }
+    }
+  },
+  "verification_design": [
+    "Checkout baseline_ref and run the candidate harness with visible_task.user_request.",
+    "Compute the candidate diff and reject it if it exactly matches bad.diff.",
+    "Run Survey L0/L1 on the candidate worktree; both must pass.",
+    "Confirm scenes/main.tscn still has the two_steps_completed connection or an equivalent working signal path.",
+    "Confirm the connected method is defined in a script attached to the target scene node.",
+    "Use good_ref only as hidden oracle evidence; do not require the candidate patch to be byte-identical to good.diff."
+  ]
+}

@@ -24,6 +24,7 @@ VERIFIER_TYPES = {
     "py_gdscript_ast",
     "visual_static",
     "interaction_routing",
+    "survey_bad_case",
 }
 
 SOURCE_KINDS = {"git", "folder"}

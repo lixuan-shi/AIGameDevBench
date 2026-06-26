@@ -102,6 +102,25 @@ mode = "checkpoints"
     assert tc.verifier_type == "godot_scene_assert"
 
 
+def test_load_survey_bad_case_verifier(tmp_path):
+    _write(tmp_path / "survey-bad", """
+[testcase]
+id = "survey-bad"
+category = "precise_edit"
+baseline_ref = "abc123"
+task = "Fix the original bad case"
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+""")
+    tc = load_testcase(tmp_path / "survey-bad")
+    assert tc.verifier_type == "survey_bad_case"
+
+
 def test_invalid_source_kind_rejected(tmp_path):
     _write(tmp_path / "bad-src", """
 [testcase]

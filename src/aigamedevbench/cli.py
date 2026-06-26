@@ -228,11 +228,15 @@ def run_cmd(testcases_dir: str, testcase_id: str | None, harness_id: str,
 @main.command("serve")
 @click.option("--reports-dir", default=".", type=click.Path(exists=True),
               help="Directory to scan for *.json benchmark reports (default: cwd)")
+@click.option("--testcases-dir", "testcases_dir", default=None, type=click.Path(),
+              help="Directory of testcases to show in the Testcases tab "
+                   "(default: ./testcases if it exists)")
 @click.option("--port", default=8000, type=int)
 @click.option("--host", default="127.0.0.1")
 @click.option("--open-browser/--no-open-browser", default=True,
               help="Open the dashboard in a browser on startup (default: on)")
-def serve_cmd(reports_dir: str, port: int, host: str, open_browser: bool):
+def serve_cmd(reports_dir: str, testcases_dir: str | None, port: int, host: str,
+              open_browser: bool):
     """Serve a local web dashboard to view and compare benchmark reports.
 
     Scans --reports-dir for report JSON files on every request, so re-running a
@@ -246,9 +250,15 @@ def serve_cmd(reports_dir: str, port: int, host: str, open_browser: bool):
 
     from aigamedevbench.webreport import (
         INDEX_HTML, load_reports, build_summary, report_detail,
+        load_testcase_catalog,
     )
 
     root = Path(reports_dir)
+    if testcases_dir:
+        tc_root = Path(testcases_dir)
+    else:
+        default_tc = root / "testcases"
+        tc_root = default_tc if default_tc.is_dir() else None
 
     class Handler(BaseHTTPRequestHandler):
         def _send(self, code: int, body: bytes, content_type: str) -> None:
@@ -272,13 +282,16 @@ def serve_cmd(reports_dir: str, port: int, host: str, open_browser: bool):
             if path == "/api/summary":
                 self._json(build_summary(load_reports(root)))
                 return
+            if path == "/api/testcases":
+                self._json(load_testcase_catalog(tc_root) if tc_root else [])
+                return
             if path == "/api/detail":
                 q = parse_qs(parsed.query)
                 run = (q.get("run") or [""])[0]
                 tc = (q.get("testcase") or [""])[0]
                 for r in load_reports(root):
                     if r["_run_id"] == run:
-                        detail = report_detail(r, tc)
+                        detail = report_detail(r, tc, reports_dir=root)
                         if detail is not None:
                             self._json(detail)
                             return
@@ -293,6 +306,8 @@ def serve_cmd(reports_dir: str, port: int, host: str, open_browser: bool):
     server = ThreadingHTTPServer((host, port), Handler)
     url = f"http://{host}:{port}/"
     click.echo(f"--- serving {root.resolve()} at {url} (Ctrl-C to stop)")
+    if tc_root:
+        click.echo(f"--- testcases from {tc_root.resolve()}")
     if open_browser:
         webbrowser.open(url)
     try:

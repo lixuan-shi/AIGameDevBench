@@ -3,7 +3,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from aigamedevbench.webreport import load_reports, build_summary, report_detail
+from aigamedevbench.webreport import (
+    load_reports, build_summary, report_detail, load_testcase_catalog,
+)
 
 
 def _write_report(path: Path, harness: str, testcases: list[dict]) -> None:
@@ -161,3 +163,142 @@ def test_report_detail_missing_testcase_returns_none(tmp_path):
     reports = load_reports(tmp_path)
 
     assert report_detail(reports[0], "nope") is None
+
+
+def test_report_detail_includes_ai_turns_from_agent_context(tmp_path):
+    ctx = {
+        "harness": "codex",
+        "total_tokens": 1234,
+        "turns": [
+            {
+                "turn": 2,
+                "agent_input": "make it blue",
+                "agent_output": "changed the color track",
+                "tool_calls": ["shell_command:git commit -m x"],
+            }
+        ],
+    }
+    _write_report(tmp_path / "a.json", "survey",
+                  [_tc("s1", 0.0, ai_agent_context=ctx)])
+
+    detail = report_detail(load_reports(tmp_path)[0], "s1")
+
+    assert len(detail["ai_turns"]) == 1
+    t = detail["ai_turns"][0]
+    assert t["agent_input"] == "make it blue"
+    assert t["agent_output"] == "changed the color track"
+    assert t["tool_calls"] == ["shell_command:git commit -m x"]
+
+
+def test_report_detail_reads_log_text_from_log_path(tmp_path):
+    log_dir = tmp_path / "harness-logs"
+    log_dir.mkdir()
+    (log_dir / "x.log").write_text("line1\nline2\nline3\n", encoding="utf-8")
+    _write_report(tmp_path / "a.json", "alpha",
+                  [_tc("t1", 0.5, log_path="harness-logs/x.log")])
+
+    detail = report_detail(load_reports(tmp_path)[0], "t1", reports_dir=tmp_path)
+
+    assert "line2" in detail["log_text"]
+
+
+def test_report_detail_log_text_empty_when_no_log(tmp_path):
+    _write_report(tmp_path / "a.json", "alpha", [_tc("t1", 1.0)])
+
+    detail = report_detail(load_reports(tmp_path)[0], "t1", reports_dir=tmp_path)
+
+    assert detail["log_text"] == ""
+    assert detail["ai_turns"] == []
+
+
+def _write_testcase(root: Path, tcid: str, *, category: str = "behavior_logic",
+                    task: str = "do the thing", verifier_type: str = "godot_scene_assert",
+                    entry: str = "verifier_scene.tscn", scoring: str = "checkpoints",
+                    source_kind: str = "folder", extra_files: dict | None = None) -> Path:
+    d = root / tcid
+    (d).mkdir(parents=True, exist_ok=True)
+    toml = (
+        "[testcase]\n"
+        f'id = "{tcid}"\n'
+        f'category = "{category}"\n'
+        f'source_kind = "{source_kind}"\n'
+        f'task = "{task}"\n'
+        "\n[verifier]\n"
+        f'type = "{verifier_type}"\n'
+        f'entry = "{entry}"\n'
+        "\n[scoring]\n"
+        f'mode = "{scoring}"\n'
+    )
+    (d / "testcase.toml").write_text(toml, encoding="utf-8")
+    for name, content in (extra_files or {}).items():
+        p = d / name
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content, encoding="utf-8")
+    return d
+
+
+def test_load_testcase_catalog_reads_each_testcase(tmp_path):
+    _write_testcase(tmp_path, "tc-a", task="task A", category="behavior_logic")
+    _write_testcase(tmp_path, "tc-b", task="task B", category="precise_edit")
+
+    catalog = load_testcase_catalog(tmp_path)
+
+    by_id = {tc["id"]: tc for tc in catalog}
+    assert set(by_id) == {"tc-a", "tc-b"}
+    assert by_id["tc-a"]["task"] == "task A"
+    assert by_id["tc-a"]["category"] == "behavior_logic"
+    assert by_id["tc-a"]["verifier_type"] == "godot_scene_assert"
+    assert by_id["tc-a"]["scoring_mode"] == "checkpoints"
+    assert by_id["tc-b"]["category"] == "precise_edit"
+
+
+def test_load_testcase_catalog_is_sorted_by_id(tmp_path):
+    _write_testcase(tmp_path, "tc-z")
+    _write_testcase(tmp_path, "tc-a")
+    _write_testcase(tmp_path, "tc-m")
+
+    catalog = load_testcase_catalog(tmp_path)
+
+    assert [tc["id"] for tc in catalog] == ["tc-a", "tc-m", "tc-z"]
+
+
+def test_load_testcase_catalog_lists_files(tmp_path):
+    _write_testcase(tmp_path, "tc-a", extra_files={
+        "fix.diff": "diff body",
+        "baseline/project.godot": "[application]\n",
+        "baseline/scripts/player.gd": "extends Node\n",
+    })
+
+    catalog = load_testcase_catalog(tmp_path)
+    files = catalog[0]["files"]
+
+    assert "testcase.toml" in files
+    assert "fix.diff" in files
+    assert "baseline/project.godot" in files
+    assert "baseline/scripts/player.gd" in files
+
+
+def test_load_testcase_catalog_skips_non_testcase_dirs(tmp_path):
+    _write_testcase(tmp_path, "tc-a")
+    (tmp_path / "not_a_testcase").mkdir()
+    (tmp_path / "not_a_testcase" / "readme.txt").write_text("x", encoding="utf-8")
+    (tmp_path / "loose.txt").write_text("x", encoding="utf-8")
+
+    catalog = load_testcase_catalog(tmp_path)
+
+    assert [tc["id"] for tc in catalog] == ["tc-a"]
+
+
+def test_load_testcase_catalog_tolerates_bad_manifest(tmp_path):
+    _write_testcase(tmp_path, "good")
+    bad = tmp_path / "bad"
+    bad.mkdir()
+    (bad / "testcase.toml").write_text("this is not valid toml = = =", encoding="utf-8")
+
+    catalog = load_testcase_catalog(tmp_path)
+
+    assert [tc["id"] for tc in catalog] == ["good"]
+
+
+def test_load_testcase_catalog_missing_dir_returns_empty(tmp_path):
+    assert load_testcase_catalog(tmp_path / "nope") == []

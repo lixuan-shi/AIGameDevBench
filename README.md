@@ -84,15 +84,6 @@ aigdbench run --testcases-dir ./testcases \
   --workspace-root ./bench-workspaces \
   --report ./report.json
 ```
-aigdbench run --testcases-dir ./testcases \
-  --driver command \
-  --harness-cmd 'claude -p {task} --dangerously-skip-permissions' \
-  --harness my-claude-code \
-  --timeout 900 \
-  --godot-binary /D/Godot/godot/bin \
-  --log-dir ./harness-logs \
-  --workspace-root ./bench-workspaces \
-  --report ./report.json
 
 **The harness must run fully autonomously.** `--driver command` runs the harness
 with no TTY and stdin closed, so any interactive prompt has no way to be
@@ -131,6 +122,84 @@ flag above.
 
 The manual loop still works if you prefer it: complete the task by hand, capture
 `git diff > ai.diff`, and score with `aigdbench run --driver patch --patch ai.diff`.
+
+## Viewing & comparing runs (`aigdbench serve`)
+
+Every `--report FILE` is a standalone JSON file. To compare runs side by side
+instead of reading raw JSON, start the local dashboard (pure stdlib, fully
+offline, no extra deps):
+
+```bash
+aigdbench serve --reports-dir . --testcases-dir ./testcases
+# → opens http://127.0.0.1:8000
+```
+
+It scans `--reports-dir` for `report*.json` on **every request**, so re-running a
+benchmark and refreshing the page shows the new run immediately. What you get:
+
+- **Reports** tab — one run per report file (labelled by `harness` + file mtime):
+  mean-score bars, a per-testcase × per-run score matrix, category and
+  timing/stability aggregates. **Click any matrix cell** to drill into that
+  run's per-check `expected` vs `actual`, the harness log tail, and (for survey
+  rows) the AI activity record.
+- **Testcases** tab — the testcase library from `--testcases-dir`: task text,
+  verifier type, scoring mode, and file listing for each `gdb-task_*`.
+
+`--testcases-dir` defaults to `./testcases` if it exists; `--port` / `--host` /
+`--no-open-browser` are available.
+
+## Quick command cheat-sheet
+
+```bash
+# list testcases
+aigdbench list --testcases-dir ./testcases
+
+# baseline (must score 0) then golden fix (must score 1)
+aigdbench run --testcases-dir ./testcases --testcase gdb-task_0002 --driver noop
+aigdbench run --testcases-dir ./testcases --testcase gdb-task_0002 \
+  --driver patch --patch ./testcases/gdb-task_0002/fix.diff
+
+# evaluate a real harness over the whole suite, writing a report
+aigdbench run --testcases-dir ./testcases --driver command \
+  --harness-cmd 'claude -p {task} --dangerously-skip-permissions' \
+  --harness my-claude-code --timeout 900 \
+  --log-dir ./harness-logs --workspace-root ./bench-workspaces \
+  --report ./report.json
+
+# visualize & compare all report*.json
+aigdbench serve --reports-dir . --testcases-dir ./testcases
+```
+
+## Survey bad cases (from the sibling `survey` tool)
+
+`survey_bad_cases.json` is **not** produced by `aigdbench`. It comes from the
+sibling [AIGameDevCollecter](../AIGameDevCollecter) `survey` CLI, which mines a
+real game repo's git history for problematic AI sessions (L0/L1 failures, high
+human-intervention ratio, many rounds to resolution) and exports them in
+AIGameDevBench's report format. These rows are scored by survey's rule engine —
+they have no `testcase.toml`/baseline/verifier and **cannot** be run by
+`aigdbench run`; they only appear in the dashboard's Reports matrix.
+
+Produce the file in the surveyed repo, then view it here:
+
+```bash
+# in the surveyed game repo (e.g. ../godot_demo, already `survey init`-ed)
+cd ../godot_demo
+survey collect --since 30d                 # mine sessions, auto-flag bad cases
+survey report --format md                   # (optional) see what was flagged
+survey tag <session_id> --type B1           # (optional) classify A1–C3
+survey export-bench \
+  -o ../AIGameDevBench/survey_bad_cases.json \
+  --harness survey-godot-demo               # writes the report (auto-imports transcripts)
+
+# back here: it shows up as the "survey-godot-demo" run in the matrix
+cd ../AIGameDevBench
+aigdbench serve --reports-dir . --testcases-dir ./testcases
+```
+
+In the dashboard, click a survey cell to see its checks (`bad_case_detected`,
+`human_intervention_ratio`, `rounds_to_resolution` with expected vs actual) plus
+the captured AI turns (agent input/output and tool calls).
 
 ## Testcase format
 
