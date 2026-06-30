@@ -21,6 +21,9 @@
 | gdb-task_0103 | behavior_logic | godot_scene_assert | folder | noop≈0.21 漏分 |
 | gdb-task_0281 | behavior_logic | godot_scene_assert | folder | noop≈0.21 漏分 |
 | pathfinding-npc-bridge-astar | behavior_logic | godot_scene_assert | folder | 干净 (noop 0 / patch 1); NPC AStar3D 过双桥 |
+| ui-window-stretch-config | intent_translation | py_config | folder | 干净; 真实挖掘 (stretch 缺基准分辨率) |
+| gdscript-cannot-infer-type | behavior_logic | godot_scene_assert | folder | 干净; 真实挖掘 (`:=` 类型推断失败) |
+| missing-resource-import | precise_edit | godot_scene_assert | folder | 干净; 真实挖掘 (引用缺失资源致加载崩溃) |
 | survey-two-step-signal-oracle | architecture | survey_bad_case | git | 手写, oracle 紧 (3 文件) |
 | survey-codex_…624e21 | precise_edit | survey_bad_case | git | oracle 10 文件 |
 | survey-unknown_2026-06-25_000 | intent_translation | survey_bad_case | git | oracle 3 文件 |
@@ -63,6 +66,18 @@
 | damage-formula-refactor | behavior_logic | hard | 交互规则: 暴击在减防之后 / 最小伤害 1 / 满防暴击仍 ≥1 | 暴击在减防之前 → 0.20 |
 | wave-combat-score-system | behavior_logic | brutal | 多系统: 敌人 FSM + 波次 spawn/wire + 连击计分 + 胜利, 双文件端到端 | — |
 | event-bus-priority-dispatch | behavior_logic | brutal | 优先级派发 + 平局插入序 + 退订 + 重订更新 + 派发前安全移除 | — |
+
+### 从真实 AI 失败挖掘的 case (2026-06-29 新增, 3 个)
+
+不是合成的, 而是用 `scripts/mine_retry_sessions.py` 扫本地 Claude/Codex 对话历史, 挑出"单次对话反复重试"的真实游戏开发会话, 深读还原其根因陷阱后重制成 testcase。挖掘方法与场景溯源见 [`../docs/mined_retry_scenarios.md`](../docs/mined_retry_scenarios.md)。全部自包含, `aigdbench audit` 通过 (noop 0 / golden 1)。
+
+| id | category | verifier | 来源会话 | 真实陷阱 (AI 反复栽的地方) |
+|---|---|---|---|---|
+| ui-window-stretch-config | intent_translation | py_config | Claude / ui-login | project.godot 设了 stretch mode + aspect=expand 却漏掉基准分辨率 window/size/viewport_width/height, canvas_items 拉伸静默失效 |
+| gdscript-cannot-infer-type | behavior_logic | godot_scene_assert | Claude / Documents-test | `var x := untyped_array[i]` 从无类型来源用 `:=` 推断, 报 "Parse Error: Cannot infer the type", 脚本整体加载失败 |
+| missing-resource-import | precise_edit | godot_scene_assert | Codex / GameDevFeatsShowcase | 场景 ext_resource 引用一张不存在的 Texture2D, headless 启动 "No loader found for resource ... expected type: Texture2D", 场景加载崩溃 |
+
+> 备注: `ui-window-stretch-config` 顺带给 `py_config` 的 `flatten_config` 加了 Godot `.godot`/`.cfg` 配置解析 (此前只认 .json/.toml/.tres, project.godot 会拍平成空), 别名用完整斜杠键 `window/size/viewport_width`。`missing-resource-import` 的 noop 走 L0 加载 gate 崩溃 (缺资源 import 也救不回), golden 改用内置 PlaceholderTexture2D 无外部依赖。
 
 健康度详情见 [`../docs/testcase_audit.md`](../docs/testcase_audit.md);
 机器可读快照 [`../docs/testcase_health.json`](../docs/testcase_health.json)
