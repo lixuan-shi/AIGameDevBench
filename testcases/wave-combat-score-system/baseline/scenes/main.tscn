@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://b0wave0combat0score000"]
+
+[ext_resource type="Script" path="res://scripts/game_controller.gd" id="1_gc"]
+
+[node name="Main" type="Node2D"]
+
+[node name="GameController" type="Node" parent="."]
+script = ExtResource("1_gc")
