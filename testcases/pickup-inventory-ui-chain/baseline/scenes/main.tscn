@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=3 uid="uid://b0pickup0inventory0ui0"]
+
+[ext_resource type="Script" path="res://scripts/inventory.gd" id="1_inv"]
+[ext_resource type="Script" path="res://scripts/hud_label.gd" id="2_lbl"]
+
+[node name="Main" type="Node2D"]
+
+[node name="Inventory" type="Node" parent="."]
+script = ExtResource("1_inv")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="CountLabel" type="Label" parent="HUD"]
+script = ExtResource("2_lbl")
+text = "0"

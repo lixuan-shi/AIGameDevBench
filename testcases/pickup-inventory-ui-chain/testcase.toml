@@ -1,0 +1,24 @@
+[testcase]
+id = "pickup-inventory-ui-chain"
+category = "behavior_logic"
+source_kind = "folder"
+source_repo = "authored:representative-set"
+task = """
+Wire up the pickup -> inventory -> HUD chain across res://scripts/inventory.gd and res://scripts/hud_label.gd.
+- Inventory.add_item() increments count and emits inventory_changed(count).
+- Inventory.collect_pickup(id) is idempotent per id: collecting the same id twice must NOT change the count; a new id calls add_item().
+- HudLabel.bind(inventory) connects inventory_changed to _on_inventory_changed so the label text always shows the current count.
+The label must reflect the count through the signal (do not poll), and re-collecting the same pickup must not double-count.
+"""
+
+[verifier]
+type = "godot_scene_assert"
+entry = "verifier_scene.tscn"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+author = "Claude"
+created = "2026-06-29"
+notes = "behavior_logic/hard. Two traps: (a) signal/bind not wired -> UI never updates; (b) collect_pickup not idempotent -> double-count on re-entry. Baseline does neither -> noop=0. bad.diff wires signal+bind+emit but leaves collect_pickup non-idempotent -> fails idempotent checkpoint -> 2/5 = 0.4. Golden does both -> 1.0."
