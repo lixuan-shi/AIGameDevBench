@@ -52,6 +52,18 @@
 
 > 维护提示: `visual_static` 走 `--script` 模式, 其 `verifier.gd` 必须 `extends SceneTree` 并自行 load 场景 (不用 `verifier_scene.tscn`); 其余 godot 型走场景模式 `extends Node`。fix.diff 一律用真实 git 生成 (手搓 diff 易触发 corrupt patch)。`py_tscn_diff` 把任何新增 connection 视作副作用, 故"连信号"类用 `godot_scene_assert` 验。
 
+### hard / brutal 加难集 (2026-06-30 新增, 5 个)
+
+第一批 15 个对强 harness (Claude) 区分度不足 (它几乎全过)。这 5 个专门拉难度: 多 trap 叠加、多文件多系统联动、对抗型隐藏 bug, 逼近 gdb-task_0025/0281 体量。全部 godot_scene_assert, 自包含, `aigdbench audit` 通过。
+
+| id | category | 难度 | trap | 已验证部分分 |
+|---|---|---|---|---|
+| wave-spawner-hidden-bugs | behavior_logic | hard | baseline 能跑但藏 3 个 bug (off-by-one / 边界 / 末波), 强 harness 易"看着对就不改" | 只修1个 bug → 0.17 |
+| inventory-equipment-system | behavior_logic | hard | 双文件 6 个独立 trap (堆叠/容量/装备替换不叠加/卸下) | re-equip 叠加 → 0.67 (bad.diff) |
+| damage-formula-refactor | behavior_logic | hard | 交互规则: 暴击在减防之后 / 最小伤害 1 / 满防暴击仍 ≥1 | 暴击在减防之前 → 0.20 |
+| wave-combat-score-system | behavior_logic | brutal | 多系统: 敌人 FSM + 波次 spawn/wire + 连击计分 + 胜利, 双文件端到端 | — |
+| event-bus-priority-dispatch | behavior_logic | brutal | 优先级派发 + 平局插入序 + 退订 + 重订更新 + 派发前安全移除 | — |
+
 健康度详情见 [`../docs/testcase_audit.md`](../docs/testcase_audit.md);
 机器可读快照 [`../docs/testcase_health.json`](../docs/testcase_health.json)
 由 `python scripts/audit_testcases.py` 生成。收集更好 testcase 的方法论见
