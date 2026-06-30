@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://b0reparent0spawnpoint0"]
+
+[node name="Main" type="Node2D"]
+
+[node name="Level" type="Node2D" parent="."]
+
+[node name="SpawnPoint" type="Marker2D" parent="Level"]
+position = Vector2(100, 200)
+
+[node name="Enemies" type="Node2D" parent="."]
+
+[node name="HUD" type="CanvasLayer" parent="."]
