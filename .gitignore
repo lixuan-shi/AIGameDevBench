@@ -14,3 +14,10 @@ harness-*-logs/
 report.json
 report_*.json
 *.report.json
+
+# Mined private conversation history — never commit (personal data)
+mined_sessions/
+retry_scenarios.json
+retry_scenarios_codex.json
+inspect_*.json
+bench-workspaces/
