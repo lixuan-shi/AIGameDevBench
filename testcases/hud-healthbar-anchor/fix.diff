@@ -1,0 +1,17 @@
+diff --git a/scenes/hud.tscn b/scenes/hud.tscn
+index af64308..10b3997 100644
+--- a/scenes/hud.tscn
++++ b/scenes/hud.tscn
+@@ -6,8 +6,10 @@ anchor_right = 1.0
+ anchor_bottom = 1.0
+ 
+ [node name="HealthBar" type="ProgressBar" parent="."]
+-offset_left = 16.0
++anchor_left = 1.0
++anchor_right = 1.0
++offset_left = -216.0
+ offset_top = 16.0
+-offset_right = 216.0
++offset_right = -16.0
+ offset_bottom = 40.0
+ value = 100.0
