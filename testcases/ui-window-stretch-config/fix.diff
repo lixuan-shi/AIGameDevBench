@@ -1,0 +1,13 @@
+diff --git a/project.godot b/project.godot
+index 9feaf8d..1f3dc71 100644
+--- a/project.godot
++++ b/project.godot
+@@ -9,6 +9,8 @@ config/features=PackedStringArray("4.4")
+ 
+ [display]
+ 
++window/size/viewport_width=1280
++window/size/viewport_height=720
+ window/stretch/mode="canvas_items"
+ window/stretch/aspect="expand"
+ 

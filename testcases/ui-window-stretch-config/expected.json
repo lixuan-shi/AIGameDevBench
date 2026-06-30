@@ -1,0 +1,18 @@
+{
+  "fields": [
+    {
+      "name": "base_viewport_width_set",
+      "aliases": ["window/size/viewport_width"],
+      "files_glob": "project.godot",
+      "expected": 1280,
+      "tol": 0.001
+    },
+    {
+      "name": "base_viewport_height_set",
+      "aliases": ["window/size/viewport_height"],
+      "files_glob": "project.godot",
+      "expected": 720,
+      "tol": 0.001
+    }
+  ]
+}

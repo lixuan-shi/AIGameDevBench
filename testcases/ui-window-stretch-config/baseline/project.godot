@@ -1,0 +1,17 @@
+; Engine configuration file.
+config_version=5
+
+[application]
+
+config/name="UI Window Stretch"
+run/main_scene="res://scenes/login.tscn"
+config/features=PackedStringArray("4.4")
+
+[display]
+
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
