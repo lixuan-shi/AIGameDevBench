@@ -1,0 +1,22 @@
+{
+  "fields": [
+    {
+      "name": "jump_velocity_doubled",
+      "aliases": ["jump_velocity"],
+      "files_glob": "data/**/*.json",
+      "expected": 1200,
+      "tol": 0.001,
+      "base": 600,
+      "must_differ_from_base": true
+    },
+    {
+      "name": "gravity_scaled_to_keep_hang_time",
+      "aliases": ["gravity"],
+      "files_glob": "data/**/*.json",
+      "expected": 2000,
+      "tol": 0.001,
+      "base": 1000,
+      "must_differ_from_base": true
+    }
+  ]
+}
