@@ -1,0 +1,22 @@
+{
+  "fields": [
+    {
+      "name": "hard_mode_enemy_health_plus_50pct",
+      "aliases": ["enemy_health"],
+      "files_glob": "config/enemy_stats.json",
+      "expected": 150,
+      "tol": 0.001,
+      "base": 100,
+      "must_differ_from_base": true
+    },
+    {
+      "name": "hard_mode_spawn_interval_halved",
+      "aliases": ["spawn_interval"],
+      "files_glob": "config/spawn_config.json",
+      "expected": 2.0,
+      "tol": 0.001,
+      "base": 4.0,
+      "must_differ_from_base": true
+    }
+  ]
+}
