@@ -1,0 +1,21 @@
+[testcase]
+id = "elite-attack-buff-pct"
+category = "intent_translation"
+source_kind = "folder"
+source_repo = "authored:representative-set"
+task = """
+The base enemy attack is 50. Design wants elite enemies to hit 20% harder than the base.
+Update res://data/enemies.json so the elite enemy's attack value reflects "20% more than base".
+"""
+
+[verifier]
+type = "py_config"
+entry = "expected.json"
+
+[scoring]
+mode = "fields"
+
+[provenance]
+author = "Claude"
+created = "2026-06-29"
+notes = "intent_translation/easy. Trap: AI copies base (50) or adds 20 absolute (70) instead of +20% (60). expected=60, must_differ_from_base guards the copy. noop=0 because baseline elite attack is 50."

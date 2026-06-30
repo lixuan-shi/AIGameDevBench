@@ -1,0 +1,12 @@
+diff --git a/data/enemies.json b/data/enemies.json
+index 1111111..2222222 100644
+--- a/data/enemies.json
++++ b/data/enemies.json
+@@ -5,6 +5,6 @@
+   },
+   "elite": {
+     "id": "elite_grunt",
+-    "attack": 50
++    "attack": 60
+   }
+ }

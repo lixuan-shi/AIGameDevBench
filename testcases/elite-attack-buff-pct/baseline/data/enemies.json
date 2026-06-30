@@ -1,0 +1,10 @@
+{
+  "base": {
+    "id": "grunt",
+    "attack": 50
+  },
+  "elite": {
+    "id": "elite_grunt",
+    "attack": 50
+  }
+}
