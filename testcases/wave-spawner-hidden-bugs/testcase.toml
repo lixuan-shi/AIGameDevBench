@@ -1,0 +1,25 @@
+[testcase]
+id = "wave-spawner-hidden-bugs"
+category = "behavior_logic"
+source_kind = "folder"
+source_repo = "authored:representative-set"
+task = """
+res://scripts/wave_spawner.gd drives enemy waves and already runs, but it is buggy. Find and fix the bugs so it satisfies this contract:
+- start() begins wave 0 and spawns its FULL size (wave_sizes[0] enemies).
+- notify_enemy_killed() decrements the live count; when live reaches 0 it advances to the next wave and spawns that wave at its full size.
+- after the LAST wave is cleared, emit all_waves_cleared EXACTLY ONCE and set finished = true; do not spawn any further wave.
+- spawned_total must equal the sum of all wave sizes once everything is cleared.
+The bugs are subtle (off-by-one and boundary conditions). Do not change the public API (signals, methods, exported wave_sizes).
+"""
+
+[verifier]
+type = "godot_scene_assert"
+entry = "verifier_scene.tscn"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+author = "Claude"
+created = "2026-06-30"
+notes = "behavior_logic/hard (adversarial). Baseline runs but hides 3 bugs: (1) spawns size-1 off-by-one; (2) advances on live<0 instead of <=0; (3) final-wave condition inverted so all_waves_cleared never fires. Trap for strong harnesses: looks correct + runs -> under-edits. All checkpoints require correct behavior -> noop=0. Golden fixes all three -> 1.0; fixing only some scores partial."
