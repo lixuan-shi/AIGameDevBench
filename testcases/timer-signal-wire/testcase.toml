@@ -1,0 +1,20 @@
+[testcase]
+id = "timer-signal-wire"
+category = "precise_edit"
+source_kind = "folder"
+source_repo = "authored:representative-set"
+task = """
+In res://scenes/main.tscn the Spawner (RespawnSpawner) already implements on_respawn() but nothing drives it. Add a Timer node named RespawnTimer as a child of Spawner, and connect that timer's `timeout` signal to the Spawner's on_respawn() method (an editor [connection] in the scene). Do not modify spawner.gd; only edit the scene.
+"""
+
+[verifier]
+type = "godot_scene_assert"
+entry = "verifier_scene.tscn"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+author = "Claude"
+created = "2026-06-29"
+notes = "precise_edit/med (runtime-verified). py_tscn_diff cannot REQUIRE a connection (it flags any added connection as a side effect), so this is verified by godot_scene_assert. Trap: add the Timer node but forget the timeout->on_respawn connection. Baseline has no RespawnTimer -> noop=0. bad.diff adds node without connection -> 1/3 = 0.33. Golden adds node + connection -> 1.0."
