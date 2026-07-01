@@ -665,27 +665,33 @@ function renderTestcaseEditor(tc) {
 }
 
 // Build a testcase.toml string from the editor fields and save it.
+// NOTE: this whole HTML is a Python raw string delimited by triple quotes, so
+// source here must never contain three consecutive double-quote characters.
+// Q3 builds the TOML triple-quote delimiter at runtime instead.
 function saveManifest(id) {
   const q = s => $(s).value;
   const esc3 = s => String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  const Q3 = String.fromCharCode(34, 34, 34);  // TOML multiline delimiter
   const repo = q("#ed-repo");
-  const toml =
-`[testcase]
-id = "${esc3(id)}"
-category = "${esc3(q("#ed-category"))}"
-source_kind = "${esc3(q("#ed-source"))}"
-` + (repo ? `source_repo = "${esc3(repo)}"\n` : ``) +
-`task = """
-${q("#ed-task")}
-"""
-
-[verifier]
-type = "${esc3(q("#ed-verifier"))}"
-entry = "${esc3(q("#ed-entry"))}"
-
-[scoring]
-mode = "${esc3(q("#ed-scoring"))}"
-`;
+  const lines = [
+    "[testcase]",
+    'id = "' + esc3(id) + '"',
+    'category = "' + esc3(q("#ed-category")) + '"',
+    'source_kind = "' + esc3(q("#ed-source")) + '"',
+  ];
+  if (repo) lines.push('source_repo = "' + esc3(repo) + '"');
+  lines.push("task = " + Q3);
+  lines.push(q("#ed-task"));
+  lines.push(Q3);
+  lines.push("");
+  lines.push("[verifier]");
+  lines.push('type = "' + esc3(q("#ed-verifier")) + '"');
+  lines.push('entry = "' + esc3(q("#ed-entry")) + '"');
+  lines.push("");
+  lines.push("[scoring]");
+  lines.push('mode = "' + esc3(q("#ed-scoring")) + '"');
+  lines.push("");
+  const toml = lines.join("\n");
   postFile(id, "testcase.toml", toml, "#ed-manifest-note");
 }
 
