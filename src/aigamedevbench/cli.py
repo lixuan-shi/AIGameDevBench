@@ -93,17 +93,116 @@ def main():
 
 
 @main.command("list")
-@click.option("--testcases-dir", required=True, type=click.Path(exists=True))
+@click.option("--testcases-dir", default="./testcases", type=click.Path(exists=True),
+              help="Directory of testcases (default: ./testcases)")
 def list_cmd(testcases_dir: str):
     """List discovered testcases."""
     from aigamedevbench.testcase import discover_testcases
 
     for tc in discover_testcases(Path(testcases_dir)):
-        click.echo(f"{tc.id}\t{tc.category}\t{tc.verifier_type}")
+        click.echo(f"{tc.id}\t{tc.category}\t{tc.verifier_type}\t{tc.source_kind}")
+
+
+@main.command("audit")
+@click.option("--testcases-dir", default="./testcases", type=click.Path(exists=True),
+              help="Directory of testcases (default: ./testcases)")
+@click.option("--only", "only", multiple=True,
+              help="Audit only this testcase id (repeatable)")
+@click.option("--json", "json_file", default=None, type=click.Path(),
+              help="Write a machine-readable health snapshot")
+@click.option("--repo-root", default=".", type=click.Path(),
+              help="Fallback repo for git-type cases without source_repo")
+@click.option("--godot-binary", default="godot",
+              help="Godot executable for runtime verifiers")
+def audit_cmd(testcases_dir: str, only: tuple[str, ...], json_file: str | None,
+              repo_root: str, godot_binary: str):
+    """Audit testcase health: noop must score 0 and golden patch must score 1."""
+    from aigamedevbench.testcase_audit import (
+        audit_testcases, format_audit_table, select_testcases, write_health_json,
+    )
+
+    rows = audit_testcases(
+        select_testcases(Path(testcases_dir).resolve(), only or None),
+        Path(repo_root).resolve(),
+        godot_binary,
+    )
+    click.echo(format_audit_table(rows))
+    if json_file:
+        write_health_json(Path(json_file), rows)
+        click.echo(f"--- health written to {json_file}")
+    if any(not row["healthy"] for row in rows):
+        raise click.exceptions.Exit(1)
+
+
+@main.command("smoke")
+@click.option("--testcases-dir", default="./testcases", type=click.Path(exists=True),
+              help="Directory of testcases (default: ./testcases)")
+@click.option("--testcase", "testcase_id", required=True,
+              help="Testcase id to validate")
+@click.option("--patch", "patch_file", default=None, type=click.Path(exists=True),
+              help="Golden patch to replay (default: testcase/fix.diff)")
+@click.option("--repo-root", default=".", type=click.Path(),
+              help="Fallback repo for git-type cases without source_repo")
+@click.option("--godot-binary", default="godot",
+              help="Godot executable for runtime verifiers")
+def smoke_cmd(testcases_dir: str, testcase_id: str, patch_file: str | None,
+              repo_root: str, godot_binary: str):
+    """Quickly validate one testcase's admission invariants."""
+    from aigamedevbench.testcase import discover_testcases
+    from aigamedevbench.testcase_audit import audit_one, format_audit_table
+
+    matches = [tc for tc in discover_testcases(Path(testcases_dir).resolve())
+               if tc.id == testcase_id]
+    if not matches:
+        click.echo(f"Testcase '{testcase_id}' not found.")
+        raise click.exceptions.Exit(1)
+    row = audit_one(matches[0], Path(repo_root).resolve(), godot_binary,
+                    Path(patch_file) if patch_file else None)
+    click.echo(format_audit_table([row]))
+    if not row["healthy"]:
+        raise click.exceptions.Exit(1)
+
+
+@main.command("scaffold")
+@click.option("--testcases-dir", default="./testcases", type=click.Path(),
+              help="Directory where the testcase will be created (default: ./testcases)")
+@click.option("--id", "testcase_id", required=True,
+              help="New testcase id, e.g. pathfinding-npc-bridge-astar")
+@click.option("--category", default="behavior_logic",
+              type=click.Choice([
+                  "behavior_logic", "intent_translation", "precise_edit",
+                  "architecture", "visual_audio",
+              ]))
+@click.option("--task", default="TODO: describe the requested game-dev change",
+              help="Task text to put in testcase.toml")
+@click.option("--source-project", default=None, type=click.Path(exists=True),
+              help="Copy this Godot project into baseline/ (strips .git/.godot)")
+@click.option("--source-repo", default=None,
+              help="Provenance label or repo path recorded in testcase.toml")
+@click.option("--force", is_flag=True,
+              help="Overwrite scaffold files if they already exist")
+def scaffold_cmd(testcases_dir: str, testcase_id: str, category: str, task: str,
+                 source_project: str | None, source_repo: str | None, force: bool):
+    """Create a standard self-contained folder-type testcase skeleton."""
+    from aigamedevbench.testcase_scaffold import scaffold_folder_testcase
+
+    try:
+        result = scaffold_folder_testcase(
+            Path(testcases_dir), testcase_id, category=category, task=task,
+            source_project=Path(source_project) if source_project else None,
+            source_repo=source_repo, force=force,
+        )
+    except (OSError, ValueError) as e:
+        click.echo(str(e))
+        raise click.exceptions.Exit(1)
+    click.echo(f"--- created {result.testcase_dir}")
+    for path in result.created_files:
+        click.echo(f"  {path}")
 
 
 @main.command("run")
-@click.option("--testcases-dir", required=True, type=click.Path(exists=True))
+@click.option("--testcases-dir", default="./testcases", type=click.Path(exists=True),
+              help="Directory of testcases (default: ./testcases)")
 @click.option("--testcase", "testcase_id", default=None, help="Run only this testcase id")
 @click.option("--harness", "harness_id", default="manual", help="Harness id label")
 @click.option("--driver", type=click.Choice(["noop", "patch", "command"]), default="noop")
@@ -235,8 +334,12 @@ def run_cmd(testcases_dir: str, testcase_id: str | None, harness_id: str,
 @click.option("--host", default="127.0.0.1")
 @click.option("--open-browser/--no-open-browser", default=True,
               help="Open the dashboard in a browser on startup (default: on)")
+@click.option("--editable/--no-editable", default=False,
+              help="Enable in-dashboard testcase create/edit/delete (writes to "
+                   "--testcases-dir). Off by default: the dashboard is read-only "
+                   "unless this flag is passed.")
 def serve_cmd(reports_dir: str, testcases_dir: str | None, port: int, host: str,
-              open_browser: bool):
+              open_browser: bool, editable: bool):
     """Serve a local web dashboard to view and compare benchmark reports.
 
     Scans --reports-dir for report JSON files on every request, so re-running a
@@ -250,7 +353,9 @@ def serve_cmd(reports_dir: str, testcases_dir: str | None, port: int, host: str,
 
     from aigamedevbench.webreport import (
         INDEX_HTML, load_reports, build_summary, report_detail,
-        load_testcase_catalog,
+        load_testcase_catalog, load_testcase_detail,
+        create_testcase, save_testcase_file, delete_testcase_file,
+        editor_enums, EditError,
     )
 
     root = Path(reports_dir)
@@ -279,11 +384,23 @@ def serve_cmd(reports_dir: str, testcases_dir: str | None, port: int, host: str,
                 self._send(200, INDEX_HTML.encode("utf-8"),
                            "text/html; charset=utf-8")
                 return
+            if path == "/api/config":
+                self._json({"editable": editable and tc_root is not None,
+                            "has_testcases": tc_root is not None,
+                            "enums": editor_enums()})
+                return
             if path == "/api/summary":
                 self._json(build_summary(load_reports(root)))
                 return
             if path == "/api/testcases":
                 self._json(load_testcase_catalog(tc_root) if tc_root else [])
+                return
+            if path == "/api/testcase":
+                q = parse_qs(parsed.query)
+                tc = (q.get("id") or [""])[0]
+                detail = load_testcase_detail(tc_root, tc) if tc_root else None
+                self._json(detail if detail is not None else {"error": "not found"},
+                           code=200 if detail is not None else 404)
                 return
             if path == "/api/detail":
                 q = parse_qs(parsed.query)
@@ -300,6 +417,49 @@ def serve_cmd(reports_dir: str, testcases_dir: str | None, port: int, host: str,
                 return
             self._json({"error": "not found"}, code=404)
 
+        def _read_json_body(self) -> dict:
+            length = int(self.headers.get("Content-Length") or 0)
+            if length <= 0:
+                return {}
+            raw = self.rfile.read(length)
+            try:
+                obj = json.loads(raw.decode("utf-8"))
+            except (ValueError, UnicodeDecodeError):
+                return {}
+            return obj if isinstance(obj, dict) else {}
+
+        def do_POST(self) -> None:  # noqa: N802 (http.server API)
+            parsed = urlparse(self.path)
+            path = parsed.path
+            # Every write endpoint is gated on --editable AND a known testcases dir.
+            if not (editable and tc_root is not None):
+                self._json({"error": "editing is disabled (run serve with --editable)"},
+                           code=403)
+                return
+            body = self._read_json_body()
+            try:
+                if path == "/api/testcase/create":
+                    result = create_testcase(tc_root, str(body.get("id", "")),
+                                             str(body.get("category", "behavior_logic")),
+                                             str(body.get("task", "")))
+                    self._json(result)
+                    return
+                if path == "/api/testcase/save-file":
+                    result = save_testcase_file(tc_root, str(body.get("id", "")),
+                                                str(body.get("path", "")),
+                                                str(body.get("content", "")))
+                    self._json(result)
+                    return
+                if path == "/api/testcase/delete-file":
+                    result = delete_testcase_file(tc_root, str(body.get("id", "")),
+                                                  str(body.get("path", "")))
+                    self._json(result)
+                    return
+            except EditError as e:
+                self._json({"error": str(e)}, code=e.status)
+                return
+            self._json({"error": "not found"}, code=404)
+
         def log_message(self, *args) -> None:
             pass  # keep the console quiet; failures still raise
 
@@ -307,7 +467,10 @@ def serve_cmd(reports_dir: str, testcases_dir: str | None, port: int, host: str,
     url = f"http://{host}:{port}/"
     click.echo(f"--- serving {root.resolve()} at {url} (Ctrl-C to stop)")
     if tc_root:
-        click.echo(f"--- testcases from {tc_root.resolve()}")
+        mode = "editable" if editable else "read-only"
+        click.echo(f"--- testcases from {tc_root.resolve()} ({mode})")
+    elif editable:
+        click.echo("--- --editable ignored: no --testcases-dir")
     if open_browser:
         webbrowser.open(url)
     try:

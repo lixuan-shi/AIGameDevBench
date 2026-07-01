@@ -79,16 +79,59 @@ INDEX_HTML = r"""<!DOCTYPE html>
   .tabs { display:flex; gap:6px; }
   .tab { background:transparent; border:1px solid var(--line); }
   .tab.active { background:#222634; border-color:var(--accent); color:var(--fg); }
-  .tc-layout { display:grid; grid-template-columns:260px 1fr; gap:14px; }
-  .tc-list { display:flex; flex-direction:column; gap:4px; max-height:70vh;
-             overflow:auto; }
+  .tc-grid { display:grid; gap:8px;
+             grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); }
   .tc-item { text-align:left; border:1px solid var(--line); border-radius:6px;
-             padding:7px 10px; cursor:pointer; }
-  .tc-item:hover { border-color:var(--accent); }
-  .tc-item.active { background:#222634; border-color:var(--accent); }
-  .tc-item small { color:var(--muted); display:block; }
-  .tc-detail { border:1px solid var(--line); border-radius:8px; padding:14px;
-               min-height:200px; }
+             padding:9px 11px; cursor:pointer; }
+  .tc-item:hover { border-color:var(--accent); background:#1b1f2a; }
+  .tc-item small { color:var(--muted); display:block; margin-top:2px; }
+  /* editable / friendlier testcases view */
+  button.primary { background:#1c3a5e; border-color:var(--accent); color:#dbe8ff; }
+  button.danger { background:#3a1818; border-color:#7a3a3a; color:#f0b0b0; }
+  button.sm { padding:2px 8px; font-size:12px; }
+  .tc-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+                margin-bottom:12px; }
+  .tc-search { background:#0c0e14; border:1px solid var(--line); border-radius:6px;
+               color:var(--fg); padding:6px 10px; font:inherit; min-width:200px; }
+  .tc-filters { display:flex; gap:5px; flex-wrap:wrap; }
+  .tc-count { color:var(--muted); font-size:12px; }
+  .chip { border:1px solid var(--line); border-radius:12px; padding:2px 10px;
+          font-size:12px; cursor:pointer; background:transparent; color:var(--muted); }
+  .chip.on { border-color:var(--accent); color:var(--fg); background:#1b2432; }
+  .tc-card { position:relative; text-align:left; border:1px solid var(--line);
+             border-radius:8px; padding:11px 12px; cursor:pointer;
+             display:flex; flex-direction:column; gap:7px; }
+  .tc-card:hover { border-color:var(--accent); background:#1b1f2a; }
+  .tc-card .tc-id { font-weight:600; word-break:break-all; }
+  .tc-card .tc-task { color:var(--muted); font-size:12px; line-height:1.4;
+                      display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+                      overflow:hidden; }
+  .tags { display:flex; gap:5px; flex-wrap:wrap; }
+  .tag { font-size:11px; padding:1px 8px; border-radius:10px; white-space:nowrap; }
+  .tag.cat { color:#0c0e14; font-weight:600; }
+  .tag.vf { background:#222634; color:#aeb6c6; border:1px solid var(--line); }
+  .tag.files { background:transparent; color:var(--muted); border:1px solid var(--line); }
+  /* category color palette */
+  .cat-behavior_logic { background:#6ea8fe; }
+  .cat-intent_translation { background:#74d99f; }
+  .cat-precise_edit { background:#f0c26e; }
+  .cat-architecture { background:#c79bf0; }
+  .cat-visual_audio { background:#f0907e; }
+  .cat-unknown { background:#8b91a1; }
+  .edit-form { display:grid; gap:10px; margin-bottom:8px; }
+  .edit-form label { display:grid; gap:4px; font-size:12px; color:var(--muted); }
+  .edit-form input, .edit-form select, .edit-form textarea {
+      background:#0c0e14; border:1px solid var(--line); border-radius:6px;
+      color:var(--fg); padding:6px 9px; font:inherit; }
+  .edit-form textarea { min-height:70px; resize:vertical; white-space:pre-wrap; }
+  .row-btns { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .file-actions { display:flex; gap:6px; align-items:center; }
+  .file-edit-area { width:100%; min-height:180px; background:#0c0e14; color:#cdd3df;
+                    border:0; border-top:1px solid var(--line); padding:10px;
+                    font:12px/1.45 inherit; white-space:pre; resize:vertical; }
+  .save-note { font-size:12px; color:var(--muted); }
+  .save-note.ok { color:#74d99f; }
+  .save-note.err { color:#f0a0a0; }
   .kv { display:grid; grid-template-columns:120px 1fr; gap:4px 10px;
         margin-bottom:12px; }
   .kv .k { color:var(--muted); }
@@ -99,6 +142,32 @@ INDEX_HTML = r"""<!DOCTYPE html>
   .files li small { color:var(--muted); }
   .pill { display:inline-block; padding:1px 8px; border:1px solid var(--line);
           border-radius:10px; font-size:12px; }
+  .crumb { display:flex; align-items:center; gap:8px; margin-bottom:12px;
+           color:var(--muted); }
+  .crumb a { cursor:pointer; }
+  .content-layout { display:grid; grid-template-columns:minmax(220px,280px) 1fr;
+                    gap:14px; align-items:start; }
+  .content-list { display:flex; flex-direction:column; gap:4px; max-height:74vh;
+                  overflow:auto; }
+  .content-item { text-align:left; border:1px solid var(--line); border-radius:6px;
+                  padding:7px 10px; cursor:pointer; color:var(--fg);
+                  text-decoration:none; }
+  .content-item:hover { border-color:var(--accent); background:#1b1f2a; }
+  .content-item.active { background:#222634; border-color:var(--accent); }
+  .content-item small { color:var(--muted); display:block; margin-top:2px; }
+  .file-block { border:1px solid var(--line); border-radius:6px; margin:8px 0;
+                overflow:hidden; }
+  .file-block > summary { cursor:pointer; padding:7px 10px; background:#12141b;
+                          display:flex; justify-content:space-between; gap:10px; }
+  .file-block small { color:var(--muted); }
+  .file-pre { margin:0; padding:10px; max-height:430px; overflow:auto;
+              white-space:pre-wrap; word-break:break-word; font:12px/1.45 inherit;
+              background:#0c0e14; color:#cdd3df; }
+  .file-note { padding:10px; color:var(--muted); background:#0c0e14; }
+  @media (max-width: 800px) {
+    .content-layout { grid-template-columns:1fr; }
+    .content-list { max-height:none; }
+  }
   .act { margin-top:12px; }
   .act h3 { font-size:12px; text-transform:uppercase; letter-spacing:.05em;
             color:var(--muted); margin:10px 0 6px; }
@@ -121,6 +190,7 @@ INDEX_HTML = r"""<!DOCTYPE html>
   <nav class="tabs">
     <button id="tab-reports" class="tab active">Reports</button>
     <button id="tab-testcases" class="tab">Testcases</button>
+    <button id="tab-contents" class="tab">Contents</button>
   </nav>
   <button id="refresh">Refresh</button>
   <span id="status" style="color:var(--muted)"></span>
@@ -145,12 +215,30 @@ INDEX_HTML = r"""<!DOCTYPE html>
 </div>
 <div id="view-testcases" class="wrap" style="display:none">
   <div class="panel">
-    <h2>Testcases</h2>
-    <div class="tc-layout">
-      <div id="tc-list" class="tc-list"></div>
-      <div id="tc-detail" class="tc-detail">
-        <span class="empty">Select a testcase.</span>
-      </div>
+    <div class="tc-toolbar">
+      <input id="tc-search" class="tc-search" type="search" placeholder="Search id / task...">
+      <span id="tc-filters" class="tc-filters"></span>
+      <span style="flex:1"></span>
+      <span id="tc-count" class="tc-count"></span>
+      <button id="tc-new" class="primary" style="display:none">+ New testcase</button>
+    </div>
+    <div id="tc-grid" class="tc-grid"></div>
+  </div>
+</div>
+<div id="view-testcase" class="wrap" style="display:none">
+  <div class="panel">
+    <div class="crumb">
+      <a id="tc-back">&larr; Testcases</a>
+    </div>
+    <div id="tc-detail"><span class="empty">Loading...</span></div>
+  </div>
+</div>
+<div id="view-contents" class="wrap" style="display:none">
+  <div class="panel">
+    <h2>Testcase contents</h2>
+    <div class="content-layout">
+      <div id="content-list" class="content-list"></div>
+      <div id="content-detail"><span class="empty">Select a testcase.</span></div>
     </div>
   </div>
 </div>
@@ -376,44 +464,121 @@ function renderActivity(detail) {
   return h;
 }
 
-// ---- Testcases tab ----
+// ---- Testcases: card grid + filter/search + per-testcase edit sub-page ----
 let TESTCASES = null;
-let TC_SELECTED = null;
+let TESTCASE_DETAILS = new Map();
+let CONFIG = null;              // {editable, has_testcases, enums}
+let TC_SEARCH = "";
+let TC_CAT_FILTER = new Set();  // active category filters (empty = all)
 
-async function loadTestcases() {
-  if (TESTCASES) return;
-  const list = $("#tc-list");
-  list.innerHTML = '<span class="empty">loading...</span>';
+async function loadConfig() {
+  if (CONFIG) return CONFIG;
+  try { CONFIG = await (await fetch("/api/config")).json(); }
+  catch (e) { CONFIG = {editable:false, has_testcases:true, enums:{}}; }
+  return CONFIG;
+}
+
+async function loadTestcases(force=false) {
+  if (TESTCASES && !force) return TESTCASES;
   try {
     TESTCASES = await (await fetch("/api/testcases")).json();
   } catch (e) { TESTCASES = []; }
-  renderTestcaseList();
+  return TESTCASES;
 }
 
-function renderTestcaseList() {
-  const list = $("#tc-list");
+function catClass(cat) {
+  const known = ["behavior_logic","intent_translation","precise_edit","architecture","visual_audio"];
+  return "cat-" + (known.includes(cat) ? cat : "unknown");
+}
+
+function firstLine(task) {
+  const t = (task || "").trim().replace(/\s+/g, " ");
+  return t.length > 140 ? t.slice(0, 140) + "..." : t;
+}
+
+async function renderTestcaseList() {
+  const grid = $("#tc-grid");
+  grid.innerHTML = '<span class="empty">loading...</span>';
+  await loadConfig();
+  await loadTestcases();
+  // New button visibility depends on editable mode
+  const newBtn = $("#tc-new");
+  if (newBtn) newBtn.style.display = CONFIG.editable ? "" : "none";
   if (!TESTCASES.length) {
-    list.innerHTML = '<span class="empty">No testcases.<br>Run serve with --testcases-dir.</span>';
+    grid.innerHTML = '<span class="empty">No testcases.<br>Run serve with --testcases-dir'
+      + (CONFIG.editable ? ', then click "+ New testcase".' : '.') + '</span>';
+    $("#tc-filters").innerHTML = "";
+    $("#tc-count").textContent = "";
     return;
   }
-  list.innerHTML = "";
-  for (const tc of TESTCASES) {
-    const b = document.createElement("button");
-    b.className = "tc-item" + (tc.id === TC_SELECTED ? " active" : "");
-    b.innerHTML = `<span>${esc(tc.id)}</span><small>${esc(tc.category)} · ${esc(tc.verifier_type)}</small>`;
-    b.addEventListener("click", () => { TC_SELECTED = tc.id; renderTestcaseList(); renderTestcaseDetail(tc); });
-    list.appendChild(b);
+  // Build category filter chips (once per render, reflecting current state)
+  const cats = [...new Set(TESTCASES.map(t => t.category))].sort();
+  const fb = $("#tc-filters");
+  fb.innerHTML = "";
+  for (const c of cats) {
+    const chip = document.createElement("button");
+    chip.className = "chip" + (TC_CAT_FILTER.has(c) ? " on" : "");
+    chip.textContent = c;
+    chip.onclick = () => {
+      if (TC_CAT_FILTER.has(c)) TC_CAT_FILTER.delete(c); else TC_CAT_FILTER.add(c);
+      renderTestcaseList();
+    };
+    fb.appendChild(chip);
   }
-  if (!TC_SELECTED) { TC_SELECTED = TESTCASES[0].id; renderTestcaseList(); renderTestcaseDetail(TESTCASES[0]); }
+  // Apply search + filter
+  const q = TC_SEARCH.toLowerCase();
+  const shown = TESTCASES.filter(tc => {
+    if (TC_CAT_FILTER.size && !TC_CAT_FILTER.has(tc.category)) return false;
+    if (q && !(tc.id.toLowerCase().includes(q) || (tc.task || "").toLowerCase().includes(q)))
+      return false;
+    return true;
+  });
+  $("#tc-count").textContent = `${shown.length} / ${TESTCASES.length} shown`;
+  grid.innerHTML = "";
+  if (!shown.length) {
+    grid.innerHTML = '<span class="empty">No testcases match the filter.</span>';
+    return;
+  }
+  for (const tc of shown) {
+    const a = document.createElement("a");
+    a.className = "tc-card";
+    a.href = `#testcases/${encodeURIComponent(tc.id)}`;
+    a.innerHTML =
+      `<div class="tc-id">${esc(tc.id)}</div>
+       <div class="tags">
+         <span class="tag cat ${catClass(tc.category)}">${esc(tc.category)}</span>
+         <span class="tag vf">${esc(tc.verifier_type)}</span>
+         <span class="tag files">${tc.files.length} file(s)</span>
+       </div>
+       <div class="tc-task">${esc(firstLine(tc.task))}</div>`;
+    grid.appendChild(a);
+  }
 }
 
-function renderTestcaseDetail(tc) {
-  let h = `<h2>${esc(tc.id)}</h2>`;
-  h += `<div class="kv">
-    <div class="k">category</div><div><span class="pill">${esc(tc.category)}</span></div>
-    <div class="k">verifier</div><div>${esc(tc.verifier_type)} <small>(${esc(tc.verifier_entry)})</small></div>
-    <div class="k">scoring</div><div>${esc(tc.scoring_mode)}</div>
-    <div class="k">source</div><div>${esc(tc.source_kind)}${tc.source_repo ? " · " + esc(tc.source_repo) : ""}</div>
+// ---- Per-testcase detail (view + inline edit when editable) ----
+let TC_EDIT_MODE = false;
+
+async function renderTestcaseDetail(id) {
+  const box = $("#tc-detail");
+  box.innerHTML = '<span class="empty">loading...</span>';
+  await loadConfig();
+  const tc = await loadTestcaseDetail(id);
+  if (!tc || tc.error) {
+    box.innerHTML = `<span class="empty">Testcase <b>${esc(id)}</b> not found.</span>`;
+    return;
+  }
+  if (TC_EDIT_MODE && CONFIG.editable) return renderTestcaseEditor(tc);
+
+  let h = `<div class="row-btns" style="justify-content:space-between">
+             <h2 style="margin:0">${esc(tc.id)}</h2>`;
+  if (CONFIG.editable)
+    h += `<button class="primary sm" onclick="enterEdit()">Edit</button>`;
+  h += `</div>`;
+  h += `<div class="tags" style="margin:8px 0 14px">
+    <span class="tag cat ${catClass(tc.category)}">${esc(tc.category)}</span>
+    <span class="tag vf">${esc(tc.verifier_type)} · ${esc(tc.verifier_entry)}</span>
+    <span class="tag files">${esc(tc.scoring_mode)}</span>
+    <span class="tag files">${esc(tc.source_kind)}${tc.source_repo ? " · " + esc(tc.source_repo) : ""}</span>
   </div>`;
   h += `<h2>Task</h2><div class="task-box">${esc(tc.task)}</div>`;
   if (tc.provenance && Object.keys(tc.provenance).length) {
@@ -422,31 +587,294 @@ function renderTestcaseDetail(tc) {
       h += `<div class="k">${esc(k)}</div><div>${esc(v)}</div>`;
     h += `</div>`;
   }
-  h += `<h2>Files (${tc.files.length})</h2><ul class="files">`;
-  for (const f of tc.files) h += `<li>${esc(f)}</li>`;
-  h += `</ul>`;
-  $("#tc-detail").innerHTML = h;
+  const fcs = tc.file_contents || [];
+  h += `<h2>Files (${fcs.length})</h2>`;
+  for (const f of fcs) {
+    const meta = `${f.size} byte(s)${f.is_text ? "" : " · binary"}`;
+    h += `<details class="file-block"><summary><span>${esc(f.path)}</span><small>${esc(meta)}</small></summary>`;
+    h += f.is_text ? `<pre class="file-pre">${esc(f.content || "")}</pre>`
+                   : `<div class="file-note">Binary file content is not displayed.</div>`;
+    h += `</details>`;
+  }
+  box.innerHTML = h;
 }
 
-function switchTab(name) {
-  const isTc = name === "testcases";
-  $("#view-reports").style.display = isTc ? "none" : "";
-  $("#view-testcases").style.display = isTc ? "" : "none";
-  $("#tab-reports").classList.toggle("active", !isTc);
-  $("#tab-testcases").classList.toggle("active", isTc);
-  if (isTc) loadTestcases();
-}
-$("#tab-reports").addEventListener("click", () => switchTab("reports"));
-$("#tab-testcases").addEventListener("click", () => switchTab("testcases"));
+function enterEdit() { TC_EDIT_MODE = true; renderTestcaseDetail(CURRENT_TC_ID); }
+function exitEdit() { TC_EDIT_MODE = false; renderTestcaseDetail(CURRENT_TC_ID); }
+let CURRENT_TC_ID = null;
 
-$("#refresh").addEventListener("click", () => { TESTCASES = null; load();
-  if ($("#view-testcases").style.display !== "none") loadTestcases(); });
+function renderTestcaseEditor(tc) {
+  const box = $("#tc-detail");
+  const en = CONFIG.enums || {};
+  const opts = (arr, cur) => (arr || []).map(v =>
+    `<option value="${esc(v)}"${v === cur ? " selected" : ""}>${esc(v)}</option>`).join("");
+  let h = `<div class="row-btns" style="justify-content:space-between">
+    <h2 style="margin:0">Editing ${esc(tc.id)}</h2>
+    <button class="sm" onclick="exitEdit()">Done</button></div>`;
+
+  // Metadata form (writes testcase.toml). Fields map to manifest sections.
+  h += `<h2 style="margin-top:12px">Manifest (testcase.toml)</h2>
+    <div class="edit-form">
+      <label>category<select id="ed-category">${opts(en.categories, tc.category)}</select></label>
+      <label>verifier type<select id="ed-verifier">${opts(en.verifier_types, tc.verifier_type)}</select></label>
+      <label>verifier entry<input id="ed-entry" value="${esc(tc.verifier_entry)}"></label>
+      <label>scoring mode<select id="ed-scoring">${opts(en.scoring_modes, tc.scoring_mode)}</select></label>
+      <label>source_kind<select id="ed-source">${opts(en.source_kinds, tc.source_kind)}</select></label>
+      <label>source_repo<input id="ed-repo" value="${esc(tc.source_repo || "")}"></label>
+      <label>task<textarea id="ed-task">${esc(tc.task)}</textarea></label>
+      <div class="row-btns">
+        <button class="primary" onclick="saveManifest('${esc(tc.id)}')">Save manifest</button>
+        <span id="ed-manifest-note" class="save-note"></span>
+      </div>
+    </div>`;
+
+  // Per-file editors (writes each text file).
+  const fcs = tc.file_contents || [];
+  h += `<h2>Files (${fcs.length})</h2>`;
+  for (const f of fcs) {
+    const fid = "f_" + btoa(unescape(encodeURIComponent(f.path))).replace(/[^a-z0-9]/gi, "");
+    const meta = `${f.size} byte(s)${f.is_text ? "" : " · binary"}`;
+    h += `<details class="file-block"><summary>
+            <span>${esc(f.path)}</span>
+            <span class="file-actions">
+              <small>${esc(meta)}</small>
+              <button class="danger sm" onclick="event.preventDefault();deleteFile('${esc(tc.id)}','${esc(f.path)}')">Delete</button>
+            </span></summary>`;
+    if (f.is_text) {
+      h += `<textarea class="file-edit-area" id="${fid}">${esc(f.content || "")}</textarea>
+            <div class="row-btns" style="padding:8px 10px">
+              <button class="primary sm" onclick="saveFile('${esc(tc.id)}','${esc(f.path)}','${fid}')">Save</button>
+              <span id="${fid}_note" class="save-note"></span>
+            </div>`;
+    } else {
+      h += `<div class="file-note">Binary file — not editable here.</div>`;
+    }
+    h += `</details>`;
+  }
+
+  // Add-a-new-file row
+  h += `<h2>Add file</h2>
+    <div class="edit-form">
+      <label>relative path (e.g. baseline/scripts/x.gd)<input id="ed-newpath" placeholder="baseline/..."></label>
+      <div class="row-btns">
+        <button class="primary" onclick="addFile('${esc(tc.id)}')">Create file</button>
+        <span id="ed-newfile-note" class="save-note"></span>
+      </div>
+    </div>`;
+  box.innerHTML = h;
+}
+
+// Build a testcase.toml string from the editor fields and save it.
+function saveManifest(id) {
+  const q = s => $(s).value;
+  const esc3 = s => String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  const repo = q("#ed-repo");
+  const toml =
+`[testcase]
+id = "${esc3(id)}"
+category = "${esc3(q("#ed-category"))}"
+source_kind = "${esc3(q("#ed-source"))}"
+` + (repo ? `source_repo = "${esc3(repo)}"\n` : ``) +
+`task = """
+${q("#ed-task")}
+"""
+
+[verifier]
+type = "${esc3(q("#ed-verifier"))}"
+entry = "${esc3(q("#ed-entry"))}"
+
+[scoring]
+mode = "${esc3(q("#ed-scoring"))}"
+`;
+  postFile(id, "testcase.toml", toml, "#ed-manifest-note");
+}
+
+function saveFile(id, path, fid) {
+  postFile(id, path, $("#" + fid).value, "#" + fid + "_note");
+}
+
+async function postFile(id, path, content, noteSel) {
+  const note = $(noteSel);
+  if (note) { note.className = "save-note"; note.textContent = "saving..."; }
+  try {
+    const res = await fetch("/api/testcase/save-file", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({id, path, content}),
+    });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error || ("HTTP " + res.status));
+    if (note) { note.className = "save-note ok"; note.textContent = "saved ✓"; }
+    TESTCASE_DETAILS.delete(id); TESTCASES = null;  // invalidate caches
+  } catch (e) {
+    if (note) { note.className = "save-note err"; note.textContent = "error: " + e.message; }
+  }
+}
+
+async function addFile(id) {
+  const path = $("#ed-newpath").value.trim();
+  const note = $("#ed-newfile-note");
+  if (!path) { note.className = "save-note err"; note.textContent = "enter a path"; return; }
+  await postFile(id, path, "", "#ed-newfile-note");
+  TESTCASE_DETAILS.delete(id);
+  await loadTestcaseDetail(id);
+  renderTestcaseDetail(id);
+}
+
+async function deleteFile(id, path) {
+  if (!confirm(`Delete ${path} from ${id}?`)) return;
+  try {
+    const res = await fetch("/api/testcase/delete-file", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({id, path}),
+    });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error || ("HTTP " + res.status));
+    TESTCASE_DETAILS.delete(id); TESTCASES = null;
+    await loadTestcaseDetail(id);
+    renderTestcaseDetail(id);
+  } catch (e) { alert("Delete failed: " + e.message); }
+}
+
+async function createTestcase() {
+  const en = (CONFIG && CONFIG.enums) || {};
+  const cats = en.categories || ["behavior_logic"];
+  const id = prompt("New testcase id (lowercase, digits, '-' or '_'):");
+  if (!id) return;
+  const category = prompt("Category (" + cats.join(" / ") + "):", "behavior_logic");
+  if (!category) return;
+  const task = prompt("Task (what should the AI do?):", "") || "";
+  try {
+    const res = await fetch("/api/testcase/create", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({id, category, task}),
+    });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error || ("HTTP " + res.status));
+    TESTCASES = null; TESTCASE_DETAILS.delete(id);
+    TC_EDIT_MODE = true;
+    location.hash = "testcases/" + encodeURIComponent(id);
+  } catch (e) { alert("Create failed: " + e.message); }
+}
+
+async function renderContentsList(selectedId=null) {
+  const list = $("#content-list");
+  list.innerHTML = '<span class="empty">loading...</span>';
+  await loadTestcases();
+  if (!TESTCASES.length) {
+    list.innerHTML = '<span class="empty">No testcases.<br>Run serve with --testcases-dir.</span>';
+    $("#content-detail").innerHTML = '<span class="empty">No testcase content.</span>';
+    return;
+  }
+  const current = TESTCASES.some(t => t.id === selectedId) ? selectedId : TESTCASES[0].id;
+  list.innerHTML = "";
+  for (const tc of TESTCASES) {
+    const a = document.createElement("a");
+    a.className = "content-item" + (tc.id === current ? " active" : "");
+    a.href = `#contents/${encodeURIComponent(tc.id)}`;
+    a.innerHTML = `<span>${esc(tc.id)}</span>
+      <small>${esc(tc.category)} - ${tc.files.length} file(s)</small>`;
+    list.appendChild(a);
+  }
+  renderContentsDetail(current);
+}
+
+async function loadTestcaseDetail(id) {
+  if (TESTCASE_DETAILS.has(id)) return TESTCASE_DETAILS.get(id);
+  const res = await fetch(`/api/testcase?id=${encodeURIComponent(id)}`);
+  if (!res.ok) return null;
+  const tc = await res.json();
+  TESTCASE_DETAILS.set(id, tc);
+  return tc;
+}
+
+async function renderContentsDetail(id) {
+  const box = $("#content-detail");
+  box.innerHTML = '<span class="empty">loading content...</span>';
+  const tc = await loadTestcaseDetail(id);
+  if (!tc) {
+    box.innerHTML = `<span class="empty">Testcase <b>${esc(id)}</b> not found.</span>`;
+    return;
+  }
+  let h = `<h2>${esc(tc.id)}</h2>`;
+  h += `<div class="kv">
+    <div class="k">category</div><div><span class="pill">${esc(tc.category)}</span></div>
+    <div class="k">verifier</div><div>${esc(tc.verifier_type)} <small>(${esc(tc.verifier_entry)})</small></div>
+    <div class="k">scoring</div><div>${esc(tc.scoring_mode)}</div>
+  </div>`;
+  h += `<h2>Task</h2><div class="task-box">${esc(tc.task)}</div>`;
+  h += `<h2>Files (${(tc.file_contents || []).length})</h2>`;
+  for (const f of (tc.file_contents || [])) {
+    const meta = `${f.size} byte(s)${f.is_text ? "" : " - binary"}`;
+    h += `<details class="file-block" open><summary><span>${esc(f.path)}</span><small>${esc(meta)}</small></summary>`;
+    if (f.is_text) {
+      h += `<pre class="file-pre">${esc(f.content || "")}</pre>`;
+    } else {
+      h += `<div class="file-note">Binary file content is not displayed.</div>`;
+    }
+    h += `</details>`;
+  }
+  box.innerHTML = h;
+}
+
+// hash router: ""/"#reports" -> reports, "#testcases" -> list,
+// "#testcases/<id>" -> that testcase's sub-page, "#contents" -> full contents.
+function showView(which) {
+  const views = {reports:"#view-reports", testcases:"#view-testcases",
+                 testcase:"#view-testcase", contents:"#view-contents"};
+  for (const [k, sel] of Object.entries(views))
+    $(sel).style.display = (k === which) ? "" : "none";
+  $("#tab-reports").classList.toggle("active", which === "reports");
+  $("#tab-testcases").classList.toggle("active", which === "testcases" || which === "testcase");
+  $("#tab-contents").classList.toggle("active", which === "contents");
+}
+
+function route() {
+  const h = location.hash.replace(/^#/, "");
+  if (h.startsWith("testcases/")) {
+    showView("testcase");
+    CURRENT_TC_ID = decodeURIComponent(h.slice("testcases/".length));
+    renderTestcaseDetail(CURRENT_TC_ID);
+  } else if (h === "testcases") {
+    showView("testcases");
+    TC_EDIT_MODE = false;  // leaving a detail page always resets edit mode
+    renderTestcaseList();
+  } else if (h.startsWith("contents/")) {
+    showView("contents");
+    renderContentsList(decodeURIComponent(h.slice("contents/".length)));
+  } else if (h === "contents") {
+    showView("contents");
+    renderContentsList();
+  } else {
+    showView("reports");
+  }
+}
+window.addEventListener("hashchange", route);
+
+$("#tab-reports").addEventListener("click", () => { location.hash = "reports"; });
+$("#tab-testcases").addEventListener("click", () => { location.hash = "testcases"; });
+$("#tab-contents").addEventListener("click", () => { location.hash = "contents"; });
+$("#tc-back").addEventListener("click", () => { location.hash = "testcases"; });
+
+// Testcases toolbar: live search + New button
+const tcSearchEl = $("#tc-search");
+if (tcSearchEl) tcSearchEl.addEventListener("input", e => {
+  TC_SEARCH = e.target.value; renderTestcaseList();
+  // keep focus after re-render is not needed: we only re-render the grid/chips
+});
+const tcNewEl = $("#tc-new");
+if (tcNewEl) tcNewEl.addEventListener("click", createTestcase);
+
+$("#refresh").addEventListener("click", () => {
+  TESTCASES = null; TESTCASE_DETAILS = new Map(); CONFIG = null; load();
+  if (location.hash.startsWith("#testcases") || location.hash.startsWith("#contents")) route();
+});
 $("#close").addEventListener("click", () => $("#overlay").classList.remove("show"));
 $("#overlay").addEventListener("click", e => {
   if (e.target.id === "overlay") $("#overlay").classList.remove("show"); });
 document.addEventListener("keydown", e => {
   if (e.key === "Escape") $("#overlay").classList.remove("show"); });
 load();
+route();
 </script>
 </body>
 </html>
@@ -573,10 +1001,7 @@ def load_testcase_catalog(testcases_dir: Path) -> list[dict]:
             tc = load_testcase(child)
         except Exception:
             continue
-        files = sorted(
-            p.relative_to(child).as_posix()
-            for p in child.rglob("*") if p.is_file()
-        )
+        files = _testcase_files(child)
         out.append({
             "id": tc.id,
             "category": tc.category,
@@ -590,6 +1015,167 @@ def load_testcase_catalog(testcases_dir: Path) -> list[dict]:
             "files": files,
         })
     return out
+
+
+def load_testcase_detail(testcases_dir: Path, testcase_id: str) -> dict | None:
+    from aigamedevbench.testcase import load_testcase
+
+    testcases_dir = Path(testcases_dir)
+    child = testcases_dir / testcase_id
+    if not child.is_dir() or child.parent != testcases_dir or not (child / "testcase.toml").exists():
+        return None
+    try:
+        tc = load_testcase(child)
+    except Exception:
+        return None
+    file_contents = _testcase_file_contents(child)
+    return {
+        "id": tc.id,
+        "category": tc.category,
+        "task": tc.task,
+        "verifier_type": tc.verifier_type,
+        "verifier_entry": tc.verifier_entry,
+        "scoring_mode": tc.scoring_mode,
+        "source_kind": tc.source_kind,
+        "source_repo": tc.source_repo,
+        "provenance": tc.provenance,
+        "files": [f["path"] for f in file_contents],
+        "file_contents": file_contents,
+    }
+
+
+def _testcase_files(testcase_dir: Path) -> list[str]:
+    return sorted(p.relative_to(testcase_dir).as_posix()
+                  for p in testcase_dir.rglob("*") if p.is_file())
+
+
+def _testcase_file_contents(testcase_dir: Path) -> list[dict]:
+    entries = []
+    for path in sorted(p for p in testcase_dir.rglob("*") if p.is_file()):
+        rel = path.relative_to(testcase_dir).as_posix()
+        try:
+            data = path.read_bytes()
+        except OSError:
+            continue
+        content = _decode_text_file(data)
+        entries.append({
+            "path": rel,
+            "size": len(data),
+            "is_text": content is not None,
+            "content": content,
+        })
+    return entries
+
+
+def _decode_text_file(data: bytes) -> str | None:
+    if b"\0" in data:
+        return None
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+
+
+# --- Write operations (only reachable when the server runs with --editable) ---
+
+class EditError(Exception):
+    """A rejected edit request. Carries an HTTP-ish status for the handler."""
+
+    def __init__(self, message: str, status: int = 400):
+        super().__init__(message)
+        self.status = status
+
+
+def _safe_testcase_dir(testcases_dir: Path, testcase_id: str) -> Path:
+    """Resolve <testcases_dir>/<id>, rejecting anything that escapes the root.
+
+    The id must be a single path segment (no separators, no '..'); the resolved
+    directory must sit directly under the resolved testcases root. This is the
+    guard that keeps write endpoints from touching files outside the catalog."""
+    root = Path(testcases_dir).resolve()
+    if not testcase_id or "/" in testcase_id or "\\" in testcase_id or testcase_id in (".", ".."):
+        raise EditError(f"invalid testcase id: {testcase_id!r}")
+    target = (root / testcase_id).resolve()
+    if target.parent != root:
+        raise EditError(f"testcase id escapes the catalog: {testcase_id!r}")
+    return target
+
+
+def _safe_file_path(testcases_dir: Path, testcase_id: str, rel_path: str) -> Path:
+    """Resolve a file path inside a testcase dir, rejecting traversal."""
+    tc_dir = _safe_testcase_dir(testcases_dir, testcase_id)
+    if not rel_path or rel_path.startswith(("/", "\\")):
+        raise EditError(f"invalid file path: {rel_path!r}")
+    target = (tc_dir / rel_path).resolve()
+    try:
+        target.relative_to(tc_dir)
+    except ValueError:
+        raise EditError(f"file path escapes the testcase: {rel_path!r}")
+    return target
+
+
+def create_testcase(testcases_dir: Path, testcase_id: str, category: str,
+                    task: str) -> dict:
+    """Scaffold a new folder-type testcase and return its fresh catalog entry."""
+    from aigamedevbench.testcase_scaffold import scaffold_folder_testcase
+
+    _safe_testcase_dir(testcases_dir, testcase_id)  # validate id shape early
+    try:
+        scaffold_folder_testcase(Path(testcases_dir), testcase_id,
+                                 category=category, task=task or "TODO: describe the task")
+    except FileExistsError as e:
+        raise EditError(str(e), status=409)
+    except (OSError, ValueError) as e:
+        raise EditError(str(e))
+    detail = load_testcase_detail(Path(testcases_dir), testcase_id)
+    if detail is None:
+        raise EditError("testcase created but could not be reloaded", status=500)
+    return detail
+
+
+def save_testcase_file(testcases_dir: Path, testcase_id: str, rel_path: str,
+                       content: str, backup: bool = False) -> dict:
+    """Write (create or overwrite) a text file inside a testcase dir."""
+    target = _safe_file_path(testcases_dir, testcase_id, rel_path)
+    if not _safe_testcase_dir(testcases_dir, testcase_id).is_dir():
+        raise EditError(f"testcase not found: {testcase_id}", status=404)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if backup and target.exists():
+        try:
+            backup_path = target.with_suffix(target.suffix + ".bak")
+            backup_path.write_bytes(target.read_bytes())
+        except OSError:
+            pass  # backup is best-effort; never block the save
+    try:
+        target.write_text(content, encoding="utf-8")
+    except OSError as e:
+        raise EditError(f"write failed: {e}", status=500)
+    return {"ok": True, "path": rel_path, "size": len(content.encode("utf-8"))}
+
+
+def delete_testcase_file(testcases_dir: Path, testcase_id: str, rel_path: str) -> dict:
+    """Delete a single file inside a testcase dir. testcase.toml is protected."""
+    if rel_path == "testcase.toml":
+        raise EditError("refusing to delete testcase.toml (delete the whole testcase instead)")
+    target = _safe_file_path(testcases_dir, testcase_id, rel_path)
+    if not target.exists() or not target.is_file():
+        raise EditError(f"file not found: {rel_path}", status=404)
+    try:
+        target.unlink()
+    except OSError as e:
+        raise EditError(f"delete failed: {e}", status=500)
+    return {"ok": True, "deleted": rel_path}
+
+
+def editor_enums() -> dict:
+    """The allowed values the edit UI offers in dropdowns."""
+    from aigamedevbench.testcase import CATEGORIES, VERIFIER_TYPES, SOURCE_KINDS
+    return {
+        "categories": sorted(CATEGORIES),
+        "verifier_types": sorted(VERIFIER_TYPES),
+        "source_kinds": sorted(SOURCE_KINDS),
+        "scoring_modes": ["checkpoints", "fields", "tristate", "weighted"],
+    }
 
 
 LOG_TAIL_BYTES = 64 * 1024
