@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-02_1eddf5c_065"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "f088c9b606f26b045901a24a25e0694365de3123"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Prefabs/LevelObjects/BooRaceHandler.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-02_1eddf5c_065"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

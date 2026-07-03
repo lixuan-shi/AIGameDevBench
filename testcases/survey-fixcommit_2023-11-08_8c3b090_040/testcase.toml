@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-11-08_8c3b090_040"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "4909084d4c4bb44e197d07a71c0c5385ce02e47e"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rts"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: source/match/Navigation.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-11-08_8c3b090_040"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

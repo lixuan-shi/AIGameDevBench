@@ -1,0 +1,20 @@
+[testcase]
+id = "no-hardcoded-res-path"
+category = "architecture"
+source_kind = "folder"
+source_repo = "authored:representative-set"
+task = """
+res://scripts/spawner.gd spawns a goblin by building a hardcoded "res://entities/goblin.tscn" path string at the call site and passing it to load(). Refactor so the goblin scene is referenced through a preload()'d constant (or @export) instead of a hardcoded path literal living loose in the function body. The script must keep spawning the goblin correctly; only the way the scene resource is referenced should change.
+"""
+
+[verifier]
+type = "py_gdscript_ast"
+entry = "arch_rules.json"
+
+[scoring]
+mode = "weighted"
+
+[provenance]
+author = "Claude"
+created = "2026-06-29"
+notes = "architecture/med. forbid_hardcoded_res_path: a res:// literal is allowed only when it sits directly inside preload()/load(). Baseline stores the path in a var then load(var) -> the literal is flagged -> penalty 100 -> score 0. Golden uses const PRELOAD := preload(\"res://...\") -> only-in-preload -> rule passes -> 1.0. Trap: AI keeps the hardcoded string and just tidies code -> still 0."

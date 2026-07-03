@@ -1,0 +1,17 @@
+{
+  "target_files": ["components/health_component.gd"],
+  "rules": [
+    {
+      "id": "component_extends_node",
+      "type": "require_extends",
+      "base": "Node",
+      "weight": 50
+    },
+    {
+      "id": "no_import_from_ui_layer",
+      "type": "forbid_import_glob",
+      "glob": "ui/",
+      "weight": 50
+    }
+  ]
+}

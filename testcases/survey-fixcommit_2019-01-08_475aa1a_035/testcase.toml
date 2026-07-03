@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2019-01-08_475aa1a_035"
+category = "intent_translation"
+source_kind = "git"
+baseline_ref = "d95aceba13e53b28a1e9ebacaf6ba517e8e6e30e"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: godot/interface/gui/GUI.gd, godot/interface/gui/QuestJournal.gd, godot/local_map/LocalMap.tscn, godot/local_map/pawns/TestQuestGiver.tscn, godot/quest_system/QuestSystem.gd, godot/quest_system/quests/Quest.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2019-01-08_475aa1a_035"
+bad_case_type = "B2"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

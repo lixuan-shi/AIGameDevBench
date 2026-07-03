@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-03-01_dd723b0_014"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "b2e93fba0c3966eb556eca94c033338307c25151"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rts"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: source/match/players/simple-clairvoyant-ai/IntelligenceController.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-03-01_dd723b0_014"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

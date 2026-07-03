@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-history_2026-01-26_bf7caa5_014"
+category = "intent_translation"
+source_kind = "git"
+baseline_ref = "c7e247786b7e6a6149e7a7148b303ec6c74cf554"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: src/combat/battlers/battler.gd, src/combat/combat.gd, src/combat/combat_events.gd, src/combat/ui/battler_entry/ui_player_battler_list.gd, src/combat/ui/ui_combat.gd, src/combat/ui/ui_combat.tscn, src/combat/ui/ui_player_menus.gd, src/combat/ui/ui_player_menus.gd.uid."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "history_2026-01-26_bf7caa5_014"
+bad_case_type = "B3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

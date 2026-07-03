@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-04-22_a8e1e06_024"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "14cabe7dd9388740c1e97f8ea3310dd0fac56774"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\a-little-game-called-mario"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/sokoban/SokobanPlayer.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-04-22_a8e1e06_024"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

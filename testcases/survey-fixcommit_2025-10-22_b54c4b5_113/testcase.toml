@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-22_b54c4b5_113"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "f9017881e1119749455eb97d1f5407c5a7e92e21"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Prefabs/Entities/Objects/TrackPiece.tscn, Scripts/Classes/Entities/Player.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-22_b54c4b5_113"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

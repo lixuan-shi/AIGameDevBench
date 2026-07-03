@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-11-02_1ff41a2_035"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "7f57701feaaa608e0bed5395b399fac231681d97"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/enemies/MoldedDruvar/MoldedDruvar.tscn, scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn, scenes/player/Player copy.gd, scenes/player/Player.gd, scenes/player/Player.tscn, scripts/components/actionsynchronizercomponent/ActionSynchronizerComponent.gd, scripts/components/actionsynchronizercomponent/ActionSynchronizerComponent.tscn, scripts/components/animationcomponent/AnimationComponent.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-11-02_1ff41a2_035"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

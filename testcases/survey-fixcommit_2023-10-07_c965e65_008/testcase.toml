@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-10-07_c965e65_008"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "6250bfe72630ded96739fb2b52b56f9c87dce4d5"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn, scenes/loginpanel/LoginPanel.tscn, scenes/ui/game_menu/game_menu.gd, scenes/ui/game_menu/game_menu.tscn, scripts/global.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-10-07_c965e65_008"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

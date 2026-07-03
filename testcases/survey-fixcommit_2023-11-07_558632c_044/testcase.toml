@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-11-07_558632c_044"
+category = "precise_edit"
+source_kind = "git"
+baseline_ref = "91da6e49ef3c457dbb16b5eb128e1924f842b26f"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: data/tileset/atlas.tres, scenes/enemies/Thumpster/thumpster.tscn, scenes/terrain/areas/basecamp/BaseCamp.tscn, scenes/terrain/areas/harbor/harbor.tscn, scenes/terrain/areas/wakingforest/WakingForest.tscn, scenes/world/World.tscn, scenes/world/WorldMap.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-11-07_558632c_044"
+bad_case_type = "C2"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

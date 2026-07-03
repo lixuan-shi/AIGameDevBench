@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-03-05_dcd5b1c_053"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "bac8ff63d0363691f5fc809119c8dcab98a7ca92"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\tabletop-club"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: game/Scripts/Game/UI/Dialogs/NotebookDialog.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-03-05_dcd5b1c_053"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

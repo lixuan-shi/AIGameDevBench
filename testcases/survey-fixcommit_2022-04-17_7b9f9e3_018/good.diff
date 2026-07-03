@@ -1,0 +1,13 @@
+diff --git a/scenes/platformer/characters/Trail.gd b/scenes/platformer/characters/Trail.gd
+index 0b139da..bf8ee5f 100644
+--- a/scenes/platformer/characters/Trail.gd
++++ b/scenes/platformer/characters/Trail.gd
+@@ -4,7 +4,7 @@ export(int) var trail_length = 5
+ var positions = []
+ var height = 0.0
+ 
+-onready var player: Player = owner
++onready var player: Node2D = owner
+ 
+ 
+ func _process(_delta):

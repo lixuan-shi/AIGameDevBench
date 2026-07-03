@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://b0menu0panel0layout000"]
+
+[node name="MainMenu" type="VBoxContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="QuitButton" type="Button" parent="."]
+text = "Quit"
+
+[node name="StartButton" type="Button" parent="."]
+text = "Start"
+
+[node name="OptionsButton" type="Button" parent="."]
+visible = false
+text = "Options"

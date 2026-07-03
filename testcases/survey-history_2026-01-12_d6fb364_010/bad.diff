@@ -1,0 +1,534 @@
+diff --git a/src/combat/combat.gd b/src/combat/combat.gd
+index 2920fef..a637887 100644
+--- a/src/combat/combat.gd
++++ b/src/combat/combat.gd
+@@ -1,4 +1,4 @@
+-## Starts and ends combat, and manages the transition between the field game state and the combat game.
++## Starts and ends combat, and manages the transition between the field and combat states.
+ ##
+ ## The battle is composed mainly from a [CombatArena], which contains all necessary subelements such
+ ## as battlers, visual effects, music, etc.
+@@ -39,6 +39,25 @@ func start(arena: PackedScene) -> void:
+ 	_active_arena = new_arena
+ 	_combat_container.add_child(_active_arena)
+ 
++	_previous_music_track = Music.get_playing_track()
++	Music.play(_active_arena.music)
++
++	CombatEvents.combat_initiated.emit()
++
++	# Before starting combat itself, reveal the screen again.
++	# The Transition.clear() call is deferred since it follows on the heels of cover(), and needs a
++	# frame to allow everything else to respond to Transition.finished.
++	Transition.clear.call_deferred(0.2)
++	await Transition.finished
++	
++	# Fade in the combat UI elements.
++	_active_arena.animation.play("fade_in")
++	await _active_arena.animation.animation_finished
++	
++	# Begin the combat logic. The turn queue takes over from here.
++	_active_arena.start()
++	
++	# Respond to the turn queue's signal the lets us know when the player has won or lost combat.
+ 	_active_arena.turn_queue.combat_finished.connect(
+ 		func on_combat_finished(is_player_victory: bool):
+ 			await _display_combat_results_dialog(is_player_victory)
+@@ -61,20 +80,6 @@ func start(arena: PackedScene) -> void:
+ 			CombatEvents.combat_finished.emit(is_player_victory)
+ 	)
+ 
+-	_previous_music_track = Music.get_playing_track()
+-	Music.play(_active_arena.music)
+-
+-	CombatEvents.combat_initiated.emit()
+-
+-	# Before starting combat itself, reveal the screen again.
+-	# The Transition.clear() call is deferred since it follows on the heels of cover(), and needs a
+-	# frame to allow everything else to respond to Transition.finished.
+-	Transition.clear.call_deferred(0.2)
+-	await Transition.finished
+-
+-	# Begin the combat. The turn queue takes over from here.
+-	_active_arena.start()
+-
+ 
+ ## Displays a series of dialogue bubbles using Dialogic with information about the combat's outcome.
+ func _display_combat_results_dialog(is_player_victory: bool):
+diff --git a/src/combat/combat_arena.gd b/src/combat/combat_arena.gd
+index 84ae274..c037c86 100644
+--- a/src/combat/combat_arena.gd
++++ b/src/combat/combat_arena.gd
+@@ -9,7 +9,7 @@ class_name CombatArena extends Control
+ @onready var turn_queue: = $Battlers as ActiveTurnQueue
+ 
+ # UI elements
+-@onready var _ui_animation: = $UI/AnimationPlayer as AnimationPlayer
++@onready var animation: = $UI/AnimationPlayer as AnimationPlayer
+ @onready var _ui_turn_bar: = $UI/TurnBar as UITurnBar
+ @onready var _ui_effect_label_builder: = $UI/EffectLabelBuilder as UIEffectLabelBuilder
+ @onready var _ui_player_menus: = $UI/PlayerMenus as UICombatMenus
+@@ -22,19 +22,20 @@ func _ready() -> void:
+ 	_ui_player_menus.setup(combat_participant_data)
+ 	_ui_turn_bar.setup(combat_participant_data)
+ 	
++	# TODO: Remove once I've got things figured out.
+ 	# The UI elements will automatically fade out once one of the battler teams has lost.
+-	combat_participant_data.battlers_downed.connect(
+-		func _on_battlers_downed():
+-			_ui_player_menus.visible = false
+-			_ui_turn_bar.fade_out()
+-	)
++	#combat_participant_data.battlers_downed.connect(
++		#func _on_battlers_downed():
++			#_ui_player_menus.visible = false
++			#_ui_turn_bar.fade_out()
++	#)
+ 
+ 
+ ## Begin combat, setting up the UI before running combat logic.
+ func start() -> void:
+ 	# Smoothly fade in the UI elements.
+-	_ui_animation.play("fade_in")
+-	await _ui_animation.animation_finished
++	#_ui_animation.play("fade_in")
++	#await _ui_animation.animation_finished
+ 	
+ 	# Begin the combat logic.
+ 	turn_queue.is_active = true
+diff --git a/src/combat/combat_arena.tscn b/src/combat/combat_arena.tscn
+index f543b0b..1fcc870 100644
+--- a/src/combat/combat_arena.tscn
++++ b/src/combat/combat_arena.tscn
+@@ -15,44 +15,124 @@
+ 
+ [sub_resource type="Animation" id="Animation_wen7t"]
+ length = 0.001
++tracks/0/type = "value"
++tracks/0/imported = false
++tracks/0/enabled = true
++tracks/0/path = NodePath("EffectLabelBuilder:modulate")
++tracks/0/interp = 1
++tracks/0/loop_wrap = true
++tracks/0/keys = {
++"times": PackedFloat32Array(0),
++"transitions": PackedFloat32Array(1),
++"update": 0,
++"values": [Color(1, 1, 1, 1)]
++}
++tracks/1/type = "value"
++tracks/1/imported = false
++tracks/1/enabled = true
++tracks/1/path = NodePath("TurnBar:modulate")
++tracks/1/interp = 1
++tracks/1/loop_wrap = true
++tracks/1/keys = {
++"times": PackedFloat32Array(0),
++"transitions": PackedFloat32Array(1),
++"update": 0,
++"values": [Color(1, 1, 1, 1)]
++}
++tracks/2/type = "value"
++tracks/2/imported = false
++tracks/2/enabled = true
++tracks/2/path = NodePath("PlayerMenus:modulate")
++tracks/2/interp = 1
++tracks/2/loop_wrap = true
++tracks/2/keys = {
++"times": PackedFloat32Array(0),
++"transitions": PackedFloat32Array(1),
++"update": 0,
++"values": [Color(1, 1, 1, 1)]
++}
++tracks/3/type = "value"
++tracks/3/imported = false
++tracks/3/enabled = true
++tracks/3/path = NodePath("PlayerMenus/PlayerBattlerList:modulate")
++tracks/3/interp = 1
++tracks/3/loop_wrap = true
++tracks/3/keys = {
++"times": PackedFloat32Array(0),
++"transitions": PackedFloat32Array(1),
++"update": 0,
++"values": [Color(1, 1, 1, 1)]
++}
+ 
+ [sub_resource type="Animation" id="Animation_1kh4k"]
+ resource_name = "fade_in"
+ length = 1.2
+ step = 0.1
+-tracks/0/type = "method"
++tracks/0/type = "value"
+ tracks/0/imported = false
+ tracks/0/enabled = true
+-tracks/0/path = NodePath("TurnBar")
++tracks/0/path = NodePath("TurnBar:modulate")
+ tracks/0/interp = 1
+ tracks/0/loop_wrap = true
+ tracks/0/keys = {
+-"times": PackedFloat32Array(0),
+-"transitions": PackedFloat32Array(1),
+-"values": [{
+-"args": [],
+-"method": &"fade_in"
+-}]
++"times": PackedFloat32Array(0, 0.7),
++"transitions": PackedFloat32Array(1, 1),
++"update": 0,
++"values": [Color(1, 1, 1, 0), Color(1, 1, 1, 1)]
+ }
+-tracks/1/type = "method"
++tracks/1/type = "value"
+ tracks/1/imported = false
+ tracks/1/enabled = true
+-tracks/1/path = NodePath("PlayerMenus/PlayerBattlerList")
++tracks/1/path = NodePath("PlayerMenus:modulate")
+ tracks/1/interp = 1
+ tracks/1/loop_wrap = true
+ tracks/1/keys = {
+-"times": PackedFloat32Array(0.2),
+-"transitions": PackedFloat32Array(1),
+-"values": [{
+-"args": [],
+-"method": &"fade_in"
+-}]
++"times": PackedFloat32Array(0.2, 0.9),
++"transitions": PackedFloat32Array(1, 1),
++"update": 0,
++"values": [Color(1, 1, 1, 0), Color(1, 1, 1, 1)]
+ }
+ 
+ [sub_resource type="Animation" id="Animation_16p0q"]
+ resource_name = "fade_out"
+-length = 0.3
++length = 0.2
+ step = 0.1
++tracks/0/type = "value"
++tracks/0/imported = false
++tracks/0/enabled = true
++tracks/0/path = NodePath("EffectLabelBuilder:modulate")
++tracks/0/interp = 1
++tracks/0/loop_wrap = true
++tracks/0/keys = {
++"times": PackedFloat32Array(0, 0.2),
++"transitions": PackedFloat32Array(1, 1),
++"update": 0,
++"values": [Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
++}
++tracks/1/type = "value"
++tracks/1/imported = false
++tracks/1/enabled = true
++tracks/1/path = NodePath("TurnBar:modulate")
++tracks/1/interp = 1
++tracks/1/loop_wrap = true
++tracks/1/keys = {
++"times": PackedFloat32Array(0, 0.2),
++"transitions": PackedFloat32Array(1, 1),
++"update": 0,
++"values": [Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
++}
++tracks/2/type = "value"
++tracks/2/imported = false
++tracks/2/enabled = true
++tracks/2/path = NodePath("PlayerMenus:modulate")
++tracks/2/interp = 1
++tracks/2/loop_wrap = true
++tracks/2/keys = {
++"times": PackedFloat32Array(0, 0.2),
++"transitions": PackedFloat32Array(1, 1),
++"update": 0,
++"values": [Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
++}
+ 
+ [sub_resource type="AnimationLibrary" id="AnimationLibrary_v7uy0"]
+ _data = {
+@@ -94,6 +174,7 @@ missed_label_scene = ExtResource("5_y3d4p")
+ metadata/_edit_lock_ = true
+ 
+ [node name="TurnBar" parent="UI" instance=ExtResource("6_yrwb4")]
++modulate = Color(1, 1, 1, 1)
+ metadata/_edit_lock_ = true
+ 
+ [node name="PlayerMenus" type="Control" parent="UI"]
+@@ -110,6 +191,7 @@ metadata/_edit_group_ = true
+ metadata/_edit_lock_ = true
+ 
+ [node name="PlayerBattlerList" parent="UI/PlayerMenus" instance=ExtResource("7_klx1g")]
++modulate = Color(1, 1, 1, 1)
+ layout_mode = 1
+ entry_scene = ExtResource("8_yvvff")
+ 
+diff --git a/src/combat/ui/action_menu/ui_action_menu.gd b/src/combat/ui/action_menu/ui_action_menu.gd
+index 20f0e2a..3ebd5b9 100644
+--- a/src/combat/ui/action_menu/ui_action_menu.gd
++++ b/src/combat/ui/action_menu/ui_action_menu.gd
+@@ -21,7 +21,7 @@ signal action_focused(action: BattlerAction)
+ 		# If the battler currently choosing the action dies, close and free the menu.
+ 		_battler.health_depleted.connect(
+ 			func _on_battler_health_depleted():
+-				await close()
++				queue_free()
+ 				CombatEvents.player_battler_selected.emit(null)
+ 		)
+ 		
+@@ -50,7 +50,7 @@ func _unhandled_input(event: InputEvent) -> void:
+ 		return
+ 	
+ 	if event.is_action_released("select") or event.is_action_released("back"):
+-		await close()
++		queue_free()
+ 		CombatEvents.player_battler_selected.emit(null)
+ 
+ 
+@@ -63,18 +63,7 @@ func setup(selected_battler: Battler, battler_list: BattlerList) -> void:
+ 	_build_action_menu()
+ 	
+ 	show()
+-	fade_in()
+-
+-
+-func fade_in() -> void:
+-	await super.fade_in()
+ 	set_process_unhandled_input(true)
+-	
+-
+-func close() -> void:
+-	set_process_unhandled_input(false)
+-	await fade_out()
+-	queue_free()
+ 
+ 
+ # Populate the menu with a list of actions.
+@@ -111,5 +100,5 @@ func _on_entry_pressed(entry: BaseButton) -> void:
+ 		return
+ 	
+ 	# There are available targets, so the UI can move on to selecting targets.
+-	await close()
++	queue_free()
+ 	action_selected.emit(action)
+diff --git a/src/combat/ui/action_menu/ui_action_menu.tscn b/src/combat/ui/action_menu/ui_action_menu.tscn
+index 9edb74b..bc6beb5 100644
+--- a/src/combat/ui/action_menu/ui_action_menu.tscn
++++ b/src/combat/ui/action_menu/ui_action_menu.tscn
+@@ -76,5 +76,5 @@ metadata/_edit_group_ = true
+ 
+ [node name="AnimationPlayer" parent="." index="0"]
+ libraries = {
+-"": SubResource("AnimationLibrary_22wec")
++&"": SubResource("AnimationLibrary_22wec")
+ }
+diff --git a/src/combat/ui/battler_entry/ui_player_battler_list.gd b/src/combat/ui/battler_entry/ui_player_battler_list.gd
+index a54c0d2..4e91a6d 100644
+--- a/src/combat/ui/battler_entry/ui_player_battler_list.gd
++++ b/src/combat/ui/battler_entry/ui_player_battler_list.gd
+@@ -22,8 +22,6 @@ class_name UIPlayerBattlerList extends UIListMenu
+ 			new_entry.battler = battler
+ 		
+ 		_loop_first_and_last_entries()
+-		
+-		fade_in()
+ 
+ 
+ func _ready() -> void:
+diff --git a/src/combat/ui/battler_entry/ui_player_battler_list.tscn b/src/combat/ui/battler_entry/ui_player_battler_list.tscn
+index 92b1411..09f9616 100644
+--- a/src/combat/ui/battler_entry/ui_player_battler_list.tscn
++++ b/src/combat/ui/battler_entry/ui_player_battler_list.tscn
+@@ -111,7 +111,7 @@ script = ExtResource("1_gvsvq")
+ 
+ [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+ libraries = {
+-"": SubResource("AnimationLibrary_25pwl")
++&"": SubResource("AnimationLibrary_25pwl")
+ }
+ 
+ [node name="MenuCursor" parent="." instance=ExtResource("2_okk2n")]
+diff --git a/src/combat/ui/list_menu/ui_list_menu.gd b/src/combat/ui/list_menu/ui_list_menu.gd
+index 2af5176..afce0d5 100644
+--- a/src/combat/ui/list_menu/ui_list_menu.gd
++++ b/src/combat/ui/list_menu/ui_list_menu.gd
+@@ -23,7 +23,6 @@ var is_disabled: = true:
+ # Track all battler list entries in the following array. 
+ var _entries: Array[BaseButton] = []
+ 
+-@onready var _anim: = $AnimationPlayer as AnimationPlayer
+ @onready var _menu_cursor: = $MenuCursor as UIMenuCursor
+ 
+ 
+@@ -34,21 +33,22 @@ func focus_first_entry() -> void:
+ 		_menu_cursor.position = _entries[0].global_position + Vector2(0.0, _entries[0].size.y/2.0)
+ 
+ 
++#TODO Remove this code when finished.
+ ## Fades in the battler list, allowing input and focusing the first button only after the animation
+ ## has finished.
+-func fade_in() -> void:
+-	_anim.play("fade_in")
+-	await _anim.animation_finished
+-	is_disabled = false
+-	
+-	focus_first_entry()
+-
+-
+-## Fades out the battler list, disabling input to the list beforehand.
+-func fade_out() -> void:
+-	is_disabled = true
+-	_anim.play("fade_out")
+-	await _anim.animation_finished
++#func fade_in() -> void:
++	#_anim.play("fade_in")
++	#await _anim.animation_finished
++	#is_disabled = false
++	#
++	#focus_first_entry()
++#
++#
++### Fades out the battler list, disabling input to the list beforehand.
++#func fade_out() -> void:
++	#is_disabled = true
++	#_anim.play("fade_out")
++	#await _anim.animation_finished
+ 
+ 
+ # Creates a button entry, based on the specified entry scene. Hooks up automatic callbacks to the
+@@ -98,5 +98,4 @@ func _on_entry_focused(entry: BaseButton) -> void:
+ 
+ ## Hides (and disables) the menu. Derivative menus may want to add additional behaviour.
+ func _on_entry_pressed(_entry: BaseButton) -> void:
+-	if not is_disabled:
+-		fade_out()
++	hide()
+diff --git a/src/combat/ui/turn_bar/ui_turn_bar.gd b/src/combat/ui/turn_bar/ui_turn_bar.gd
+index 853cf77..5f7b853 100644
+--- a/src/combat/ui/turn_bar/ui_turn_bar.gd
++++ b/src/combat/ui/turn_bar/ui_turn_bar.gd
+@@ -4,21 +4,10 @@ class_name UITurnBar extends Control
+ 
+ const ICON_SCENE: = preload("ui_battler_icon.tscn")
+ 
+-@onready var _anim: = $AnimationPlayer as AnimationPlayer
+ @onready var _background: = $Background as TextureRect
+ @onready var _icons: = $Background/Icons as Control
+ 
+ 
+-## Fade in (from transparent) the turn bar and all of its UI elements.
+-func fade_in() -> void:
+-	_anim.play("fade_in")
+-
+-
+-## Fade out (to transparent) the turn bar and all of its UI elements.
+-func fade_out() -> void:
+-	_anim.play("fade_out")
+-
+-
+ ## Initialize the turn bar, passing in all the battlers that we want to display.
+ func setup(battler_data: BattlerList) -> void:
+ 	for battler in battler_data.get_all_battlers():
+diff --git a/src/combat/ui/turn_bar/ui_turn_bar.tscn b/src/combat/ui/turn_bar/ui_turn_bar.tscn
+index 4da73c8..61c6386 100644
+--- a/src/combat/ui/turn_bar/ui_turn_bar.tscn
++++ b/src/combat/ui/turn_bar/ui_turn_bar.tscn
+@@ -1,64 +1,8 @@
+-[gd_scene load_steps=7 format=3 uid="uid://derqg1tjy74tw"]
++[gd_scene load_steps=3 format=3 uid="uid://derqg1tjy74tw"]
+ 
+ [ext_resource type="Script" uid="uid://bavqbneuu0ke1" path="res://src/combat/ui/turn_bar/ui_turn_bar.gd" id="1_pm8tv"]
+ [ext_resource type="Texture2D" uid="uid://lro5tk1vopp4" path="res://assets/gui/combat/turn_bar_bg.png" id="2_u17t0"]
+ 
+-[sub_resource type="Animation" id="Animation_of53a"]
+-length = 0.001
+-tracks/0/type = "value"
+-tracks/0/imported = false
+-tracks/0/enabled = true
+-tracks/0/path = NodePath(".:modulate")
+-tracks/0/interp = 1
+-tracks/0/loop_wrap = true
+-tracks/0/keys = {
+-"times": PackedFloat32Array(0),
+-"transitions": PackedFloat32Array(1),
+-"update": 0,
+-"values": [Color(1, 1, 1, 0)]
+-}
+-
+-[sub_resource type="Animation" id="Animation_3m1jh"]
+-resource_name = "fade_in"
+-length = 0.7
+-step = 0.1
+-tracks/0/type = "value"
+-tracks/0/imported = false
+-tracks/0/enabled = true
+-tracks/0/path = NodePath(".:modulate")
+-tracks/0/interp = 1
+-tracks/0/loop_wrap = true
+-tracks/0/keys = {
+-"times": PackedFloat32Array(0, 0.7),
+-"transitions": PackedFloat32Array(1, 1),
+-"update": 0,
+-"values": [Color(1, 1, 1, 0), Color(1, 1, 1, 1)]
+-}
+-
+-[sub_resource type="Animation" id="Animation_ckfws"]
+-resource_name = "fade_out"
+-length = 0.3
+-step = 0.1
+-tracks/0/type = "value"
+-tracks/0/imported = false
+-tracks/0/enabled = true
+-tracks/0/path = NodePath(".:modulate")
+-tracks/0/interp = 1
+-tracks/0/loop_wrap = true
+-tracks/0/keys = {
+-"times": PackedFloat32Array(0, 0.3),
+-"transitions": PackedFloat32Array(1, 1),
+-"update": 0,
+-"values": [Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
+-}
+-
+-[sub_resource type="AnimationLibrary" id="AnimationLibrary_8p3cw"]
+-_data = {
+-&"RESET": SubResource("Animation_of53a"),
+-&"fade_in": SubResource("Animation_3m1jh"),
+-&"fade_out": SubResource("Animation_ckfws")
+-}
+-
+ [node name="TurnBar" type="Control"]
+ modulate = Color(1, 1, 1, 0)
+ layout_mode = 3
+@@ -93,9 +37,3 @@ anchor_right = 1.0
+ anchor_bottom = 0.5
+ grow_horizontal = 2
+ grow_vertical = 2
+-
+-[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+-libraries = {
+-"": SubResource("AnimationLibrary_8p3cw")
+-}
+-autoplay = "fade_in"
+diff --git a/src/combat/ui/ui_combat_menus.gd b/src/combat/ui/ui_combat_menus.gd
+index 8d7d04a..1d92ccb 100644
+--- a/src/combat/ui/ui_combat_menus.gd
++++ b/src/combat/ui/ui_combat_menus.gd
+@@ -52,8 +52,6 @@ func setup(battler_data: BattlerList) -> void:
+ 	_battlers = battler_data
+ 	_battler_list.setup(_battlers)
+ 	
+-	_battlers.battlers_downed.connect(_battler_list.fade_out)
+-	
+ 	# If a player battler has been selected, the action menu should open so that the player may
+ 	# choose an action.
+ 	# If the selected Battler had already queued an action, the player must rechoose that
+diff --git a/src/main.tscn b/src/main.tscn
+index 95db4cb..c52a5ff 100644
+--- a/src/main.tscn
++++ b/src/main.tscn
+@@ -314,9 +314,8 @@ size = Vector2(14, 23)
+ [node name="Main" type="Node2D"]
+ scale = Vector2(5, 5)
+ 
+-[node name="Field" type="Node2D" parent="." node_paths=PackedStringArray("opening_cutscene", "player_default_gamepiece")]
++[node name="Field" type="Node2D" parent="." node_paths=PackedStringArray("player_default_gamepiece")]
+ script = ExtResource("2_bkxev")
+-opening_cutscene = NodePath("OpeningCutscene")
+ player_controller = ExtResource("2_esa52")
+ player_default_gamepiece = NodePath("Map/Player")
+ 

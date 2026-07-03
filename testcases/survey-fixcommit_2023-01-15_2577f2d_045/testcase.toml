@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-01-15_2577f2d_045"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "f6cbe2b87e6fa97f081e147903294053da4d6e86"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\tabletop-club"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: game/Scenes/Game/UI/Previews/PreviewFilter.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-01-15_2577f2d_045"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

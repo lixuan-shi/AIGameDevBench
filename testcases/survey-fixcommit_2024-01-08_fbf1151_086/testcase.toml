@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2024-01-08_fbf1151_086"
+category = "intent_translation"
+source_kind = "git"
+baseline_ref = "b266a660cd02c799698e8a26a40bea6a8238319a"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scripts/components/networking/projectilesynchronizercomponent/Projectile2D.gd, scripts/components/networking/projectilesynchronizercomponent/Projectiles/Arrow.tscn, scripts/components/networking/projectilesynchronizercomponent/Projectiles/StationaryProjectile2D.gd, scripts/components/networking/projectilesynchronizercomponent/Projectiles/StraightProjectile2D.gd, scripts/components/networking/projectilesynchronizercomponent/Projectiles/Trap.tscn, scripts/components/networking/projectilesynchronizercomponent/projectilesynchronizercomponent.gd, scripts/components/player/skillcomponent/Skills/FireProjectileSkill.gd, scripts/components/player/skillcomponent/Skills/LaunchArrow.tres."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2024-01-08_fbf1151_086"
+bad_case_type = "B3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

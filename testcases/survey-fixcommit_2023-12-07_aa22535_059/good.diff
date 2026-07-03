@@ -1,0 +1,523 @@
+diff --git a/project.godot b/project.godot
+index 99707ad..0cddd58 100644
+--- a/project.godot
++++ b/project.godot
+@@ -146,6 +146,11 @@ debug_mode_toggle={
+ "events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":4194332,"key_label":0,"unicode":0,"echo":false,"script":null)
+ ]
+ }
++j_toggle_class_menu={
++"deadzone": 0.5,
++"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":74,"key_label":0,"unicode":106,"echo":false,"script":null)
++]
++}
+ 
+ [internationalization]
+ 
+diff --git a/scenes/player/Player.gd b/scenes/player/Player.gd
+index a4a6379..d1978a8 100644
+--- a/scenes/player/Player.gd
++++ b/scenes/player/Player.gd
+@@ -24,6 +24,7 @@ var network_view_synchronizer: NetworkViewSynchronizerComponent = $NetworkViewSy
+ @onready var update_face: UpdateFaceComponent = $UpdateFaceComponent
+ @onready var skeleton: Node2D = $Skeleton
+ @onready var original_scale: Vector2 = skeleton.scale
++@onready var ui_control: Control = $Camera2D/UILayer/GUI
+ 
+ @onready var equipment_sprites = {
+ 	"Head": $Sprites/Head,
+diff --git a/scripts/components/charclasscomponent/CharClassSelection.gd b/scripts/components/charclasscomponent/CharClassSelection.gd
+index aae2cbb..4532604 100644
+--- a/scripts/components/charclasscomponent/CharClassSelection.gd
++++ b/scripts/components/charclasscomponent/CharClassSelection.gd
+@@ -1,4 +1,5 @@
+ extends Control
++class_name CharacterClassSelectionMenu
+ ## Call [method select_target] to start.
+ 
+ 
+@@ -14,21 +15,37 @@ var sync_required: bool
+ ## Internally used to queue syncs with the server.
+ var syncTimer := Timer.new()
+ 
++var charClassRegisteredNameAvailable: Dictionary
++var charClassRegisteredNameOwned: Dictionary
++
+ 
+ @onready var available_list: ItemList = $AvailableClasses
+ @onready var owned_list: ItemList = $OwnedClasses
+ @onready var statsDisplay: Control = $StatDisplay
+ @onready var classDesc: RichTextLabel = $ClassDescription
++@onready var lockedText: Label = $LockedText
++@onready var doneButton: Button = $Done
+ 
+ func _ready() -> void:
++	assert(not G.is_server(), "The server should not be creating UI elements on it's end.")
++	
++	mouse_entered.connect(_on_mouse_entered)
++	mouse_exited.connect(_on_mouse_exited)
++	
++	#Activation of a list's element
+ 	available_list.item_activated.connect(_on_available_activated)
+ 	owned_list.item_activated.connect(_on_owned_activated)
+ 	
++	#Selection of a list's element
+ 	available_list.item_selected.connect(_on_available_selected)
+-	owned_list.item_selected.connect(_on_owned_selected)
+-	
++	owned_list.item_selected.connect(_on_owned_selected)	
++
++	#Close button
++	doneButton.pressed.connect(close)
++
+ 	statsDisplay.accept_input = false
+ 	
++	#Sync changes to server on a timer
+ 	syncTimer.timeout.connect(_on_sync_timer_timeout)
+ 	add_child(syncTimer)
+ 	syncTimer.start(1)
+@@ -39,9 +56,15 @@ func _ready() -> void:
+ 
+ 	
+ func select_target(class_comp: CharacterClassComponent):
++	if not is_node_ready():
++		await ready
++		
+ 	class_component = class_comp
+ 	statsDisplay.stats = class_component.stats_component
+ 	
++	lockedText.visible = class_component.class_change_locked
++	class_component.class_lock_changed.connect(_on_class_lock_changed)
++	
+ 	populate_available_list()
+ 	populate_owned_list()
+ 	
+@@ -55,14 +78,12 @@ func populate_available_list():
+ 	
+ 	update_allowed_classes()
+ 	
+-	var index: int = 0
+ 	for charclass in J.charclass_resources:
+ 		var characterClass: CharacterClassResource = J.charclass_resources[charclass].duplicate()
+ 		
+ 		available_list.add_item(characterClass.displayed_name, characterClass.get_icon())
+-		available_list.set_item_metadata(index, characterClass.class_registered)
+-		
+-		index += 1
++		available_list.set_item_metadata(available_list.item_count-1, characterClass.class_registered)
++		print("Put {0} class in index {1} of the available list".format([characterClass.class_registered, str(available_list.item_count-1)]))
+ 		
+ 	update_available_list()
+ 
+@@ -72,12 +93,10 @@ func populate_owned_list():
+ 		#return
+ 	owned_list.clear()
+ 
+-	var index: int = 0
+-	for characterClass in class_component.classes:
+-		
+-		available_list.add_item(characterClass.displayed_name, characterClass.get_icon())
+-		available_list.set_item_metadata(index, characterClass.class_registered)
+-		index += 1
++	for characterClass in class_component.classes:	
++		owned_list.add_item(characterClass.displayed_name, characterClass.get_icon())
++		owned_list.set_item_metadata(owned_list.item_count-1, characterClass.class_registered)
++		print("Put {0} class in index {1} of the owned list".format([characterClass.class_registered, str(owned_list.item_count-1)]))
+ 		
+ 	update_owned_list()
+ 
+@@ -93,18 +112,21 @@ func update_available_list():
+ 		
+ func update_owned_list():
+ 	owned_list.max_columns = class_component.max_classes
+-	statsDisplay.renew_values()
++	statsDisplay.renew_values.call_deferred()
+ 	
+ func update_lists():
+ 	update_available_list()
+ 	update_owned_list()
+ 
+ func update_allowed_classes():
+-	allowed_classes = J.charclass_resources.keys().filter( class_component.is_class_allowed )
++	allowed_classes.assign( J.charclass_resources.keys().filter( class_component.is_class_allowed ) ) 
+ 
+ 
+ #Signal targets
+ func _on_available_activated(idx: int):
++	if class_component.class_change_locked:
++		return
++	
+ 	var charClass: String = available_list.get_item_metadata(idx)
+ 	#var charClassRes: CharacterClassResource = J.charclass_resources[charClass]
+ 	
+@@ -115,6 +137,9 @@ func _on_available_activated(idx: int):
+ 	sync_required = true
+ 	
+ func _on_owned_activated(idx: int):
++	if class_component.class_change_locked:
++		return
++	
+ 	var charClass: String = available_list.get_item_metadata(idx)
+ 	
+ 	class_component.remove_class(charClass)
+@@ -141,3 +166,23 @@ func _on_sync_timer_timeout():
+ 	if sync_required and class_component:
+ 		class_component.client_class_change_attempt()
+ 		sync_required = false
++
++func _on_class_lock_changed():
++	lockedText.visible = class_component.class_change_locked
++		
++
++func close():
++	if is_inside_tree():
++		get_parent().remove_child(self)
++
++func _on_mouse_entered():
++	JUI.above_ui = true
++
++func _on_mouse_exited():
++	JUI.above_ui = false
++
++## Should the UI quit early with a sync queued, the change attempt will be deferred instantly.
++func _notification(what: int):
++	if (what == NOTIFICATION_PREDELETE or what == NOTIFICATION_EXIT_TREE) and sync_required and class_component:
++		class_component.client_class_change_attempt.call_deferred()
++		
+diff --git a/scripts/components/charclasscomponent/CharClassSelection.tscn b/scripts/components/charclasscomponent/CharClassSelection.tscn
+index 9c55ec6..d5ffef6 100644
+--- a/scripts/components/charclasscomponent/CharClassSelection.tscn
++++ b/scripts/components/charclasscomponent/CharClassSelection.tscn
+@@ -1,8 +1,16 @@
+-[gd_scene load_steps=3 format=3 uid="uid://dkgn4i61r780j"]
++[gd_scene load_steps=6 format=3 uid="uid://dkgn4i61r780j"]
+ 
+ [ext_resource type="Script" path="res://scripts/components/charclasscomponent/CharClassSelection.gd" id="1_ieyck"]
++[ext_resource type="Theme" uid="uid://dreboohjjcn2f" path="res://assets/themes/LoginPanelTheme.tres" id="1_iy7gq"]
+ [ext_resource type="PackedScene" uid="uid://dirsk8pf0bxh5" path="res://scenes/player/statdisplay/StatDisplay.tscn" id="2_n16eb"]
+ 
++[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_v5bvh"]
++bg_color = Color(0.180392, 0, 0, 1)
++
++[sub_resource type="LabelSettings" id="LabelSettings_aad2d"]
++font_size = 80
++font_color = Color(0.803922, 0.803922, 0.803922, 1)
++
+ [node name="CharClassSelection" type="Control"]
+ layout_mode = 3
+ anchors_preset = 15
+@@ -10,6 +18,7 @@ anchor_right = 1.0
+ anchor_bottom = 1.0
+ grow_horizontal = 2
+ grow_vertical = 2
++theme = ExtResource("1_iy7gq")
+ script = ExtResource("1_ieyck")
+ 
+ [node name="AvailableClasses" type="ItemList" parent="."]
+@@ -50,7 +59,7 @@ text = "Player's Classes"
+ [node name="StatDisplay" parent="." instance=ExtResource("2_n16eb")]
+ layout_mode = 1
+ anchor_left = 0.75
+-anchor_bottom = 1.0
++anchor_bottom = 0.9
+ grow_horizontal = 1
+ grow_vertical = 1
+ 
+@@ -59,4 +68,30 @@ layout_mode = 1
+ anchors_preset = -1
+ anchor_left = 0.4
+ anchor_right = 0.75
++anchor_bottom = 0.9
++
++[node name="Done" type="Button" parent="."]
++layout_mode = 1
++anchors_preset = -1
++anchor_left = 0.75
++anchor_top = 0.9
++anchor_right = 1.0
++anchor_bottom = 1.0
++grow_horizontal = 0
++grow_vertical = 0
++theme_override_font_sizes/font_size = 80
++text = "DONE"
++metadata/_edit_use_anchors_ = true
++
++[node name="LockedText" type="Label" parent="."]
++layout_mode = 1
++anchors_preset = -1
++anchor_left = 0.4
++anchor_top = 0.9
++anchor_right = 0.75
+ anchor_bottom = 1.0
++theme_override_styles/normal = SubResource("StyleBoxFlat_v5bvh")
++text = "CANNOT CHANGE CLASS"
++label_settings = SubResource("LabelSettings_aad2d")
++horizontal_alignment = 1
++vertical_alignment = 1
+diff --git a/scripts/components/charclasscomponent/characterclasscomponent.gd b/scripts/components/charclasscomponent/characterclasscomponent.gd
+index cdd23bc..5df7e3f 100644
+--- a/scripts/components/charclasscomponent/characterclasscomponent.gd
++++ b/scripts/components/charclasscomponent/characterclasscomponent.gd
+@@ -1,9 +1,13 @@
+ extends Node
+ class_name CharacterClassComponent
+ 
++
++const CharacterClassSelectionScene: PackedScene = preload("res://scripts/components/charclasscomponent/CharClassSelection.tscn")
+ const JSON_KEYS: Array[String] = ["classes", "class_whitelist", "class_blacklist", "max_classes"]
++const SYNC_MINIMUM_INTERVAL: float = 1.0
+ 
+ signal classes_changed
++signal class_lock_changed
+ signal list_changed
+ 
+ @export var user: Node
+@@ -12,19 +16,42 @@ signal list_changed
+ 
+ var classes: Array[CharacterClassResource]
+ 
+-##Only those here will be presented to the user, leave empty to disable
++## Only those here will be presented to the user, leave empty to disable
+ var class_whitelist: Array[String]
+ 
+-##Removes any option presented to the user that's defined here, taking precedence over [member class_whitelist]
++## Removes any option presented to the user that's defined here, taking precedence over [member class_whitelist]
+ var class_blacklist: Array[String]
+ 
++## Max amount of simultaneous classes selected for this component
+ var max_classes: int = 2
+ 
++## Class changes are prevented while this is true, used by the server to filter when a player should be capable of performing a change
++var class_change_locked: bool = false:
++	set(val):
++		class_change_locked = val
++		class_lock_changed.emit()
++		
++## Keep a menu to show the player, only client side
++var classChangeMenu: CharacterClassSelectionMenu
++
+ 
+ func _ready():
+ 	if user.get("component_list") != null:
+ 		user.component_list["class_component"] = self
+ 	
++	classChangeMenu = CharacterClassSelectionScene.instantiate()
++	classChangeMenu.select_target(self)
++	
++	#TEMP?
++	if classes.is_empty():
++		add_class("Base")
++	
++	#Re-apply stats anytime a class changes.
++	classes_changed.connect(apply_stats)
++		
++	#This line should stay commented until there's a system to detect when a player should be allowed to change classes
++	#class_change_locked = true
++	
+ 	if G.is_server():
+ 		return
+ 
+@@ -39,9 +66,16 @@ func _ready():
+ 	if not is_inside_tree():
+ 		await tree_entered
+ 	
+-	#TEMP?
+-	add_class("Base")
+ 	G.sync_rpc.characterclasscomponent_sync_all.rpc_id(1, user.get_name())
++	
++	
++
++func _unhandled_input(event: InputEvent) -> void:
++	if event.is_action_pressed("j_toggle_class_menu"):
++		if classChangeMenu.is_inside_tree():
++			classChangeMenu.close()
++		else:
++			user.ui_control.add_child(classChangeMenu)
+ 
+ func set_blacklist(charclass: String, enabled: bool):
+ 	if enabled and not charclass in class_blacklist:
+@@ -52,7 +86,7 @@ func set_blacklist(charclass: String, enabled: bool):
+ 
+ 
+ func set_whitelist(charclass: String, enabled: bool):
+-	if enabled and not charclass in class_blacklist:
++	if enabled and not charclass in class_whitelist:
+ 		class_whitelist.append(charclass)
+ 	elif not enabled:
+ 		class_whitelist.erase(charclass)
+@@ -63,6 +97,10 @@ func remove_class(charclass: String):
+ 	if classes.is_empty():
+ 		GodotLogger.warn("Tried to remove a class but there are none in this component.")
+ 		return
++	
++	if not is_class_change_allowed():
++		GodotLogger.warn("Tried to change classes, but this component is not allowed to do so at the present time.")
++		return
+ 		
+ 	# Clean the classes Array of any class matching this charclass
+ 	var index: int = 0
+@@ -74,23 +112,54 @@ func remove_class(charclass: String):
+ 	
+ 
+ 
+-func add_class(charclass: String, bypassLimit: bool = false):
+-	if bypassLimit or classes.size() >= max_classes:
++func add_class(charclass: String):
++	if not is_class_change_allowed():
++		GodotLogger.warn("Tried to change classes, but this component is not allowed to do so at the present time.")
++		return
++	
++	if classes.size() >= max_classes:
+ 		GodotLogger.warn("Tried to add a class but the limit has already been reached for this component.")
+ 		return
+ 	
+ 	if charclass in class_blacklist:
+-		GodotLogger.warn("Added a blacklisted class '{0}'.".format([charclass]))
++		GodotLogger.warn("Attempted to add a blacklisted class '{0}', it was not added.".format([charclass]))
++		return
+ 	
+ 	if not class_whitelist.is_empty() and not charclass in class_whitelist:
+-		GodotLogger.warn("Whitelist is enabled (not empty) but class '{0}' isn't in it.".format([charclass]))
+-		
++		GodotLogger.warn("Whitelist is enabled (not empty) but class '{0}' isn't in it, it was not added.".format([charclass]))
++		return
+ 		
+ 	var charClass: CharacterClassResource = J.charclass_resources[charclass].duplicate()
+ 	classes.append(charClass)
+ 	classes_changed.emit()
+ 
+ 
++## Takes an Array[String] and uses it to replace all classes from the component
++func replace_classes(newClasses: Array[String]):
++	if not is_class_change_allowed():
++		GodotLogger.warn("Tried to change classes, but this component is not allowed to do so at the present time.")
++		return
++	
++	if newClasses.size() > max_classes:
++		GodotLogger.warn("Tried to replace classes but the replacement Array is larger than the allowed size.")
++		return
++	
++	#Remove the ones that don't belong
++	var currentClasses: Array[String] = get_charclass_classes()
++	for charclass: String in currentClasses:
++		if not charclass in newClasses:
++			remove_class(charclass)
++	
++	#Add the ones missing
++	currentClasses = get_charclass_classes()
++	for charclass: String in newClasses:
++		#Not in, add it
++		if not charclass in currentClasses:
++			add_class(charclass)
++	
++	#Do not emit classes_changed, add_class and remove_class already do it.
++	#classes_changed.emit()
++
+ ## Applies bonuses and multipliers to the character's StatsSynchronizerComponent
+ func apply_stats():
+ 	
+@@ -119,7 +188,7 @@ func get_charclass_classes() -> Array[String]:
+ 	return output
+ 	
+ 	
+-#Client only
++#Server only
+ func sync_all(id: int):
+ 	#Calls self.sync_response
+ 	G.sync_rpc.characterclasscomponent_sync_response.rpc_id(id, user.get_name(), to_json())
+@@ -129,6 +198,13 @@ func sync_all(id: int):
+ func sync_response(data: Dictionary):
+ 	from_json(data)
+ 	
++
++#Client only
++func client_class_change_attempt(classList: Array[String] = get_charclass_classes()):
++	assert(not G.is_server(), "This method is only intended for client use")
++	G.sync_rpc.characterclasscomponent_sync_class_change.rpc_id(1, user.get_name(), classList )
++	
++	
+ func to_json() -> Dictionary:
+ 	var output: Dictionary = {"classes": [], "class_blacklist": [], "class_whitelist": [], "max_classes": max_classes}
+ 	
+@@ -167,3 +243,9 @@ func is_class_allowed(charclass:String) -> bool:
+ 		return false
+ 	
+ 	return true
++
++func is_class_change_allowed() -> bool:
++	if class_change_locked:
++		return false
++		
++	return true
+diff --git a/scripts/network/rpcs/gameserver/sync.gd b/scripts/network/rpcs/gameserver/sync.gd
+index d17f35c..e6a44d4 100644
+--- a/scripts/network/rpcs/gameserver/sync.gd
++++ b/scripts/network/rpcs/gameserver/sync.gd
+@@ -67,6 +67,7 @@ func positionsynchronizer_sync(n: String, t: float, p: Vector2, v: Vector2):
+ 		entity.component_list["position_synchronizer"].sync(t, p, v)
+ 
+ 
++#Called by client, runs on server
+ @rpc("call_remote", "any_peer", "reliable")
+ func statssynchronizer_sync_stats(n: String):
+ 	if not G.is_server():
+@@ -399,13 +400,13 @@ func playersynchronizer_sync_skill_use(p: Vector2, s: String):
+ 		user.player.component_list["player_synchronizer"].sync_skill_use(p, s)
+ 
+ 
+-#Server only
++#Only client can make this RPC, runs on server
+ @rpc("call_remote", "any_peer", "reliable")
+ func characterclasscomponent_sync_all(n: String):
+ 	if not G.is_server():
+ 		return
+ 
+-	var id = multiplayer.get_remote_sender_id()
++	var id: int = multiplayer.get_remote_sender_id()
+ 
+ 	# Only allow logged in players
+ 	if not G.is_user_logged_in(id):
+@@ -422,9 +423,11 @@ func characterclasscomponent_sync_all(n: String):
+ 	if entity.component_list.has("class_component"):
+ 		entity.component_list["class_component"].sync_all(id)
+ 	
+-#Client only	
++	
++#Only server can make this RPC, runs on client
+ @rpc("call_remote", "authority", "reliable")
+ func characterclasscomponent_sync_response(n: String, d: Dictionary):
++	assert(not G.is_server(), "This method is only intended for client use")
+ 	var entity: Node = G.world.get_entity_by_name(n)
+ 
+ 	if entity == null:
+@@ -435,3 +438,30 @@ func characterclasscomponent_sync_response(n: String, d: Dictionary):
+ 
+ 	if entity.component_list.has("class_component"):
+ 		entity.component_list["class_component"].sync_response(d)
++
++
++#Only client can make this RPC, runs on server
++@rpc("call_remote", "any_peer", "reliable")
++func characterclasscomponent_sync_class_change(n: String, c: Array[String]):
++	if not G.is_server():
++		return
++	
++	var id: int = multiplayer.get_remote_sender_id()
++	
++	# Only allow logged in players
++	if not G.is_user_logged_in(id):
++		return
++	
++	var entity: Node = G.world.get_entity_by_name(n)
++	
++	if entity == null:
++		return
++		
++	if entity.get("component_list") == null:
++		return
++		
++	if entity.component_list.has("class_component"):
++		#The component can run it's own checks to verify it is allowed to change them.
++		entity.component_list["class_component"].replace_classes(c)
++			
++		characterclasscomponent_sync_all(n)

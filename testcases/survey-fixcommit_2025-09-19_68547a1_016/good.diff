@@ -1,0 +1,55 @@
+diff --git a/Scenes/Levels/CustomLevelMenu.tscn b/Scenes/Levels/CustomLevelMenu.tscn
+index 317eb3c..9421c24 100644
+--- a/Scenes/Levels/CustomLevelMenu.tscn
++++ b/Scenes/Levels/CustomLevelMenu.tscn
+@@ -368,11 +368,11 @@ layout_mode = 2
+ focus_mode = 0
+ 
+ [node name="ScrollContainer" parent="BG/Border/Levels/VBoxContainer/LevelInfo/SelectedLevel/MarginContainer/HBoxContainer/HSplitContainer/LeftHalf/LevelInfo" index="0"]
+-scroll_horizontal = 184
++scroll_horizontal = 288
+ is_active = true
+ 
+ [node name="ScrollContainer2" parent="BG/Border/Levels/VBoxContainer/LevelInfo/SelectedLevel/MarginContainer/HBoxContainer/HSplitContainer/LeftHalf/LevelInfo" index="1"]
+-scroll_horizontal = 28
++scroll_horizontal = 6
+ is_active = true
+ 
+ [node name="Panel" type="PanelContainer" parent="BG/Border/Levels/VBoxContainer/LevelInfo"]
+@@ -383,7 +383,7 @@ theme_override_styles/panel = ExtResource("8_psbt7")
+ [node name="AutoScrollContainer" type="ScrollContainer" parent="BG/Border/Levels/VBoxContainer/LevelInfo/Panel"]
+ layout_mode = 2
+ mouse_filter = 2
+-scroll_vertical = 100
++scroll_vertical = 15
+ horizontal_scroll_mode = 3
+ vertical_scroll_mode = 3
+ script = ExtResource("24_wf6nb")
+@@ -573,6 +573,7 @@ is_active = true
+ auto_connect_focus = false
+ 
+ [node name="ScrollContainer2" parent="BG/Border/Levels/VBoxContainer/LSSLevelInfo/SelectedOnlineLevel/MarginContainer/HBoxContainer/HSplitContainer/LeftHalf/LevelInfo" index="1"]
++scroll_horizontal = 6
+ is_active = true
+ auto_connect_focus = false
+ 
+@@ -585,6 +586,7 @@ theme_override_styles/panel = ExtResource("8_psbt7")
+ [node name="AutoScrollContainer" type="ScrollContainer" parent="BG/Border/Levels/VBoxContainer/LSSLevelInfo/Panel"]
+ layout_mode = 2
+ mouse_filter = 0
++scroll_vertical = 15
+ horizontal_scroll_mode = 3
+ script = ExtResource("24_wf6nb")
+ direction = 1
+diff --git a/Scripts/Parts/PickAPathPoint.gd b/Scripts/Parts/PickAPathPoint.gd
+index 9f73a02..7fb55eb 100644
+--- a/Scripts/Parts/PickAPathPoint.gd
++++ b/Scripts/Parts/PickAPathPoint.gd
+@@ -4,5 +4,6 @@ extends Node2D
+ var crossed := false
+ 
+ func on_player_entered(_player: Player) -> void:
++	if not crossed: 
++		AudioManager.play_global_sfx("correct")
+ 	crossed = true
+-	AudioManager.play_global_sfx("correct")

@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2019-01-08_60c7b5e_031"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "62d1cd6a6138f151c50cd275d95de482fc6d9886"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: godot/party/PartyMember.gd, godot/quest_system/QuestSystem.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2019-01-08_60c7b5e_031"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

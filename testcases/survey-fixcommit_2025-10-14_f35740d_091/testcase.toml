@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-14_f35740d_091"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "46b4dc82b48749f50de9178f698bfcbc9968e8dc"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scripts/Classes/Blocks/BrickBlock.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-14_f35740d_091"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

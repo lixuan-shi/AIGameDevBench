@@ -1,0 +1,42 @@
+diff --git a/scenes/ui/game_menu/game_menu.gd b/scenes/ui/game_menu/game_menu.gd
+index 9998d5c..2e01d8c 100644
+--- a/scenes/ui/game_menu/game_menu.gd
++++ b/scenes/ui/game_menu/game_menu.gd
+@@ -26,7 +26,6 @@ func _input(event):
+ 		JUI.above_ui = not isVisible
+ 		
+ 		if not isVisible:
+-			LocalSaveSystem.save_file()
+ 			close_submenu()
+ 
+ 	
+@@ -46,13 +45,14 @@ func _input(event):
+ 				self.hide()
+ 				JUI.above_ui=false 
+ 				
+-				LocalSaveSystem.save_file()
+ 				close_submenu()
+ 					
+ 				get_viewport().set_input_as_handled()
+ 				
++#Also saves changes to disk.
+ func close_submenu():
+ 	LocalSaveSystem.save_file()
++
+ 	if is_instance_valid(subMenuReference):
+ 		subMenuReference.queue_free()
+ 
+diff --git a/scenes/ui/options_menu/input_remapping.gd b/scenes/ui/options_menu/input_remapping.gd
+index 1281a53..1eb9868 100644
+--- a/scenes/ui/options_menu/input_remapping.gd
++++ b/scenes/ui/options_menu/input_remapping.gd
+@@ -40,7 +40,8 @@ func _ready() -> void:
+ 	remap_aborted.connect( temporary_text_timed.bind(Messages.ABORTED, tempTextDuration) )
+ 	remap_successful.connect( temporary_text_timed.bind(Messages.SUCCESSFUL, tempTextDuration) )
+ 	
+-	tree_exiting.connect( save_mappings )
++	#This merely sets the mappings on the loaded ConfigFile, it does not write to disk. Making it suitable for repeated use.
++	remap_successful.connect( save_mappings )
+ 	
+ #Creates text on screen that dissapears after some time or when the signal is called
+ func temporary_text_timed(tempText:String, duration:float):

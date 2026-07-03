@@ -1,0 +1,348 @@
+diff --git a/scripts/components/networking/projectilesynchronizercomponent/Projectile2D.gd b/scripts/components/networking/projectilesynchronizercomponent/Projectile2D.gd
+index 50ab9e3..8994c7b 100644
+--- a/scripts/components/networking/projectilesynchronizercomponent/Projectile2D.gd
++++ b/scripts/components/networking/projectilesynchronizercomponent/Projectile2D.gd
+@@ -5,8 +5,10 @@ class_name Projectile2D
+ ## By default projectiles only hit players and enemies.
+ 
+ signal hit_object(object: Node2D)
++signal collisions_exceeded
+ 
+ const NO_SKILL: String = ""
++const NODE_GROUP_BASE: String = "_ProjectileGroup"
+ 
+ @export var projectile_class: String = ""
+ @export var skill_class: String = NO_SKILL
+@@ -23,6 +25,8 @@ const NO_SKILL: String = ""
+ 
+ var target_global_pos: Vector2
+ 
++var creation_time: float = Time.get_unix_time_from_system()
++
+ var moving: bool = false:
+ 	set(val):
+ 		moving = val
+@@ -37,8 +41,6 @@ var misc: Dictionary
+ 
+ var required_misc_keys: Array[String]
+ 
+-var _owner_entity: Node2D
+-
+ 
+ func _init() -> void:
+ 	collision_layer = J.PHYSICS_LAYER_PROJECTILE
+@@ -55,17 +57,12 @@ func _physics_process(_delta: float) -> void:
+ 
+ 
+ func process_collisions(motion: Vector2):
+-	if collision_count > max_collisions:
+-		collision_mask = 0
+-		collision_layer = 0
+-		queue_free.call_deferred()
+-	
+ 	var current_motion: Vector2 = motion
+ 	var space_state: PhysicsDirectSpaceState2D = get_world_2d().direct_space_state
+ 	var shape_params := PhysicsShapeQueryParameters2D.new()
+ 	
+ 	shape_params.collision_mask = collision_mask
+-	shape_params.motion = motion
++	shape_params.motion = current_motion
+ 	shape_params.shape = $CollisionShape2D.shape
+ 	shape_params.transform = transform
+ 	for excepted: PhysicsBody2D in get_collision_exceptions():
+@@ -76,8 +73,14 @@ func process_collisions(motion: Vector2):
+ 		if coll.get("collider") is Node2D:
+ 			hit_object.emit(coll.get("collider"))
+ 			collision_count += 1
++			
++			if collision_count > max_collisions:
++				collision_mask = 0
++				collision_layer = 0
++				queue_free.call_deferred()
++				break
+ 	
+-	position += motion
++	position += current_motion
+ 	
+ 	# The followiong code has been temporarily disabled due to an engine bug (https://github.com/godotengine/godot/issues/76222)
+ 	#while current_motion.length() > 0 and collision_count < max_collisions:
+@@ -105,9 +108,9 @@ func launch(global_pos: Vector2):
+ 	set_launch_target(global_pos)
+ 	set_moving(true)
+ 	
+-	_launch(global_pos)
++	_launch()
+ 
+-func _launch(_global_pos: Vector2):
++func _launch():
+ 	pass
+ 
+ 
+diff --git a/scripts/components/networking/projectilesynchronizercomponent/Projectiles/StationaryProjectile2D.gd b/scripts/components/networking/projectilesynchronizercomponent/Projectiles/StationaryProjectile2D.gd
+index 438c9e0..2b600e8 100644
+--- a/scripts/components/networking/projectilesynchronizercomponent/Projectiles/StationaryProjectile2D.gd
++++ b/scripts/components/networking/projectilesynchronizercomponent/Projectiles/StationaryProjectile2D.gd
+@@ -1,7 +1,7 @@
+ extends Projectile2D
+ 
+-func _launch(global_pos: Vector2):
+-	global_position = global_pos
++func _launch():
++	global_position = target_global_pos
+ 
+ func get_motion():
+ 	return Vector2.ZERO
+diff --git a/scripts/components/networking/projectilesynchronizercomponent/Projectiles/StraightProjectile2D.gd b/scripts/components/networking/projectilesynchronizercomponent/Projectiles/StraightProjectile2D.gd
+index 560c386..fae4a2f 100644
+--- a/scripts/components/networking/projectilesynchronizercomponent/Projectiles/StraightProjectile2D.gd
++++ b/scripts/components/networking/projectilesynchronizercomponent/Projectiles/StraightProjectile2D.gd
+@@ -2,7 +2,7 @@ extends Projectile2D
+ 
+ var global_direction: Vector2
+ 
+-func _launch(global_pos: Vector2):
++func _launch():
+ 	global_direction = global_position.direction_to(target_global_pos)
+ 	global_rotation = global_position.angle_to_point(target_global_pos)
+ 	pass
+diff --git a/scripts/components/networking/projectilesynchronizercomponent/projectilesynchronizercomponent.gd b/scripts/components/networking/projectilesynchronizercomponent/projectilesynchronizercomponent.gd
+index dd9ca99..5d14772 100644
+--- a/scripts/components/networking/projectilesynchronizercomponent/projectilesynchronizercomponent.gd
++++ b/scripts/components/networking/projectilesynchronizercomponent/projectilesynchronizercomponent.gd
+@@ -33,12 +33,26 @@ func _ready():
+ 
+ func launch_projectile(target_global_pos: Vector2, projectile_class: String):
+ 	var projectile: Projectile2D = create_projectile_node(projectile_class)
++	var projectiles_in_group: Array[Node] = get_tree().get_nodes_in_group(
++		get_projectile_group(
++			target_node.get_name(), target_node.get("entity_type"), projectile_class
++			)
++	) 		
++	if projectiles_in_group.size() > projectile.instance_limit:
++		var projectile_arr: Array[Projectile2D] = []
++		projectile_arr.assign(projectiles_in_group)
++		var oldest_projectile: Projectile2D = get_oldest_projectile(projectile_arr)
++		
++		if is_instance_valid(oldest_projectile):
++			oldest_projectile.queue_free()
+ 
+ 	# Do not hit owner
+ 	projectile.add_collision_exception_with(target_node)
+ 
+ 	if projectile.ignore_terrain:
+ 		projectile.remove_collision_mask(J.PHYSICS_LAYER_WORLD)
++	else:
++		projectile.add_collision_mask(J.PHYSICS_LAYER_WORLD)
+ 		
+ 	if projectile.collide_with_other_projectiles:
+ 		projectile.add_collision_mask(J.PHYSICS_LAYER_PROJECTILE)
+@@ -81,20 +95,11 @@ func launch_projectile(target_global_pos: Vector2, projectile_class: String):
+ 	if G.is_server():
+ 		projectile.hit_object.connect(_on_projectile_hit_object.bind(projectile))
+ 		
+-		#Also remove the tracking once this is over
+-		projectile_timer.timeout.connect(remove_track_instance.bind(target_node.get_name(), target_node.get("entity_type"), projectile))
+-		
+-		add_track_instance(target_node.get_name(), target_node.get("entity_type"), projectile)
+-		
+-		
+-		for entity: Node in watcher_component.watchers + [target_node]:
+-			var target_id: int = entity.get("peer_id")
+-			if target_id is int:
+-				sync_launch_to_client(
+-					target_node.peer_id, target_global_pos, projectile_class
+-				)
+-				if Global.debug_mode:
+-					GodotLogger.info("Synched projectile '{0}' with peer '{1}'".format([projectile_class, str(target_node.peer_id)]))
++		for client_id: int in get_clients_in_range():
++			sync_launch_to_client(client_id, target_global_pos, projectile_class)
++			
++			if Global.debug_mode:
++				GodotLogger.info("Synched projectile '{0}' with peer '{1}'".format([projectile_class, str(target_node.peer_id)]))
+ 
+ 
+ func sync_launch_to_client(
+@@ -119,50 +124,64 @@ func launch_to_json(
+ 	return output
+ 
+ 
+-func add_track_instance(entity: String, type: J.ENTITY_TYPE, projectile_node: Projectile2D):
+-	assert(G.is_server())
+-	var max_instances: int = projectile_node.instance_limit
+-	if not instance_tracker.has(entity+str(type)+projectile_node.projectile_class):
+-		instance_tracker[entity+str(type)+projectile_node.projectile_class] = []
+-	
+-	var oldest_projectile: Projectile2D = instance_tracker.get(entity+str(type)+projectile_node.projectile_class, []).front()
+-	# If the limit was exceeded and the oldest entity is not currently being deleted, do so.
+-	if get_track_instance_count(entity, type, projectile_node) > projectile_node.instance_limit:
+-		remove_track_instance(entity, type, oldest_projectile)
+-		
+-	if is_instance_valid(oldest_projectile):
+-		oldest_projectile.queue_free()
+-		
+-		
+-	instance_tracker[entity+str(type)+projectile_node.projectile_class].append(projectile_node)
+-	
++func launch_from_json(data: Dictionary):
++	for key: String in ["target_global_pos", "projectile_class"]:
++		if not key in data:
++			GodotLogger.error("Missing '{0}' key for this projectile sync".format([key]))
+ 
+-func get_track_instance_count(entity: String, type: J.ENTITY_TYPE, projectile_node: Projectile2D) -> int:
+-	assert(G.is_server())
+-	if instance_tracker.get(entity+str(type)+projectile_node.projectile_class, []).is_empty():
+-		GodotLogger.warn("There are no projectiles with key '{0}' being tracked by this component.".format([entity+str(type)+projectile_node.projectile_class]))
+-		
+-	var count: int = instance_tracker.get(entity+str(type)+projectile_node.projectile_class, []).size()
+-	return count
++	launch_projectile(data["target_global_pos"], data["projectile_class"])
++
++
++func sync_collision_to_client(
++	id: int, target_global_pos: Vector2, projectile_class: String
++):
++	var json_data: Dictionary = collision_to_json(target_global_pos, projectile_class)
++	G.sync_rpc.projectilesynchronizer_sync_collision.rpc_id(id, target_node.get_name(), json_data)
+ 
+ 
+-func remove_track_instance(entity: String, type: J.ENTITY_TYPE, projectile_node: Projectile2D):
+-	assert(G.is_server())
+-	instance_tracker.get(entity+str(type)+projectile_node.projectile_class, []).erase(projectile_node)
++func sync_collision_to_client_response(json_data: Dictionary):
++	collision_from_json(json_data)
+ 
+ 
+-func launch_from_json(data: Dictionary):
+-	for key: String in ["target_global_pos", "projectile_class", "misc"]:
++func collision_to_json(
++		target_global_pos: Vector2, projectile_class: String
++) -> Dictionary:
++	var output: Dictionary = {}
++	
++	output["target_global_pos"] = target_global_pos
++	output["projectile_class"] = projectile_class
++	
++	return output
++
++
++func collision_from_json(data: Dictionary):
++	for key: String in ["target_global_pos", "projectile_class"]:
+ 		if not key in data:
+-			GodotLogger.error("Missing '{0}' key for this projectile sync")
++			GodotLogger.error("Missing '{0}' key for this projectile sync".format([key]))
+ 
+-	launch_projectile(data["target_global_pos"], data["projectile_class"])
++	show_collision(data["target_global_pos"], data["projectile_class"])
+ 
+ 
+ func create_projectile_node(projectile_class: String) -> Projectile2D:
+ 	return J.projectile_scenes[projectile_class].duplicate().instantiate()
+ 
+ 
++func show_collision(global_pos: Vector2, projectile_class: String):
++	var projectile_scene: Projectile2D = J.projectile_scenes[projectile_class].duplicate().instantiate()
++	
++	if not projectile_scene.collision_scene is PackedScene:
++		return
++		
++	var projectile_coll_scene_instance: Node = projectile_scene.collision_scene.duplicate().instantiate()
++	G.world.add_child(projectile_coll_scene_instance)
++	projectile_coll_scene_instance.global_position = global_pos
++
++	# Ensure it doesn't linger for TOO long.
++	get_tree().create_timer(MAX_COLLISION_LIFESPAN).timeout.connect(
++		projectile_coll_scene_instance.queue_free
++	)
++
++
+ func _on_projectile_hit_object(object: Node2D, projectile: Projectile2D):
+ 	# Try to get an entity with the object's name, as to confirm it is one.
+ 	var hit_entity: Node2D = G.world.get_entity_by_name(object.get_name())
+@@ -184,16 +203,39 @@ func _on_projectile_hit_object(object: Node2D, projectile: Projectile2D):
+ 		skill_usage_info.position_target_global = hit_entity.global_position
+ 
+ 		skill_used.effect(skill_usage_info)
++		
++	for client_id: int in get_clients_in_range():
++		sync_collision_to_client(client_id, projectile.position, projectile.projectile_class)
++	
++	projectile_hit_object.emit(object)
++	projectile_hit_entity.emit(hit_entity)
+ 
+-	if projectile.collision_scene:
+-		var coll_scene_instance: Node2D = projectile.collision_scene.duplicate().instantiate()
+-		projectile.add_sibling(coll_scene_instance)
+-		coll_scene_instance.global_position = projectile.global_position
+ 
+-		# Ensure it doesn't linger for TOO long.
+-		get_tree().create_timer(MAX_COLLISION_LIFESPAN).timeout.connect(
+-			coll_scene_instance.queue_free
+-		)
++func get_clients_in_range() -> Array[int]:
++	var target_ids: Array[int] = []
++	for entity: Node in watcher_component.watchers + [target_node]:
++		var target_id: int = entity.get("peer_id")
++		if target_id is int:
++			target_ids.append(target_id)
++	
++	return target_ids
+ 
+-	projectile_hit_object.emit(object)
+-	projectile_hit_entity.emit(hit_entity)
++
++func get_projectile_group(entity: String, type: J.ENTITY_TYPE, projectile_class: String) -> String:
++	return Projectile2D.NODE_GROUP_BASE + entity + str(type) + projectile_class
++
++
++func get_projectile_count(group: String) -> int:
++	return get_tree().get_nodes_in_group(group).size()
++
++
++func get_oldest_projectile(projectiles: Array[Projectile2D]) -> Projectile2D:
++	if projectiles.is_empty():
++		return null
++		
++	var oldest_projectile: Projectile2D = projectiles.back()
++	for projectile: Projectile2D in projectiles:
++		if projectile.creation_time < oldest_projectile.creation_time:
++			oldest_projectile = projectile
++	
++	return oldest_projectile
+diff --git a/scripts/components/player/skillcomponent/Skills/SetTrap.tres b/scripts/components/player/skillcomponent/Skills/SetTrap.tres
+index 0c5e9ad..90c4f29 100644
+--- a/scripts/components/player/skillcomponent/Skills/SetTrap.tres
++++ b/scripts/components/player/skillcomponent/Skills/SetTrap.tres
+@@ -17,5 +17,5 @@ cast_on_select = false
+ hitbox_shape = [Vector2(50, 0)]
+ hitbox_hits_user = false
+ hitbox_rotate_shape = false
+-hit_range = 150.0
++hit_range = 250.0
+ description = "Places down a harmful trap."
+diff --git a/scripts/network/rpcs/gameserver/sync.gd b/scripts/network/rpcs/gameserver/sync.gd
+index 976cdeb..68c2b3f 100644
+--- a/scripts/network/rpcs/gameserver/sync.gd
++++ b/scripts/network/rpcs/gameserver/sync.gd
+@@ -638,3 +638,22 @@ func projectilesynchronizer_sync_launch(n: String, d: Dictionary):
+ 			. component_list[ProjectileSynchronizerComponent.COMPONENT_NAME]
+ 			. sync_launch_to_client_response(d)
+ 		)
++
++
++@rpc("call_remote", "authority", "reliable")
++func projectilesynchronizer_sync_collision(n: String, d: Dictionary):
++	assert(not G.is_server(), "This method is only intended for client use")
++	var entity: Node = G.world.get_entity_by_name(n)
++
++	if entity == null:
++		return
++
++	if entity.get("component_list") == null:
++		return
++
++	if entity.component_list.has(ProjectileSynchronizerComponent.COMPONENT_NAME):
++		(
++			entity
++			. component_list[ProjectileSynchronizerComponent.COMPONENT_NAME]
++			. sync_collision_to_client_response(d)
++		)

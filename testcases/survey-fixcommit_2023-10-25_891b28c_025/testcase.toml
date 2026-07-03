@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-10-25_891b28c_025"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "529a5b91e4439432711ea58f8b234d1246935418"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: data/tileset/atlas.tres, scenes/enemies/Sheep/Sheep.tscn, scenes/terrain/areas/basecamp/BaseCamp.tscn, scenes/terrain/areas/harbor/harbor.tscn, scenes/terrain/areas/wakingforest/WakingForest.tscn, scenes/world/World.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-10-25_891b28c_025"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

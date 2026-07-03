@@ -1,0 +1,112 @@
+diff --git a/source/match/Match.gd b/source/match/Match.gd
+index 3091388..19b4085 100644
+--- a/source/match/Match.gd
++++ b/source/match/Match.gd
+@@ -130,6 +130,7 @@ func _setup_player_units():
+ 				player, map.find_child("SpawnPoints").get_child(player_index).global_transform
+ 			)
+ 
++
+ func _spawn_player_units(player, spawn_transform):
+ 	_setup_and_spawn_unit(CommandCenter.instantiate(), spawn_transform, player, false)
+ 	_setup_and_spawn_unit(
+@@ -149,7 +150,7 @@ func _setup_and_spawn_unit(unit, a_transform, player, mark_structure_under_const
+ 		unit.mark_as_under_construction()
+ 	_setup_unit_groups(unit, player)
+ 	player.add_child(unit)
+-	if unit is Structure  and mark_structure_under_construction:
++	if unit is Structure and mark_structure_under_construction:
+ 		navigation.update_terrain()
+ 	MatchSignals.unit_spawned.emit(unit)
+ 
+@@ -208,9 +209,11 @@ func _conceal_player_units(player):
+ 	):
+ 		unit.remove_from_group("revealed_units")
+ 
++
+ func _on_unit_died(unit):
+ 	if unit is Structure:
+ 		navigation.update_terrain()
+-		
++
++
+ func _on_resource_depleted():
+ 	navigation.update_terrain()
+diff --git a/source/match/MatchSignals.gd b/source/match/MatchSignals.gd
+index fcf6672..580c62d 100644
+--- a/source/match/MatchSignals.gd
++++ b/source/match/MatchSignals.gd
+@@ -12,4 +12,4 @@ signal unit_targeted(unit)
+ signal unit_selected(unit)
+ signal unit_deselected(unit)
+ signal unit_died(unit)
+-signal resource_depleted()
++signal resource_depleted
+diff --git a/source/match/Navigation.gd b/source/match/Navigation.gd
+index 76e6c65..1968de1 100644
+--- a/source/match/Navigation.gd
++++ b/source/match/Navigation.gd
+@@ -31,10 +31,12 @@ func rebake(map):
+ 		obstacle.add_to_group("terrain_navigation_input")
+ 	_clear_static_obstacles()
+ 	_setup_static_obstacles()
+-	
++
++
+ func update_terrain():
+ 	terrain.rebake(true)
+ 
++
+ func _clear_static_obstacles():
+ 	for static_obstacle in _static_obstacles:
+ 		NavigationServer3D.free_rid(static_obstacle)
+diff --git a/source/match/TerrainNavigation.gd b/source/match/TerrainNavigation.gd
+index c78a484..fe65e97 100644
+--- a/source/match/TerrainNavigation.gd
++++ b/source/match/TerrainNavigation.gd
+@@ -16,7 +16,7 @@ func _ready():
+ 	NavigationServer3D.map_force_update(navigation_map_rid)
+ 
+ 
+-func rebake(on_thread:bool):
++func rebake(on_thread: bool):
+ 	_navigation_region.bake_navigation_mesh(on_thread)
+ 
+ 
+diff --git a/source/match/utils/UnitPlacementUtils.gd b/source/match/utils/UnitPlacementUtils.gd
+index b498815..cd84736 100644
+--- a/source/match/utils/UnitPlacementUtils.gd
++++ b/source/match/utils/UnitPlacementUtils.gd
+@@ -1,6 +1,6 @@
+ enum { VALID, COLLIDES_WITH_AGENT, NOT_NAVIGABLE }
+ 
+-const epsilon = 0.05 # Custom approximation variable check for terrain
++const EPSILON = 0.05  # Custom approximation variable check for terrain
+ 
+ 
+ static func find_valid_position_radially(
+@@ -81,14 +81,17 @@ static func validate_agent_placement_position(position, radius, existing_units,
+ 				position + Vector3(x, 0, z).normalized() * radius
+ 			)
+ 	for point_expected_to_be_navigable in points_expected_to_be_navigable:
+-		if not (point_expected_to_be_navigable * Vector3(1, 0, 1)).distance_to(
+-			(
+-				NavigationServer3D.map_get_closest_point(
+-					navigation_map_rid, point_expected_to_be_navigable
++		if not (
++			(point_expected_to_be_navigable * Vector3(1, 0, 1)).distance_to(
++				(
++					NavigationServer3D.map_get_closest_point(
++						navigation_map_rid, point_expected_to_be_navigable
++					)
++					* Vector3(1, 0, 1)
+ 				)
+-				* Vector3(1, 0, 1)
+-			 )
+-		) < epsilon :
++			)
++			< EPSILON
++		):
+ 			return NOT_NAVIGABLE
+ 	return VALID
+ 

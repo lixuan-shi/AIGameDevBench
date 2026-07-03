@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-12-13_28a8332_067"
+category = "precise_edit"
+source_kind = "git"
+baseline_ref = "7c3fd0b20b0ba3e6310a219ce087161b216be353"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/ui/dialogue/DialogueResource.gd, scenes/ui/dialogue/DialogueResourceSnippet.gd, scenes/ui/dialogue/DialogueSystem.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-12-13_28a8332_067"
+bad_case_type = "C3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

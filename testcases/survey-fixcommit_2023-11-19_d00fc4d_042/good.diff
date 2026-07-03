@@ -1,0 +1,241 @@
+diff --git a/source/match/FogOfWar.gd b/source/match/FogOfWar.gd
+index 8c78538..389c857 100644
+--- a/source/match/FogOfWar.gd
++++ b/source/match/FogOfWar.gd
+@@ -31,7 +31,7 @@ func _physics_process(_delta):
+ 	var units_synced = {}
+ 	var units_to_sync = get_tree().get_nodes_in_group("revealed_units")
+ 	for unit in units_to_sync:
+-		if not unit.visible:
++		if not unit.is_revealing():
+ 			continue
+ 		units_synced[unit] = 1
+ 		if not _unit_is_mapped(unit):
+diff --git a/source/match/handlers/UnitVisibilityHandler.gd b/source/match/handlers/UnitVisibilityHandler.gd
+index a0abbff..10a1793 100644
+--- a/source/match/handlers/UnitVisibilityHandler.gd
++++ b/source/match/handlers/UnitVisibilityHandler.gd
+@@ -39,7 +39,8 @@ func _recalculate_unit_visibility(unit, revealed_units = null):
+ 		)
+ 	for revealed_unit in revealed_units:
+ 		if (
+-			revealed_unit.sight_range != null
++			revealed_unit.is_revealing()
++			and revealed_unit.sight_range != null
+ 			and (
+ 				(revealed_unit.global_position * Vector3(1, 0, 1)).distance_to(
+ 					unit.global_position * Vector3(1, 0, 1)
+@@ -89,7 +90,8 @@ func _recalcuate_orphaned_dummy_existence(orphaned_dummy, revealed_units = null)
+ 		)
+ 	for revealed_unit in revealed_units:
+ 		if (
+-			revealed_unit.sight_range != null
++			revealed_unit.is_revealing()
++			and revealed_unit.sight_range != null
+ 			and (
+ 				(revealed_unit.global_position * Vector3(1, 0, 1)).distance_to(
+ 					orphaned_dummy.global_position * Vector3(1, 0, 1)
+diff --git a/source/match/units/Structure.gd b/source/match/units/Structure.gd
+index 80500cd..db4ff3a 100644
+--- a/source/match/units/Structure.gd
++++ b/source/match/units/Structure.gd
+@@ -13,6 +13,10 @@ var _construction_progress = 1.0
+ 		pass
+ 
+ 
++func is_revealing():
++	return super() and is_constructed()
++
++
+ func mark_as_under_construction():
+ 	assert(not is_under_construction(), "structure already under construction")
+ 	_construction_progress = 0.0
+diff --git a/source/match/units/Unit.gd b/source/match/units/Unit.gd
+index 65a6344..83cf483 100644
+--- a/source/match/units/Unit.gd
++++ b/source/match/units/Unit.gd
+@@ -45,6 +45,10 @@ func _ready():
+ 	_setup_default_properties_from_constants()
+ 
+ 
++func is_revealing():
++	return is_in_group("revealed_units") and visible
++
++
+ func _ignore(_value):
+ 	pass
+ 
+diff --git a/source/match/units/actions/AttackingWhileInRange.gd b/source/match/units/actions/AttackingWhileInRange.gd
+index 991f77f..d940f43 100644
+--- a/source/match/units/actions/AttackingWhileInRange.gd
++++ b/source/match/units/actions/AttackingWhileInRange.gd
+@@ -66,17 +66,16 @@ func _hit_target():
+ 	_unit.set_meta(
+ 		"next_attack_availability_time", Time.get_ticks_msec() + int(_unit.attack_interval * 1000.0)
+ 	)
+-	if _unit.visible:
+-		var projectile = (
+-			load(
+-				Constants.Match.Units.PROJECTILES[_unit.get_script().resource_path.replace(
+-					".gd", ".tscn"
+-				)]
+-			)
+-			. instantiate()
++	var projectile = (
++		load(
++			Constants.Match.Units.PROJECTILES[_unit.get_script().resource_path.replace(
++				".gd", ".tscn"
++			)]
+ 		)
+-		projectile.target_unit = _target_unit
+-		_unit.add_child(projectile)
++		. instantiate()
++	)
++	projectile.target_unit = _target_unit
++	_unit.add_child(projectile)
+ 	_schedule_hit()
+ 
+ 
+diff --git a/source/match/units/projectiles/CannonShell.gd b/source/match/units/projectiles/CannonShell.gd
+index 9e76e9d..21ca126 100644
+--- a/source/match/units/projectiles/CannonShell.gd
++++ b/source/match/units/projectiles/CannonShell.gd
+@@ -9,6 +9,7 @@ var target_unit = null
+ 
+ func _ready():
+ 	assert(target_unit != null, "target unit was not provided")
++	_unit_particles.visible = _unit.visible
+ 	_setup_unit_particles()
+ 	_setup_timer()
+ 	target_unit.hp -= _unit.attack_damage
+diff --git a/source/match/units/projectiles/Rocket.gd b/source/match/units/projectiles/Rocket.gd
+index 08a7334..24dd174 100644
+--- a/source/match/units/projectiles/Rocket.gd
++++ b/source/match/units/projectiles/Rocket.gd
+@@ -3,6 +3,7 @@ extends Node3D
+ var target_unit = null
+ 
+ @onready var _unit = get_parent()
++@onready var _visuals = find_child("Visuals")
+ @onready var _path = find_child("Path3D")
+ @onready var _animation_player = find_child("AnimationPlayer")
+ @onready var _rocket = find_child("MeshInstance3D")
+@@ -11,6 +12,7 @@ var target_unit = null
+ 
+ func _ready():
+ 	assert(target_unit != null, "target unit was not provided")
++	_visuals.visible = _unit.visible
+ 	_rocket.hide()
+ 	_particles.hide()
+ 	target_unit.tree_exited.connect(queue_free)
+diff --git a/source/match/units/projectiles/Rocket.tscn b/source/match/units/projectiles/Rocket.tscn
+index d109c8d..af7c8a4 100644
+--- a/source/match/units/projectiles/Rocket.tscn
++++ b/source/match/units/projectiles/Rocket.tscn
+@@ -40,7 +40,7 @@ length = 0.001
+ tracks/0/type = "value"
+ tracks/0/imported = false
+ tracks/0/enabled = true
+-tracks/0/path = NodePath("DetachTransform/Path3D/PathFollow3D:progress_ratio")
++tracks/0/path = NodePath("DetachTransform/Visuals/Path3D/PathFollow3D:progress_ratio")
+ tracks/0/interp = 1
+ tracks/0/loop_wrap = true
+ tracks/0/keys = {
+@@ -52,7 +52,7 @@ tracks/0/keys = {
+ tracks/1/type = "value"
+ tracks/1/imported = false
+ tracks/1/enabled = true
+-tracks/1/path = NodePath("DetachTransform/Path3D/PathFollow3D/Node3D/MeshInstance3D:visible")
++tracks/1/path = NodePath("DetachTransform/Visuals/Path3D/PathFollow3D/Node3D/MeshInstance3D:visible")
+ tracks/1/interp = 1
+ tracks/1/loop_wrap = true
+ tracks/1/keys = {
+@@ -64,7 +64,7 @@ tracks/1/keys = {
+ tracks/2/type = "value"
+ tracks/2/imported = false
+ tracks/2/enabled = true
+-tracks/2/path = NodePath("DetachTransform/GPUParticles3D:emitting")
++tracks/2/path = NodePath("DetachTransform/Visuals/GPUParticles3D:emitting")
+ tracks/2/interp = 1
+ tracks/2/loop_wrap = true
+ tracks/2/keys = {
+@@ -76,7 +76,7 @@ tracks/2/keys = {
+ tracks/3/type = "value"
+ tracks/3/imported = false
+ tracks/3/enabled = true
+-tracks/3/path = NodePath("DetachTransform/GPUParticles3D:visible")
++tracks/3/path = NodePath("DetachTransform/Visuals/GPUParticles3D:visible")
+ tracks/3/interp = 1
+ tracks/3/loop_wrap = true
+ tracks/3/keys = {
+@@ -92,7 +92,7 @@ length = 1.5
+ tracks/0/type = "value"
+ tracks/0/imported = false
+ tracks/0/enabled = true
+-tracks/0/path = NodePath("DetachTransform/Path3D/PathFollow3D:progress_ratio")
++tracks/0/path = NodePath("DetachTransform/Visuals/Path3D/PathFollow3D:progress_ratio")
+ tracks/0/interp = 1
+ tracks/0/loop_wrap = true
+ tracks/0/keys = {
+@@ -118,7 +118,7 @@ tracks/1/keys = {
+ tracks/2/type = "value"
+ tracks/2/imported = false
+ tracks/2/enabled = true
+-tracks/2/path = NodePath("DetachTransform/Path3D/PathFollow3D/Node3D/MeshInstance3D:visible")
++tracks/2/path = NodePath("DetachTransform/Visuals/Path3D/PathFollow3D/Node3D/MeshInstance3D:visible")
+ tracks/2/interp = 1
+ tracks/2/loop_wrap = true
+ tracks/2/keys = {
+@@ -130,7 +130,7 @@ tracks/2/keys = {
+ tracks/3/type = "value"
+ tracks/3/imported = false
+ tracks/3/enabled = true
+-tracks/3/path = NodePath("DetachTransform/GPUParticles3D:emitting")
++tracks/3/path = NodePath("DetachTransform/Visuals/GPUParticles3D:emitting")
+ tracks/3/interp = 1
+ tracks/3/loop_wrap = true
+ tracks/3/keys = {
+@@ -142,7 +142,7 @@ tracks/3/keys = {
+ tracks/4/type = "value"
+ tracks/4/imported = false
+ tracks/4/enabled = true
+-tracks/4/path = NodePath("DetachTransform/GPUParticles3D:visible")
++tracks/4/path = NodePath("DetachTransform/Visuals/GPUParticles3D:visible")
+ tracks/4/interp = 1
+ tracks/4/loop_wrap = true
+ tracks/4/keys = {
+@@ -163,26 +163,28 @@ script = ExtResource("1_dy0dc")
+ 
+ [node name="DetachTransform" type="Node" parent="."]
+ 
+-[node name="Path3D" type="Path3D" parent="DetachTransform"]
++[node name="Visuals" type="Node3D" parent="DetachTransform"]
++
++[node name="Path3D" type="Path3D" parent="DetachTransform/Visuals"]
+ curve = SubResource("Curve3D_n2fv6")
+ 
+-[node name="PathFollow3D" type="PathFollow3D" parent="DetachTransform/Path3D"]
++[node name="PathFollow3D" type="PathFollow3D" parent="DetachTransform/Visuals/Path3D"]
+ transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, 0, 0, 0)
+ 
+-[node name="Node3D" type="Node3D" parent="DetachTransform/Path3D/PathFollow3D"]
++[node name="Node3D" type="Node3D" parent="DetachTransform/Visuals/Path3D/PathFollow3D"]
+ 
+-[node name="MeshInstance3D" type="MeshInstance3D" parent="DetachTransform/Path3D/PathFollow3D/Node3D"]
++[node name="MeshInstance3D" type="MeshInstance3D" parent="DetachTransform/Visuals/Path3D/PathFollow3D/Node3D"]
+ transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0)
+ material_override = SubResource("StandardMaterial3D_45jbp")
+ mesh = SubResource("CapsuleMesh_vlm3w")
+ 
+-[node name="RemoteTransform3D" type="RemoteTransform3D" parent="DetachTransform/Path3D/PathFollow3D/Node3D"]
++[node name="RemoteTransform3D" type="RemoteTransform3D" parent="DetachTransform/Visuals/Path3D/PathFollow3D/Node3D"]
+ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.129522)
+ remote_path = NodePath("../../../../GPUParticles3D")
+ update_rotation = false
+ update_scale = false
+ 
+-[node name="GPUParticles3D" type="GPUParticles3D" parent="DetachTransform"]
++[node name="GPUParticles3D" type="GPUParticles3D" parent="DetachTransform/Visuals"]
+ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0915859, 0, -0.0915859)
+ material_override = SubResource("StandardMaterial3D_xyj84")
+ emitting = false

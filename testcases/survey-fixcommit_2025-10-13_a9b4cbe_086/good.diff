@@ -1,0 +1,13 @@
+diff --git a/Scripts/Classes/Entities/Player.gd b/Scripts/Classes/Entities/Player.gd
+index 73a3d93..5f225ca 100644
+--- a/Scripts/Classes/Entities/Player.gd
++++ b/Scripts/Classes/Entities/Player.gd
+@@ -170,7 +170,7 @@ const ANIMATION_FALLBACKS := {
+ 	"SwimBump": "Bump",
+ 	"DieFreeze": "Die",
+ 	"StarJump": "Jump",
+-	"StarFall": "StarJump"
++	"StarFall": "JumpFall"
+ }
+ 
+ var palette_transform := true

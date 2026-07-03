@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-09-20_b18e676_018"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "4c1ad0a5d5d0ec529a680172ff5b91aac11f8b20"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Levels/SMBS/CoinHeavens/2.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-09-20_b18e676_018"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

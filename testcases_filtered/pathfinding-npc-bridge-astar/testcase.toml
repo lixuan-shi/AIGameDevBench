@@ -1,0 +1,22 @@
+[testcase]
+id = "pathfinding-npc-bridge-astar"
+category = "behavior_logic"
+source_kind = "folder"
+source_repo = "GameDevFeatsShowcase:NPCAI/Pathfinding"
+task = """
+Fill in `scripts/npc_actor.gd` so the NPC actor autonomously follows the generated bridge path graph. The main scene already creates two platforms, two bridges, graph_points, graph_edges, and route_target_ids, then calls `BridgePathfindingNPC.configure_pathfinding(graph_points, graph_edges, route_target_ids)`.
+
+Implement the NPC logic in `npc_actor.gd` so it builds an AStar3D graph from the provided points and edges, follows route targets in order, moves with CharacterBody3D velocity plus move_and_slide(), and advances through waypoints until it crosses the north bridge to the right platform, moves to the right-side south target, and crosses the south bridge back toward the left platform.
+"""
+
+[verifier]
+type = "godot_scene_assert"
+entry = "verifier_scene.tscn"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+author = "Codex"
+created = "2026-06-29"
+notes = "Baseline has a non-moving npc_actor.gd stub; golden fix only fills npc_actor pathfinding logic. Noop should score 0, fix.diff should score 1."

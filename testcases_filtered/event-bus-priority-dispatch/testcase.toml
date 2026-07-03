@@ -1,0 +1,24 @@
+[testcase]
+id = "event-bus-priority-dispatch"
+category = "behavior_logic"
+source_kind = "folder"
+source_repo = "authored:representative-set"
+task = """
+Implement the priority event bus in res://scripts/event_bus.gd.
+- subscribe(id, priority): register a subscriber. Higher priority is dispatched FIRST; ties dispatch in subscription (insertion) order. Re-subscribing an existing id updates its priority.
+- unsubscribe(id): remove a subscriber so it is never dispatched again.
+- publish(): clear dispatch_log, then append each current subscriber's id to dispatch_log in dispatch order (priority descending, ties by insertion order).
+- publish_removing(remove_id): unsubscribe remove_id BEFORE dispatching, then dispatch like publish(); remove_id must not appear and the remaining order must be unaffected.
+"""
+
+[verifier]
+type = "godot_scene_assert"
+entry = "verifier_scene.tscn"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+author = "Claude"
+created = "2026-06-30"
+notes = "behavior_logic/brutal (ordering + mutation). Traps: dispatch by priority not insertion; stable tie order; real removal; re-subscribe updates priority (not duplicate); safe removal before dispatch. Baseline stubs -> empty log -> noop=0. Each rule is a checkpoint; naive impls (insertion order, duplicate on resubscribe) score partial. Golden -> 1.0."

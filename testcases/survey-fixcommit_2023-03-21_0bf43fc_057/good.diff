@@ -1,0 +1,13 @@
+diff --git a/game/Scripts/Game/3D/Room.gd b/game/Scripts/Game/3D/Room.gd
+index 5d309f7..eac06c5 100644
+--- a/game/Scripts/Game/3D/Room.gd
++++ b/game/Scripts/Game/3D/Room.gd
+@@ -506,7 +506,7 @@ remotesync func flip_table(camera_basis: Basis) -> void:
+ 	# get blocked.
+ 	for piece in _pieces.get_children():
+ 		if piece is Piece:
+-			piece.mode = RigidBody.MODE_RIGID
++			piece.unlock()
+ 
+ 	_table_body.mode = RigidBody.MODE_RIGID
+ 

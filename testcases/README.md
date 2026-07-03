@@ -6,6 +6,25 @@
 > `_templates/` 目录里的内容**不是** testcase: 没有顶层 `testcase.toml`, 不会被发现,
 > 只是给新建 testcase 用的脚手架, 例如原 `bench-0001-attack-buff` 模板。
 
+## 两套集合
+
+仓库根下有两个目录, 服务不同目的:
+
+| 目录 | 规模 | 用途 |
+|---|---|---|
+| `testcases/`（本目录） | ~519 个, 完整挖掘库 | 广度评测、统计显著性、研究真实修复分布 |
+| `testcases_filtered/` | **30 个, 推荐评测集** | 快速冒烟 / 演示 / 开发迭代 / 验证器全链路自检 |
+
+**`testcases_filtered/`（30 个精选）**: 从完整库人为再平衡挑出、oracle 最鲁棒的一组。全部自包含 folder 型,
+5 个 category 全覆盖(behavior_logic ×19 / precise_edit ×4 / intent_translation ×3 / architecture ×2 / visual_audio ×2),
+5 种验证器全覆盖(godot_scene_assert ×21 / py_config ×3 / py_gdscript_ast ×2 / py_tscn_diff ×2 / visual_static ×2),
+全部通过 `aigdbench audit`(noop 0 / golden 1) 且带分级陷阱。选取标准与逐类代表性例子见
+[`../docs/filtered_dataset_report.md`](../docs/filtered_dataset_report.md); 完整库分布见
+[`../docs/full_dataset_report.md`](../docs/full_dataset_report.md)。
+
+本目录 `testcases/` 由四部分构成: ①手工代表集(trap-driven) ②hard/brutal 加难集 ③真实 AI 失败挖掘集
+④`survey-*` / `survey-fixcommit` 自动挖掘集(~485 个, git 型, `survey_bad_case` 验证)。下方索引逐一列出。
+
 ## 当前 testcase 索引
 
 | id | category | verifier | source_kind | 备注 |

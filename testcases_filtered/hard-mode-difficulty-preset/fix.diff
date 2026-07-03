@@ -1,0 +1,22 @@
+diff --git a/config/enemy_stats.json b/config/enemy_stats.json
+index dbcdfcc..c363ae4 100644
+--- a/config/enemy_stats.json
++++ b/config/enemy_stats.json
+@@ -1,5 +1,5 @@
+ {
+   "difficulty": "hard",
+-  "enemy_health": 100,
++  "enemy_health": 150,
+   "enemy_damage": 10
+ }
+diff --git a/config/spawn_config.json b/config/spawn_config.json
+index 6073a23..e70c0ec 100644
+--- a/config/spawn_config.json
++++ b/config/spawn_config.json
+@@ -1,5 +1,5 @@
+ {
+   "difficulty": "hard",
+-  "spawn_interval": 4.0,
++  "spawn_interval": 2.0,
+   "max_concurrent": 6
+ }

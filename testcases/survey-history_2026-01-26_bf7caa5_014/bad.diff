@@ -1,0 +1,215 @@
+diff --git a/src/combat/battlers/battler.gd b/src/combat/battlers/battler.gd
+index 751cd3e..194d1e2 100644
+--- a/src/combat/battlers/battler.gd
++++ b/src/combat/battlers/battler.gd
+@@ -137,8 +137,8 @@ var is_selectable: bool = true:
+ var cached_action: BattlerAction = null:
+ 	set(value):
+ 		cached_action = value
+-		if cached_action != null:
+-			action_cached.emit()
++		action_cached.emit()
++		print("Cache action")
+ 
+ 
+ static func sort(a: Battler, b: Battler) -> bool:
+diff --git a/src/combat/combat.gd b/src/combat/combat.gd
+index 730a185..6c305fb 100644
+--- a/src/combat/combat.gd
++++ b/src/combat/combat.gd
+@@ -88,6 +88,7 @@ func setup(arena: PackedScene) -> void:
+ 	next_round.call_deferred()
+ 
+ 
++#TODO: Make this cleanly wrap up the combat state. CAll elsewhere.
+ ## Ends combat immediately and gracefully, freeing Combat-related scenes and handing over logic
+ ## via the [signal CombatEvents.combat_finished] signal.
+ func shutdown() -> void:
+@@ -126,6 +127,8 @@ func _select_next_player_action() -> void:
+ 	# taking action!
+ 	if remaining_battlers.is_empty():
+ 		print("No remaining actions, move to execution.")
++		# De-select the last Battler that was receiving orders.
++		CombatEvents.player_battler_selected.emit(null)
+ 		_play_next_action.call_deferred()
+ 		return
+ 	
+@@ -138,12 +141,23 @@ func _select_next_player_action() -> void:
+ 	# to its rest position before moving on to the next battler, hence the await call below.
+ 	next_player_battler.action_cached.connect(
+ 		(func _on_selected_battler_action_cached(battler: Battler) -> void:
+-			await battler.anim.move_to_rest(0.2)
++			# Check to see if the player cancelled action selection (pressed "back" from the
++			# UIActionMenu). If so, the player wishes to reissue orders for the previous Battler.
++			# If there IS a previous Battler, remove its cached action.
++			if battler.cached_action == null:
++				print("Go to previous Battler")
++				var battlers: = _battler_roster.get_player_battlers()
++				var index: = battlers.find(battler)
++				if index > 0:
++					var previous_battler: Battler = battlers[index-1]
++					previous_battler.cached_action = null
++			
++			await battler.anim.move_to_rest(0.15)
+ 			_select_next_player_action()
+ 			).bind(next_player_battler), 
+ 		CONNECT_DEFERRED | CONNECT_ONE_SHOT)
+ 	
+-	await next_player_battler.anim.move_forward(0.2)
++	await next_player_battler.anim.move_forward(0.15)
+ 	
+ 	# Activate the player UI elements for the currently selected battler.
+ 	CombatEvents.player_battler_selected.emit(next_player_battler)
+diff --git a/src/combat/combat_events.gd b/src/combat/combat_events.gd
+index 718a0f6..2f93bd4 100644
+--- a/src/combat/combat_events.gd
++++ b/src/combat/combat_events.gd
+@@ -15,8 +15,3 @@ signal combat_finished(is_player_victory: bool)
+ ## Emitted whenever a player battler is selected, prompting the player to choose an action.
+ @warning_ignore("unused_signal")
+ signal player_battler_selected(battler: Battler)
+-
+-## Emitted whenever a battler has selected an action to perform once it is
+-## [signal Battler.ready_to_act]
+-#@warning_ignore("unused_signal")
+-#signal action_selected(action: BattlerAction, source: Battler, targets: Array[Battler])
+diff --git a/src/combat/ui/battler_entry/ui_player_battler_list.gd b/src/combat/ui/battler_entry/ui_player_battler_list.gd
+index 44367cd..2824b41 100644
+--- a/src/combat/ui/battler_entry/ui_player_battler_list.gd
++++ b/src/combat/ui/battler_entry/ui_player_battler_list.gd
+@@ -10,8 +10,6 @@ class_name UIPlayerBattlerList extends VBoxContainer
+ @export var battlers: Array[Battler]:
+ 	set(value):
+ 		battlers = value
+-		print("Battlers for list: ", battlers)
+-		
+ 		if not is_inside_tree():
+ 			await ready
+ 		
+diff --git a/src/combat/ui/ui_combat.gd b/src/combat/ui/ui_combat.gd
+index 91b9325..0bba1bc 100644
+--- a/src/combat/ui/ui_combat.gd
++++ b/src/combat/ui/ui_combat.gd
+@@ -62,8 +62,9 @@ func setup(battler_data: BattlerRoster) -> void:
+ 	# hidden.
+ 	CombatEvents.player_battler_selected.connect(
+ 		(func _on_player_battler_selected(battler: Battler) -> void:
+-			print("Looking for actions: ", battler.actions)
+-			choose_action(battler)
++			if battler != null:
++				print("Looking for actions: ", battler.actions)
++				choose_action(battler)
+ 			)
+ 			
+ 			# Player menu. choose actions(action_list)
+@@ -109,7 +110,12 @@ func choose_action(battler: Battler) -> void:
+ 	action_menu.action_selected.connect(
+ 		(func _on_action_selected(action: BattlerAction, selected_battler: Battler) -> void:
+ 			if action != null:
+-				choose_targets(selected_battler, action)
++				choose_targets.call_deferred(selected_battler, action)
++			
++			# Cache a null action, indicating that the player refused selection and is looking to
++			# choose actions for the previous Battler.
++			else:
++				selected_battler.cached_action = null
+ 
+ 			## Whether or not the player selected an action, we'll want to hide the menu.
+ 			action_menu.queue_free()
+@@ -128,20 +134,16 @@ func choose_targets(battler: Battler, action: BattlerAction) -> void:
+ 	# If targets were chosen, we'll assign the targets to the action and, finally, cache the action
+ 	# on the selected Battler.
+ 	# If the user pressed "back", we'll go back to the choose action state.
++	print("Choosing targets!")
+ 	cursor.targets_selected.connect(
+ 		(func _on_targets_selected(targets: Array[Battler], selected_action: BattlerAction,
+ 				selected_battler: Battler) -> void:
++			print("Found targets: ", targets)
+ 			if not targets.is_empty():
++				_action_description.description = ""
++				
+ 				selected_action.cached_targets = targets
+ 				selected_battler.cached_action = selected_action
+-				
+-				# At this point, the player should have selected a valid action and assigned it
+-				# targets, so the action may be cached for whenever the battler is ready.
+-				#CombatEvents.action_selected.emit(_selected_action, _selected_battler, targets)
+-				#
+-				## The player has properly queued an action. Return the UI to the state where the
+-				## player will pick a player Battler.
+-				#CombatEvents.player_battler_selected.emit(null)
+ 			
+ 			else:
+ 				choose_action(selected_battler)
+diff --git a/src/combat/ui/ui_combat.tscn b/src/combat/ui/ui_combat.tscn
+index 7aeae93..b3c931d 100644
+--- a/src/combat/ui/ui_combat.tscn
++++ b/src/combat/ui/ui_combat.tscn
+@@ -1,4 +1,4 @@
+-[gd_scene load_steps=15 format=3 uid="uid://ic0pyjko2i46"]
++[gd_scene load_steps=14 format=3 uid="uid://ic0pyjko2i46"]
+ 
+ [ext_resource type="Script" uid="uid://ch0df68krwxr1" path="res://src/combat/ui/effect_labels/ui_effect_label_builder.gd" id="1_0i21q"]
+ [ext_resource type="PackedScene" uid="uid://bo6hj2mg02uef" path="res://src/combat/ui/effect_labels/ui_damage_label.tscn" id="2_0cqaj"]
+@@ -7,7 +7,6 @@
+ [ext_resource type="PackedScene" uid="uid://dxyw5j7wr56hl" path="res://src/combat/ui/effect_labels/ui_missed_label.tscn" id="3_36thh"]
+ [ext_resource type="Script" uid="uid://smjuikb83bkc" path="res://src/combat/ui/ui_combat.gd" id="5_lubpu"]
+ [ext_resource type="Script" uid="uid://2bkem6rl5jl6" path="res://src/combat/ui/battler_entry/ui_player_battler_list.gd" id="6_nv24v"]
+-[ext_resource type="Script" uid="uid://ckkb078x0hj2l" path="res://src/combat/ui/ui_player_menus.gd" id="7_0i21q"]
+ [ext_resource type="PackedScene" uid="uid://b35omff3fdb2g" path="res://src/combat/ui/battler_entry/ui_battler_entry.tscn" id="9_yx5l6"]
+ [ext_resource type="PackedScene" uid="uid://cf6hixtledkyy" path="res://src/combat/ui/action_menu/ui_action_description.tscn" id="10_farde"]
+ 
+@@ -139,7 +138,6 @@ anchor_right = 1.0
+ anchor_bottom = 1.0
+ grow_horizontal = 2
+ grow_vertical = 2
+-script = ExtResource("7_0i21q")
+ metadata/_edit_group_ = true
+ metadata/_edit_lock_ = true
+ 
+diff --git a/src/combat/ui/ui_player_menus.gd b/src/combat/ui/ui_player_menus.gd
+deleted file mode 100644
+index 4ec4e6b..0000000
+--- a/src/combat/ui/ui_player_menus.gd
++++ /dev/null
+@@ -1,33 +0,0 @@
+-# Choosing an action occurs in two steps:
+-# 1) The player selects an action from a list.
+-# 2) The player then selects a target from a list of valid targets.
+-# The player may, at any time, opt to "go back" in the menu structure. This means that if the player
+-# was currently selecting a target, they would be returned to the action list. If the player was
+-# currently selecting an action, the menu structure would try to go back to the previous player
+-# Battler.
+-class_name UIPlayerMenus extends Control
+-
+-signal selected(action: BattlerAction)
+-
+-signal cancelled
+-
+-## The action menu scene that will be created whenever the player needs to select an action.
+-@export var action_menu_scene: PackedScene
+-
+-## The targetting cursor scene that will be created whenever the player needs to choose targets.
+-@export var target_cursor_scene: PackedScene
+-
+-
+-func choose_action(action_list: Array[BattlerAction]) -> void:
+-	pass
+-
+-
+-# On start:
+-# Create action menu
+-# If back, emit cancelled & free everything
+-# Otherwise, when selected, create target cursor. Only hide action menu.
+-# If back, free target cursor, unhide action menu
+-# If selected, cache targets and emit selected signal. Free everything.
+-
+-func choose_targets() -> void:
+-	pass
+diff --git a/src/combat/ui/ui_player_menus.gd.uid b/src/combat/ui/ui_player_menus.gd.uid
+deleted file mode 100644
+index e10c107..0000000
+--- a/src/combat/ui/ui_player_menus.gd.uid
++++ /dev/null
+@@ -1 +0,0 @@
+-uid://ckkb078x0hj2l

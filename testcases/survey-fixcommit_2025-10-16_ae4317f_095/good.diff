@@ -1,0 +1,315 @@
+diff --git a/Scenes/Prefabs/Blocks/SpikeBlock.tscn b/Scenes/Prefabs/Blocks/SpikeBlock.tscn
+index ecd86ed..ad8dbb8 100644
+--- a/Scenes/Prefabs/Blocks/SpikeBlock.tscn
++++ b/Scenes/Prefabs/Blocks/SpikeBlock.tscn
+@@ -5,10 +5,10 @@
+ [ext_resource type="Script" uid="uid://caq1qiwmy0mox" path="res://Scripts/Parts/BetterAnimatedSprite.gd" id="3_4g6tc"]
+ [ext_resource type="JSON" path="res://Assets/Sprites/Blocks/SpikeBlock.json" id="4_dftxp"]
+ [ext_resource type="Script" uid="uid://cbal8ms2oe1ik" path="res://Scripts/Classes/Components/ResourceSetterNew.gd" id="4_w3ysb"]
+-[ext_resource type="Script" uid="uid://cnheej0sxmoxg" path="res://Scripts/Parts/PlayerDetection.gd" id="6_l3otb"]
+ [ext_resource type="Script" uid="uid://cqif1li7otvpl" path="res://Scripts/Parts/SpriteFramesToJsonConverter.gd" id="7_4g6tc"]
+ [ext_resource type="Script" uid="uid://5octqlf4ohel" path="res://Scripts/Classes/Components/ScoreNoteSpawner.gd" id="7_bcd7j"]
+ [ext_resource type="Script" uid="uid://cmvlgsjmsk0v5" path="res://Scripts/Classes/Resources/ThemedResource.gd" id="8_w3ysb"]
++[ext_resource type="Script" uid="uid://chj8hu207lrh" path="res://Scripts/Classes/Components/EnemyPlayerDetection.gd" id="10_6hvsh"]
+ [ext_resource type="Script" uid="uid://d4a7yp6e55u8t" path="res://Scripts/Classes/Components/TrackJoint.gd" id="10_xfdnj"]
+ 
+ [sub_resource type="AtlasTexture" id="AtlasTexture_v0way"]
+@@ -154,11 +154,9 @@ metadata/_custom_type_script = "uid://cbal8ms2oe1ik"
+ [node name="Collision" type="CollisionShape2D" parent="."]
+ shape = SubResource("RectangleShape2D_cgdwi")
+ 
+-[node name="PlayerDetection" type="Area2D" parent="."]
+-script = ExtResource("6_l3otb")
+-metadata/_custom_type_script = "uid://cnheej0sxmoxg"
++[node name="Hitbox" type="Area2D" parent="."]
+ 
+-[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerDetection"]
++[node name="Shape" type="CollisionShape2D" parent="Hitbox"]
+ shape = SubResource("RectangleShape2D_r7ue2")
+ 
+ [node name="VisibleOnScreenEnabler2D" type="VisibleOnScreenEnabler2D" parent="."]
+@@ -178,4 +176,10 @@ script = ExtResource("10_xfdnj")
+ offset = Vector2(0, 0)
+ metadata/_custom_type_script = "uid://d4a7yp6e55u8t"
+ 
+-[connection signal="player_entered" from="PlayerDetection" to="." method="damage_player"]
++[node name="EnemyPlayerDetection" type="Node" parent="." node_paths=PackedStringArray("hitbox")]
++script = ExtResource("10_6hvsh")
++hitbox = NodePath("../Hitbox")
++metadata/_custom_type_script = "uid://chj8hu207lrh"
++
++[connection signal="player_hit" from="EnemyPlayerDetection" to="." method="damage_player"]
++[connection signal="player_stomped_on" from="EnemyPlayerDetection" to="." method="damage_player"]
+diff --git a/Scenes/Prefabs/Entities/Enemies/Icicle.tscn b/Scenes/Prefabs/Entities/Enemies/Icicle.tscn
+index e7f7c32..5ddb6c9 100644
+--- a/Scenes/Prefabs/Entities/Enemies/Icicle.tscn
++++ b/Scenes/Prefabs/Entities/Enemies/Icicle.tscn
+@@ -2,7 +2,7 @@
+ 
+ [ext_resource type="Script" uid="uid://cx0ak5ctcg0mi" path="res://Scripts/Classes/Entities/Enemies/Icicle.gd" id="1_dnx1i"]
+ [ext_resource type="Texture2D" uid="uid://rbln0ee0fknc" path="res://Assets/Sprites/Enemies/Icicle.png" id="2_1h8cl"]
+-[ext_resource type="Script" uid="uid://cnheej0sxmoxg" path="res://Scripts/Parts/PlayerDetection.gd" id="3_1h8cl"]
++[ext_resource type="Script" uid="uid://chj8hu207lrh" path="res://Scripts/Classes/Components/EnemyPlayerDetection.gd" id="2_5y583"]
+ [ext_resource type="Script" uid="uid://364rywt44hy6" path="res://Scripts/Classes/UI/PackSprite.gd" id="3_dnx1i"]
+ 
+ [sub_resource type="RectangleShape2D" id="RectangleShape2D_dnx1i"]
+@@ -52,6 +52,11 @@ collision_mask = 55
+ script = ExtResource("1_dnx1i")
+ metadata/_custom_type_script = "uid://bpydbpyjk1mt4"
+ 
++[node name="EnemyPlayerDetection" type="Node" parent="." node_paths=PackedStringArray("hitbox")]
++script = ExtResource("2_5y583")
++hitbox = NodePath("../Hitbox")
++metadata/_custom_type_script = "uid://chj8hu207lrh"
++
+ [node name="Sprite" type="Sprite2D" parent="."]
+ position = Vector2(0, -8)
+ texture = ExtResource("2_1h8cl")
+@@ -65,8 +70,6 @@ shape = SubResource("RectangleShape2D_dnx1i")
+ 
+ [node name="Hitbox" type="Area2D" parent="."]
+ visible = false
+-script = ExtResource("3_1h8cl")
+-metadata/_custom_type_script = "uid://cnheej0sxmoxg"
+ 
+ [node name="Shape" type="CollisionShape2D" parent="Hitbox"]
+ position = Vector2(0, -6)
+@@ -81,5 +84,10 @@ libraries = {
+ &"": SubResource("AnimationLibrary_2sios")
+ }
+ 
+-[connection signal="player_entered" from="Hitbox" to="." method="damage_player"]
+-[connection signal="player_entered" from="Hitbox" to="." method="destroy" unbinds=1]
++[connection signal="killed" from="." to="." method="destroy" unbinds=1]
++[connection signal="hammer_player_hit" from="EnemyPlayerDetection" to="." method="die_from_hammer"]
++[connection signal="invincible_player_hit" from="EnemyPlayerDetection" to="." method="die_from_object"]
++[connection signal="player_hit" from="EnemyPlayerDetection" to="." method="damage_player"]
++[connection signal="player_hit" from="EnemyPlayerDetection" to="." method="destroy" unbinds=1]
++[connection signal="player_stomped_on" from="EnemyPlayerDetection" to="." method="damage_player"]
++[connection signal="player_stomped_on" from="EnemyPlayerDetection" to="." method="destroy" unbinds=1]
+diff --git a/Scenes/Prefabs/Entities/Enemies/Muncher.tscn b/Scenes/Prefabs/Entities/Enemies/Muncher.tscn
+index bd51669..00e2e40 100644
+--- a/Scenes/Prefabs/Entities/Enemies/Muncher.tscn
++++ b/Scenes/Prefabs/Entities/Enemies/Muncher.tscn
+@@ -4,10 +4,10 @@
+ [ext_resource type="Texture2D" uid="uid://dg7yxoq44gaae" path="res://Assets/Sprites/Enemies/Muncher.png" id="2_ad4wf"]
+ [ext_resource type="Script" uid="uid://caq1qiwmy0mox" path="res://Scripts/Parts/BetterAnimatedSprite.gd" id="2_fcan1"]
+ [ext_resource type="Script" uid="uid://cbal8ms2oe1ik" path="res://Scripts/Classes/Components/ResourceSetterNew.gd" id="4_6tj01"]
+-[ext_resource type="Script" uid="uid://cnheej0sxmoxg" path="res://Scripts/Parts/PlayerDetection.gd" id="4_ad4wf"]
+ [ext_resource type="JSON" path="res://Assets/Sprites/Enemies/Muncher.json" id="5_cgdwi"]
+ [ext_resource type="Script" uid="uid://5octqlf4ohel" path="res://Scripts/Classes/Components/ScoreNoteSpawner.gd" id="5_r7ue2"]
+ [ext_resource type="Script" uid="uid://bx6r8sjar6cwr" path="res://Scripts/Classes/Components/BasicStaticMovement.gd" id="8_3kryf"]
++[ext_resource type="Script" uid="uid://chj8hu207lrh" path="res://Scripts/Classes/Components/EnemyPlayerDetection.gd" id="8_cgdwi"]
+ 
+ [sub_resource type="AtlasTexture" id="AtlasTexture_r7ue2"]
+ atlas = ExtResource("2_ad4wf")
+@@ -69,11 +69,9 @@ metadata/_custom_type_script = "uid://cbal8ms2oe1ik"
+ shape = SubResource("RectangleShape2D_cgdwi")
+ one_way_collision = true
+ 
+-[node name="PlayerDetection" type="Area2D" parent="."]
+-script = ExtResource("4_ad4wf")
+-metadata/_custom_type_script = "uid://cnheej0sxmoxg"
++[node name="Hitbox" type="Area2D" parent="."]
+ 
+-[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerDetection"]
++[node name="Shape" type="CollisionShape2D" parent="Hitbox"]
+ position = Vector2(0, -0.75)
+ shape = SubResource("RectangleShape2D_r7ue2")
+ 
+@@ -94,4 +92,10 @@ sync_to_physics = false
+ [node name="CollisionShape2D" type="CollisionShape2D" parent="AnimatableBody2D"]
+ shape = SubResource("RectangleShape2D_3kryf")
+ 
+-[connection signal="player_entered" from="PlayerDetection" to="." method="damage_player"]
++[node name="EnemyPlayerDetection" type="Node" parent="." node_paths=PackedStringArray("hitbox")]
++script = ExtResource("8_cgdwi")
++hitbox = NodePath("../Hitbox")
++metadata/_custom_type_script = "uid://chj8hu207lrh"
++
++[connection signal="player_hit" from="EnemyPlayerDetection" to="." method="damage_player"]
++[connection signal="player_stomped_on" from="EnemyPlayerDetection" to="." method="damage_player"]
+diff --git a/Scenes/Prefabs/Entities/Enemies/RockyWrench.tscn b/Scenes/Prefabs/Entities/Enemies/RockyWrench.tscn
+index 76f21be..404515b 100644
+--- a/Scenes/Prefabs/Entities/Enemies/RockyWrench.tscn
++++ b/Scenes/Prefabs/Entities/Enemies/RockyWrench.tscn
+@@ -1,11 +1,10 @@
+-[gd_scene load_steps=35 format=3 uid="uid://c3m38c2skawpj"]
++[gd_scene load_steps=34 format=3 uid="uid://c3m38c2skawpj"]
+ 
+ [ext_resource type="Script" uid="uid://bfsh8bhcmknkh" path="res://Scripts/Classes/Entities/Enemies/RockyWrench.gd" id="1_pl7bt"]
+ [ext_resource type="Texture2D" uid="uid://bfora2lrmtyj4" path="res://Assets/Sprites/Enemies/RockyWrench.png" id="2_8y80u"]
+ [ext_resource type="Script" uid="uid://cbal8ms2oe1ik" path="res://Scripts/Classes/Components/ResourceSetterNew.gd" id="3_4h1b4"]
+ [ext_resource type="Script" uid="uid://caq1qiwmy0mox" path="res://Scripts/Parts/BetterAnimatedSprite.gd" id="3_wom81"]
+ [ext_resource type="JSON" path="res://Assets/Sprites/Enemies/RockyWrench.json" id="4_pl7bt"]
+-[ext_resource type="Script" uid="uid://cnheej0sxmoxg" path="res://Scripts/Parts/PlayerDetection.gd" id="5_4h1b4"]
+ [ext_resource type="Script" uid="uid://bx6r8sjar6cwr" path="res://Scripts/Classes/Components/BasicStaticMovement.gd" id="5_8y80u"]
+ [ext_resource type="Script" uid="uid://chj8hu207lrh" path="res://Scripts/Classes/Components/EnemyPlayerDetection.gd" id="7_pl7bt"]
+ [ext_resource type="Texture2D" uid="uid://cop8x5m20cqal" path="res://Assets/Sprites/Items/WrenchProjectile.png" id="7_w66sd"]
+@@ -294,8 +293,6 @@ metadata/_custom_type_script = "uid://cbal8ms2oe1ik"
+ 
+ [node name="StompHitbox" type="Area2D" parent="Sprite"]
+ position = Vector2(0, -11)
+-script = ExtResource("5_4h1b4")
+-metadata/_custom_type_script = "uid://cnheej0sxmoxg"
+ 
+ [node name="CollisionShape2D" type="CollisionShape2D" parent="Sprite/StompHitbox"]
+ position = Vector2(0, 2.5)
+diff --git a/Scenes/Prefabs/Entities/Objects/Burner.tscn b/Scenes/Prefabs/Entities/Objects/Burner.tscn
+index b758454..de24f07 100644
+--- a/Scenes/Prefabs/Entities/Objects/Burner.tscn
++++ b/Scenes/Prefabs/Entities/Objects/Burner.tscn
+@@ -4,10 +4,10 @@
+ [ext_resource type="Texture2D" uid="uid://dhk5jdqjqo77p" path="res://Assets/Sprites/Blocks/BurnerFlame.png" id="1_vrk50"]
+ [ext_resource type="Texture2D" uid="uid://4l2medldwrwh" path="res://Assets/Sprites/Blocks/Burner.png" id="2_4fveq"]
+ [ext_resource type="Script" uid="uid://cbal8ms2oe1ik" path="res://Scripts/Classes/Components/ResourceSetterNew.gd" id="3_fsldu"]
+-[ext_resource type="Script" uid="uid://cnheej0sxmoxg" path="res://Scripts/Parts/PlayerDetection.gd" id="3_sqxap"]
+ [ext_resource type="JSON" path="res://Assets/Sprites/Blocks/BurnerFlame.json" id="4_m4qew"]
+ [ext_resource type="Script" uid="uid://ctfbuoxtnnl0q" path="res://Scripts/Classes/Components/EditorPropertyExposer.gd" id="5_sqxap"]
+ [ext_resource type="JSON" path="res://Assets/Sprites/Blocks/BurnerBlock.json" id="5_w52fl"]
++[ext_resource type="Script" uid="uid://chj8hu207lrh" path="res://Scripts/Classes/Components/EnemyPlayerDetection.gd" id="7_m4qew"]
+ [ext_resource type="Script" uid="uid://cqif1li7otvpl" path="res://Scripts/Parts/SpriteFramesToJsonConverter.gd" id="7_w52fl"]
+ [ext_resource type="Script" uid="uid://cmvlgsjmsk0v5" path="res://Scripts/Classes/Resources/ThemedResource.gd" id="8_oeevx"]
+ [ext_resource type="Script" uid="uid://d4a7yp6e55u8t" path="res://Scripts/Classes/Components/TrackJoint.gd" id="10_oeevx"]
+@@ -205,16 +205,19 @@ mode = 1
+ resource_json = ExtResource("5_w52fl")
+ metadata/_custom_type_script = "uid://cbal8ms2oe1ik"
+ 
+-[node name="PlayerDetection" type="Area2D" parent="RotationJoint"]
+-script = ExtResource("3_sqxap")
+-metadata/_custom_type_script = "uid://cnheej0sxmoxg"
++[node name="Hitbox" type="Area2D" parent="RotationJoint"]
+ 
+-[node name="Hitbox" type="CollisionShape2D" parent="RotationJoint/PlayerDetection"]
++[node name="Shape" type="CollisionShape2D" parent="RotationJoint/Hitbox"]
+ unique_name_in_owner = true
+ position = Vector2(0, -32)
+ shape = SubResource("RectangleShape2D_jssei")
+ disabled = true
+ 
++[node name="EnemyPlayerDetection" type="Node" parent="RotationJoint" node_paths=PackedStringArray("hitbox")]
++script = ExtResource("7_m4qew")
++hitbox = NodePath("../Hitbox")
++metadata/_custom_type_script = "uid://chj8hu207lrh"
++
+ [node name="Timer" type="Timer" parent="."]
+ wait_time = 3.0
+ one_shot = true
+@@ -241,5 +244,6 @@ offset = Vector2(0, 0)
+ disable_physics = false
+ metadata/_custom_type_script = "uid://d4a7yp6e55u8t"
+ 
+-[connection signal="player_entered" from="RotationJoint/PlayerDetection" to="." method="damage_player"]
++[connection signal="player_hit" from="RotationJoint/EnemyPlayerDetection" to="." method="damage_player"]
++[connection signal="player_stomped_on" from="RotationJoint/EnemyPlayerDetection" to="." method="damage_player"]
+ [connection signal="timeout" from="Timer" to="." method="do_cycle"]
+diff --git a/Scenes/Prefabs/Entities/Objects/CannonBall.tscn b/Scenes/Prefabs/Entities/Objects/CannonBall.tscn
+index b650a5b..66ad0b1 100644
+--- a/Scenes/Prefabs/Entities/Objects/CannonBall.tscn
++++ b/Scenes/Prefabs/Entities/Objects/CannonBall.tscn
+@@ -1,7 +1,6 @@
+-[gd_scene load_steps=9 format=3 uid="uid://bumvqjhs2xxka"]
++[gd_scene load_steps=8 format=3 uid="uid://bumvqjhs2xxka"]
+ 
+ [ext_resource type="Script" uid="uid://bfdtqldkrv4dn" path="res://Scripts/Classes/Entities/Enemies/CannonBall.gd" id="1_yim3j"]
+-[ext_resource type="Script" uid="uid://cnheej0sxmoxg" path="res://Scripts/Parts/PlayerDetection.gd" id="2_il73j"]
+ [ext_resource type="Script" uid="uid://cbal8ms2oe1ik" path="res://Scripts/Classes/Components/ResourceSetterNew.gd" id="2_yim3j"]
+ [ext_resource type="JSON" path="res://Assets/Sprites/Enemies/CannonBall.json" id="3_874xq"]
+ [ext_resource type="Script" uid="uid://chj8hu207lrh" path="res://Scripts/Classes/Components/EnemyPlayerDetection.gd" id="3_pydrn"]
+@@ -28,16 +27,14 @@ mode = 1
+ resource_json = ExtResource("3_874xq")
+ metadata/_custom_type_script = "uid://cbal8ms2oe1ik"
+ 
+-[node name="PlayerDetection" type="Area2D" parent="."]
+-script = ExtResource("2_il73j")
+-metadata/_custom_type_script = "uid://cnheej0sxmoxg"
++[node name="Hitbox" type="Area2D" parent="."]
+ 
+-[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerDetection"]
++[node name="Shape" type="CollisionShape2D" parent="Hitbox"]
+ shape = SubResource("RectangleShape2D_yim3j")
+ 
+ [node name="EnemyPlayerDetection" type="Node" parent="." node_paths=PackedStringArray("hitbox")]
+ script = ExtResource("3_pydrn")
+-hitbox = NodePath("../PlayerDetection")
++hitbox = NodePath("../Hitbox")
+ height = 0
+ metadata/_custom_type_script = "uid://chj8hu207lrh"
+ 
+@@ -52,6 +49,7 @@ metadata/_custom_type_script = "uid://c3gg32ivrlq8n"
+ script = ExtResource("5_il73j")
+ metadata/_custom_type_script = "uid://5octqlf4ohel"
+ 
++[connection signal="killed" from="." to="GibSpawner" method="summon_gib"]
+ [connection signal="hammer_player_hit" from="EnemyPlayerDetection" to="." method="die_from_hammer"]
+ [connection signal="invincible_player_hit" from="EnemyPlayerDetection" to="." method="die_from_object"]
+ [connection signal="player_hit" from="EnemyPlayerDetection" to="." method="damage_player"]
+diff --git a/Scenes/Prefabs/Entities/Objects/WrenchProjectile.tscn b/Scenes/Prefabs/Entities/Objects/WrenchProjectile.tscn
+index cb29b4d..ba9cf5d 100644
+--- a/Scenes/Prefabs/Entities/Objects/WrenchProjectile.tscn
++++ b/Scenes/Prefabs/Entities/Objects/WrenchProjectile.tscn
+@@ -1,9 +1,8 @@
+-[gd_scene load_steps=14 format=3 uid="uid://p42vcj0qmhxl"]
++[gd_scene load_steps=13 format=3 uid="uid://p42vcj0qmhxl"]
+ 
+ [ext_resource type="Texture2D" uid="uid://cop8x5m20cqal" path="res://Assets/Sprites/Items/WrenchProjectile.png" id="1_bh1cs"]
+ [ext_resource type="Script" uid="uid://caq1qiwmy0mox" path="res://Scripts/Parts/BetterAnimatedSprite.gd" id="2_wtsxo"]
+ [ext_resource type="Script" uid="uid://cbal8ms2oe1ik" path="res://Scripts/Classes/Components/ResourceSetterNew.gd" id="3_7wlxe"]
+-[ext_resource type="Script" uid="uid://cnheej0sxmoxg" path="res://Scripts/Parts/PlayerDetection.gd" id="3_tfqn5"]
+ [ext_resource type="JSON" path="res://Assets/Sprites/Items/WrenchProjectile.json" id="4_5s4r1"]
+ [ext_resource type="Script" uid="uid://chj8hu207lrh" path="res://Scripts/Classes/Components/EnemyPlayerDetection.gd" id="4_7wlxe"]
+ 
+@@ -85,16 +84,14 @@ property_name = "sprite_frames"
+ resource_json = ExtResource("4_5s4r1")
+ metadata/_custom_type_script = "uid://cbal8ms2oe1ik"
+ 
+-[node name="PlayerDetection" type="Area2D" parent="."]
+-script = ExtResource("3_tfqn5")
+-metadata/_custom_type_script = "uid://cnheej0sxmoxg"
++[node name="Hitbox" type="Area2D" parent="."]
+ 
+-[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerDetection"]
++[node name="Shape" type="CollisionShape2D" parent="Hitbox"]
+ shape = SubResource("CircleShape2D_srvot")
+ 
+ [node name="EnemyPlayerDetection" type="Node" parent="." node_paths=PackedStringArray("hitbox")]
+ script = ExtResource("4_7wlxe")
+-hitbox = NodePath("../PlayerDetection")
++hitbox = NodePath("../Hitbox")
+ metadata/_custom_type_script = "uid://chj8hu207lrh"
+ 
+ [node name="VisibleOnScreenEnabler2D" type="VisibleOnScreenEnabler2D" parent="."]
+diff --git a/Scripts/Classes/Entities/Objects/Burner.gd b/Scripts/Classes/Entities/Objects/Burner.gd
+index 5ae221e..1beb03d 100644
+--- a/Scripts/Classes/Entities/Objects/Burner.gd
++++ b/Scripts/Classes/Entities/Objects/Burner.gd
+@@ -10,9 +10,9 @@ func do_cycle() -> void:
+ 		AudioManager.play_sfx("burner", global_position)
+ 		do_animation()
+ 		await get_tree().create_timer(0.25, false).timeout
+-		%Hitbox.set_deferred("disabled", false)
++		%Shape.set_deferred("disabled", false)
+ 		await get_tree().create_timer(1.5, false).timeout
+-	%Hitbox.set_deferred("disabled", true)
++	%Shape.set_deferred("disabled", true)
+ 	$Timer.start()
+ 
+ func do_animation() -> void:
+diff --git a/Scripts/Parts/PlayerDetection.gd b/Scripts/Parts/PlayerDetection.gd
+index aa22e89..515209b 100644
+--- a/Scripts/Parts/PlayerDetection.gd
++++ b/Scripts/Parts/PlayerDetection.gd
+@@ -9,11 +9,11 @@ func _ready() -> void:
+ 	area_exited.connect(on_area_exited)
+ 
+ func on_area_entered(area: Area2D) -> void:
+-	if area.owner is Player:
++	if area.owner is Player and area.name != "HammerHitbox":
+ 		player_entered.emit(area.owner)
+ 
+ func on_area_exited(area: Area2D) -> void:
+-	if area.owner is Player:
++	if area.owner is Player and area.name != "HammerHitbox":
+ 		player_exited.emit(area.owner)
+ 
+ func is_player_in_area() -> bool:

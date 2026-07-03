@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-12-07_18d8a63_058"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "f4bfdf9484967337bd498d8eebe8e2c9a1b17140"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scripts/components/charclasscomponent/CharClassSelection.gd, scripts/components/skillcomponent/skillcomponent.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-12-07_18d8a63_058"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

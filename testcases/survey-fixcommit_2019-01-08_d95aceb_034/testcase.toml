@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2019-01-08_d95aceb_034"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "ef5f8b9e64990b890fb4727f1bb3f1b1fc46ee6a"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: godot/local_map/pawns/PawnInteractive.gd, godot/local_map/pawns/TestQuestGiver.tscn, godot/local_map/pawns/TestQuestReceiver.tscn, godot/quest_system/QuestBubble.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2019-01-08_d95aceb_034"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

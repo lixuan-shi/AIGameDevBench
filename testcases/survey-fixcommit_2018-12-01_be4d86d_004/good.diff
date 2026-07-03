@@ -1,0 +1,109 @@
+diff --git a/godot/assets/fonts/default_theme/montserrat_eb_22.tres b/godot/assets/fonts/default_theme/montserrat_eb_22.tres
+new file mode 100644
+index 0000000..9920f84
+--- /dev/null
++++ b/godot/assets/fonts/default_theme/montserrat_eb_22.tres
+@@ -0,0 +1,13 @@
++[gd_resource type="DynamicFont" load_steps=2 format=2]
++
++[ext_resource path="res://assets/fonts/default_theme/Montserrat-ExtraBold.ttf" type="DynamicFontData" id=1]
++
++[resource]
++
++size = 22
++outline_size = 0
++outline_color = Color( 1, 1, 1, 1 )
++use_mipmaps = false
++use_filter = true
++font_data = ExtResource( 1 )
++
+diff --git a/godot/assets/fonts/default_theme/source_code_pro_26.tres b/godot/assets/fonts/default_theme/source_code_pro_26.tres
+index 8a7443d..63986a3 100644
+--- a/godot/assets/fonts/default_theme/source_code_pro_26.tres
++++ b/godot/assets/fonts/default_theme/source_code_pro_26.tres
+@@ -1,12 +1,13 @@
+ [gd_resource type="DynamicFont" load_steps=2 format=2]
+ 
+-[ext_resource path="res://interface/theme/fonts/SourceCodePro-Regular.ttf" type="DynamicFontData" id=1]
++[ext_resource path="res://assets/fonts/default_theme/SourceCodePro-Regular.ttf" type="DynamicFontData" id=1]
+ 
+ [resource]
+ 
+ size = 26
++outline_size = 0
++outline_color = Color( 1, 1, 1, 1 )
+ use_mipmaps = false
+ use_filter = true
+ font_data = ExtResource( 1 )
+-_sections_unfolded = [ "Font", "Settings" ]
+ 
+diff --git a/godot/interface/default.theme b/godot/interface/default.theme
+index 0ec1a52c379e2cb872ad3a23e05977dce5b06894..a3a92a008160836badda0f163a2ea1550077d0a4 100644
+GIT binary patch
+literal 1530
+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
+
+literal 1695
+zcmV;Q24MM8Q$s@n000005C8!06951i1pokQ0RR9fwJ-f(01tgA0JgA~JRp&h000aC
+zv7-(Ej7|VTqlU_DME<|Xlw3=aa{rY4Cnm6t6FLAt28vq746>9omI!SN!5Z1x_770C
+z`gZ_+0EqzoS;*p>SS!|XJIdD9<7VI)q83dh2=$|_j&+ou{|UaEvr_HjmF$)hgIluM
+z6kk(oGUW#Ce~<Gvd>;j$mR8oQ*v{+!g0qCOY1qaG`;z}NUl(uwC-AK_YQAyXWU?95
+zCL!C#mz>N0Ise(WT584r0s#IC_yanhV<ypzqU^p{{)?P7y!5lK6<$tm9BO;b>jHA9
+z9i@xMl44Zr<(_OlkZKfUx-GLP-?VIL#h_L!<MP#@?f(a+_@+Ln>~+)^>6Drt8yD3A
+zEqvPRGz}bZ=JlL1<Bc407Z*yI%|{2-?!7Qx$5M*h*o(58r2hy&nwlO5pBF_RriT$7
+zC5iSbjW8qrbFi>3OLAKLSa74JkT3xS#eWJNxA9_f^3_7vBz<gLPTq0vnnv!n+rphJ
+zLeF=i+BPvkN_1J-NQ?FwQq!X#@Jf>M6upSoJ=ju$H$D*{$x`C~34?hx`PoEsAxzIG
+zUn{G%lZs|X?HNh#cFtw1<h(AD>f9}q0w8E)Fe!o1Nx^X8x4_aBC`^b6#e`x)F`*6)
+zln5&#FJPRQ{D0>G$%q4ym5|Deb3#A>e5izemH4a77#<xQAZToau>Mv^BEu=L68irE
+z0e+Hu9&E^X2aSw#$h3UJf*RKlMISCq(ek`VW@Y`@n$hf?Q&A42z_eAZ1WyVE4@gQL
+zDLP29wERc#Pq&8^Uel^bk(^?k6w%VrHVuJ7sFB5)Aprma0zd!&u>{6Q1|@_&5?~@(
+zoZ~>8G6oof1_TBM00IUE4M2xR_y0VM7``E^Uj*#J22m$AsIhY>oxO%RbjM3(=@gpZ
+zz;dk{97{Au&za2);{zu%;vyh(6N}-`vtUC7SN^rzY%ACR&%+@vKf+cLZeVeLSA}U1
+zPTB?nQbt@un=}hFij=f)#JNz#wYeDW>><cAWMYAVm@NPPQU156DF)e+zI$_eA9w1r
+zHZ<ou%zfC4+LV-FxO#vc5ke1Fxgt=!AYKGcs)Qz%j$akeJ@SOtwe!r^%!i>VgGbHy
+zS1(+kB)zKOo9Iz!5TG;5!F1sbJD}|_P@8R|&;mM+jSYu_42)5Av_ZtJGv3C6QD3Q0
+zedO&nzmtT4{S?#-3TugE;6lL_+VzF>k<N4w<$&s<-!YWLiLuW+rO~?vCgImjHe#Mh
+z9d<npgbfSB5&2;qGk*`b4QvyM!JrwK+Ktb3EC&Y|OuEarsMrk%fX2+Kj;1t_G{+Y6
+z*0)UC=GVb)H)-b`5hmXv0%g^Kv6IV6Q0I@KW-nxEp^_N90Thx4?1?4QrNFUAM|Lrw
+z10NrO?o6d9_M5>yHCkO}P@b3~xNb_wI@CiPRPsw7YSFjm-zY)m!lC(0o*~aB`h%-<
+z@vgbvFw!BOwk};)I%@wKUrWezqsH|H`9DoQU=31n-Jyc-5?y_=<8ZF-_xWCGu&LW4
+zqo6)oBNdyyPo{376}!kwInUZx+CY)1i$n2@&=OyjN9xUy;XM#lsve!ePo09^w-K#_
+zHWSqvaX*ko2_GV;8ev}9z$v^R?ABy@TNG#VQUoazmDUG9*bxx_f-7%AUF-zIJ6s5S
+zclJWK13x7XyPp&-GSs8W9euN-PjDI~zB;debIHSpW_*PLD77#BVDAD23jp*B02BZK
+z0P*l}KJDymKK=ZBKB1tXJre)`00IC2009610{{R33IG5A6&4p5zrH>{004kL85#%x
+z000{t9UdP5000C4AR!_nnwc3tBqb&W0000~Xk~3>04@Lk05LM*;9x&9W@ctT&CE<b
+zH1Y6oKQ%T40000tI5|2yJOuy%06h=@002HeKtV!7L`6mi0000-p`ai?NJ-7i%som3
+z0000>OifNtP*GA-1yxp8SXo+ITwMtO003T6Q&K}^s6ojQ9YseApn@WrF#{1G0T7ia
+zBQ;6yeadPV)2NqWC-JdY&+Jum%-u7N&H3QFewq{Ai2USZaq%Ckl-2V-wf(d)Pnx~*
+z06m$lnR_@Gl)4oF*N^XyHur}Z@249-Rc9_Q%jQ2z@tAVvoL!u{z0c;N+6epC4e8K9
+p81$$33B~$E^a>LryU)4V-BC`V8<&u7-!3}&b$pDU@c~j(LqlR+^{M~>
+

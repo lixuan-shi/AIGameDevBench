@@ -1,0 +1,25 @@
+diff --git a/Scenes/Prefabs/UI/SettingsMenu.tscn b/Scenes/Prefabs/UI/SettingsMenu.tscn
+index 9875ac5..507dd63 100644
+--- a/Scenes/Prefabs/UI/SettingsMenu.tscn
++++ b/Scenes/Prefabs/UI/SettingsMenu.tscn
+@@ -640,7 +640,7 @@ settings_category = "difficulty"
+ 
+ [node name="GameOverStyle" parent="PanelContainer/MarginContainer/VBoxContainer/Difficulty" groups=["Options"] instance=ExtResource("3_dl6kk")]
+ layout_mode = 2
+-option_key = "game_over"
++option_key = "game_over_behaviour"
+ title = "DIFFI_GAME_OVER"
+ value_descs = Array[String](["DESC_GAME_OVER_0", "DESC_GAME_OVER_1", "DESC_GAME_OVER_2"])
+ values = ["DIFFI_GAME_OVER_WLD", "DIFFI_GAME_OVER_LVL", "DIFFI_GAME_OVER_GME"]
+diff --git a/Scripts/Parts/DifficultySetter.gd b/Scripts/Parts/DifficultySetter.gd
+index ec89a5f..2578872 100644
+--- a/Scripts/Parts/DifficultySetter.gd
++++ b/Scripts/Parts/DifficultySetter.gd
+@@ -37,6 +37,7 @@ func set_value(value_name := "", value := 0) -> void:
+ 		"inf_lives": inf_lives_changed,
+ 		"flagpole_lives": flag_lives_changed,
+ 		"game_over": game_over_changed,
++		"game_over_behaviour": game_over_changed,
+ 		"level_design": level_design_changed,
+ 		"extra_checkpoints": extra_checkpoints_changed,
+ 		"back_scroll": backscroll_changed

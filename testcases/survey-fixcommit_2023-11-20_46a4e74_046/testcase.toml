@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-11-20_46a4e74_046"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "c4e49b52ccb58938d963840e81781e49d1e1feea"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/root/clientfsm.gd, scenes/ui/loginpanel/LoginPanel.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-11-20_46a4e74_046"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

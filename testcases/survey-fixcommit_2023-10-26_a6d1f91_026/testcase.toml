@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-10-26_a6d1f91_026"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "f49cb1a99a15d92aa5acccb57980d9db95f82f9e"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: data/tileset/atlas.tres, scenes/terrain/areas/harbor/harbor.tscn, scenes/world/World.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-10-26_a6d1f91_026"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

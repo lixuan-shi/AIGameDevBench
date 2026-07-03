@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-03-16_247dcf6_019"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "dd6da7a442f64e26465bb42c4309b86528a70f86"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rts"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: source/match/handlers/BuildingPlacementHandler.gd, source/match/utils/UnitPlacementUtils.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-03-16_247dcf6_019"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

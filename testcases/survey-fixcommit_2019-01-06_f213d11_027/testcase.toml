@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2019-01-06_f213d11_027"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "0007fd6216dc16288f758240e9d6701e167a5fd7"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: godot/local_map/grid/GameBoard.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2019-01-06_f213d11_027"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

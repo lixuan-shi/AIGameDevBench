@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-09-19_68547a1_016"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "a93f19c5064d7eb4756da86e4c8a1cedbe45be4b"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Levels/CustomLevelMenu.tscn, Scripts/Parts/PickAPathPoint.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-09-19_68547a1_016"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

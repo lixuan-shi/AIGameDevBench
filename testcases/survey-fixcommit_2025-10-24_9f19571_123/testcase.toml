@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-24_9f19571_123"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "fcdf729e233c0507deb4dfe14d872a06ad9eb2a2"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scripts/Classes/Entities/Enemies/Lakitu.gd, Scripts/Classes/Entities/Enemies/Spiny.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-24_9f19571_123"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

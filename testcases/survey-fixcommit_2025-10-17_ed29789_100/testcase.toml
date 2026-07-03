@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-17_ed29789_100"
+category = "intent_translation"
+source_kind = "git"
+baseline_ref = "a0521becb45735d90d6b352d8072eaf93c8051c2"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scripts/Classes/Entities/Player.gd, Scripts/Classes/States/Player/Normal.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-17_ed29789_100"
+bad_case_type = "B2"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

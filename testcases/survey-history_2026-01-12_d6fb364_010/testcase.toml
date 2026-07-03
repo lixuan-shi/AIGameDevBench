@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-history_2026-01-12_d6fb364_010"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "cadfe15ec0e439f3e9cfa8c726a6dde423944d6b"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: src/combat/combat.gd, src/combat/combat_arena.gd, src/combat/combat_arena.tscn, src/combat/ui/action_menu/ui_action_menu.gd, src/combat/ui/action_menu/ui_action_menu.tscn, src/combat/ui/battler_entry/ui_player_battler_list.gd, src/combat/ui/battler_entry/ui_player_battler_list.tscn, src/combat/ui/list_menu/ui_list_menu.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "history_2026-01-12_d6fb364_010"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

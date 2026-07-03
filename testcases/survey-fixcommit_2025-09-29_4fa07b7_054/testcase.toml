@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-09-29_4fa07b7_054"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "a1e6ed85c1ff0cb505866c95fc4794e8f2ea04dc"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Parts/Tiles.tscn, Scripts/Classes/Singletons/Global.gd, Scripts/Parts/GameOver.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-09-29_4fa07b7_054"
+bad_case_type = "A2"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

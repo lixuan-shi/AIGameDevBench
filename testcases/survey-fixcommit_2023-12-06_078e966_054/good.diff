@@ -1,0 +1,26 @@
+diff --git a/scripts/singletons/global.gd b/scripts/singletons/global.gd
+index dd7ab40..01af259 100644
+--- a/scripts/singletons/global.gd
++++ b/scripts/singletons/global.gd
+@@ -45,7 +45,7 @@ var env: GodotEnv
+ 
+ func _ready():
+ 	env = GodotEnv.new()
+-	
++
+ 	load_common_env_variables()
+ 
+ 
+diff --git a/scripts/singletons/jdungeon.gd b/scripts/singletons/jdungeon.gd
+index 61e1c1b..e1f6e14 100644
+--- a/scripts/singletons/jdungeon.gd
++++ b/scripts/singletons/jdungeon.gd
+@@ -30,7 +30,7 @@ var audio: SoundManager = SoundManager.new()
+ 
+ func _ready():
+ 	uuid_util = load("res://scripts/uuid/uuid.gd").new()
+-	
++
+ 	audio.parent = self
+ 	audio.main_instance = audio
+ 

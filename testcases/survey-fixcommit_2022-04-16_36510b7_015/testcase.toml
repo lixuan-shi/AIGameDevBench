@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-04-16_36510b7_015"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "f8cc1a9dba62f4650e27940bf218fce74c6a50b1"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\a-little-game-called-mario"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/title/CreditsButton.gd, scenes/title/DanceButton.gd, scenes/title/FlappyMarioButton.gd, scenes/title/MarwingButton.gd, scenes/title/OptionsButton.gd, scenes/title/SokobanButton.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-04-16_36510b7_015"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

@@ -178,3 +178,37 @@ mode = "checkpoints"
     (tmp_path / "not-a-testcase").mkdir()
     found = discover_testcases(tmp_path)
     assert {t.id for t in found} == {"bench-0001", "bench-0002"}
+
+
+
+def test_discover_ignores_templates_dir_even_with_manifest(tmp_path):
+    _write(tmp_path / "real-case", """
+[testcase]
+id = "real-case"
+category = "behavior_logic"
+baseline_ref = "r"
+task = "t"
+
+[verifier]
+type = "godot_scenetree"
+entry = "v.gd"
+
+[scoring]
+mode = "checkpoints"
+""")
+    _write(tmp_path / "_templates" / "template-case", """
+[testcase]
+id = "template-case"
+category = "behavior_logic"
+baseline_ref = "REPLACE_ME"
+task = "template"
+
+[verifier]
+type = "godot_scenetree"
+entry = "v.gd"
+
+[scoring]
+mode = "checkpoints"
+""")
+    found = discover_testcases(tmp_path)
+    assert {t.id for t in found} == {"real-case"}

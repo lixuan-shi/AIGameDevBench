@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-07-21_4724cf2_036"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "44c785c57d0a2ad0fcf7242c515a457c91b97bba"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rts"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: source/match/MatchConstants.gd, source/match/units/Structure.gd, source/match/units/actions/CollectingResourcesSequentially.gd, source/match/units/actions/Constructing.gd, source/match/units/actions/ConstructingWhileInRange.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-07-21_4724cf2_036"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

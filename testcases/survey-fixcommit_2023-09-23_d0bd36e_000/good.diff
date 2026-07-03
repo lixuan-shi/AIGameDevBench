@@ -1,0 +1,133 @@
+diff --git a/game/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.gd b/game/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.gd
+index 5fa7886..4859425 100644
+--- a/game/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.gd
++++ b/game/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.gd
+@@ -17,6 +17,8 @@ func _ready():
+ 
+ 	animation_player.animation_finished.connect(_on_animation_finished)
+ 
++	$Interface.display_name = enemy_class
++
+ 
+ func _on_got_hurt(_from: String, _hp: int, _damage: int):
+ 	animation_player.stop()
+diff --git a/game/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn b/game/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn
+index 09e3169..3d0c93e 100644
+--- a/game/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn
++++ b/game/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn
+@@ -484,36 +484,42 @@ metadata/_edit_lock_ = true
+ 
+ [node name="RightArm" type="Sprite2D" parent="Sprites"]
+ position = Vector2(-100, -560)
++scale = Vector2(1, 1)
+ texture = ExtResource("4_agvxr")
+ offset = Vector2(-173, 6.50012)
+ metadata/_edit_lock_ = true
+ 
+ [node name="RightLeg" type="Sprite2D" parent="Sprites"]
+ position = Vector2(-110, -260)
++scale = Vector2(1, 1)
+ texture = ExtResource("5_fywxg")
+ offset = Vector2(-163, -293.5)
+ metadata/_edit_lock_ = true
+ 
+ [node name="LeftLeg" type="Sprite2D" parent="Sprites"]
+ position = Vector2(100, -270)
++scale = Vector2(1, 1)
+ texture = ExtResource("7_7d51h")
+ offset = Vector2(-373, -283.5)
+ metadata/_edit_lock_ = true
+ 
+ [node name="Body" type="Sprite2D" parent="Sprites"]
+ position = Vector2(0, -270)
++scale = Vector2(1, 1)
+ texture = ExtResource("8_31yn2")
+ offset = Vector2(-270, -280)
+ metadata/_edit_lock_ = true
+ 
+ [node name="Axe" type="Sprite2D" parent="Sprites"]
+ position = Vector2(250, -1100)
++scale = Vector2(1, 1)
+ texture = ExtResource("3_jrku4")
+ offset = Vector2(-523, 546.5)
+ metadata/_edit_lock_ = true
+ 
+ [node name="LeftArm" type="Sprite2D" parent="Sprites"]
+ position = Vector2(160, -570)
++scale = Vector2(1, 1)
+ texture = ExtResource("6_37oon")
+ offset = Vector2(-433, 16.5001)
+ metadata/_edit_lock_ = true
+diff --git a/game/scenes/player/Player.gd b/game/scenes/player/Player.gd
+index ee4cf18..cc768bc 100644
+--- a/game/scenes/player/Player.gd
++++ b/game/scenes/player/Player.gd
+@@ -1,7 +1,5 @@
+ extends GMFPlayerBody2D
+ 
+-var current_animation: String = "Idle"
+-
+ @onready var animation_player = $AnimationPlayer
+ 
+ @onready var skeleton = $Skeleton
+@@ -19,9 +17,10 @@ func _ready():
+ 
+ 	animation_player.play(loop_animation)
+ 
++	$Interface.display_name = username
+ 
+-func _physics_process(_delta):
+ 
++func _physics_process(_delta):
+ 	if loop_animation == "Move":
+ 		update_face_direction(velocity.x)
+ 
+diff --git a/gmf/common/classes/GMFPlayerSynchronizer.gd b/gmf/common/classes/GMFPlayerSynchronizer.gd
+index 03fafbf..6c7f61d 100644
+--- a/gmf/common/classes/GMFPlayerSynchronizer.gd
++++ b/gmf/common/classes/GMFPlayerSynchronizer.gd
+@@ -7,7 +7,7 @@ signal interacted(target_name: String)
+ 
+ @export var player: GMFPlayerBody2D
+ @export var synchronizer: GMFSynchronizer
+-@export var network_sync_area_size: float = 1024.0
++@export var network_sync_area_size: float = 512.0
+ 
+ var bodies_in_view: Array[GMFBody2D] = []
+ 
+@@ -57,11 +57,13 @@ func _on_network_view_area_body_entered(body: GMFBody2D):
+ 
+ func _on_network_view_area_body_exited(body: GMFBody2D):
+ 	if bodies_in_view.has(body):
+-		match body.entity_type:
+-			Gmf.ENTITY_TYPE.PLAYER:
+-				Gmf.rpcs.player.remove_other_player.rpc_id(player.peer_id, body.username)
+-			Gmf.ENTITY_TYPE.ENEMY:
+-				Gmf.rpcs.enemy.remove_enemy.rpc_id(player.peer_id, body.name)
++		if player.peer_id in multiplayer.get_peers():
++			match body.entity_type:
++				Gmf.ENTITY_TYPE.PLAYER:
++					Gmf.rpcs.player.remove_other_player.rpc_id(player.peer_id, body.username)
++				Gmf.ENTITY_TYPE.ENEMY:
++					Gmf.rpcs.enemy.remove_enemy.rpc_id(player.peer_id, body.name)
++
+ 		bodies_in_view.erase(body)
+ 
+ 	if body.synchronizer.watchers.has(player):
+diff --git a/gmf/common/scenes/Interface/Interface.gd b/gmf/common/scenes/Interface/Interface.gd
+index aa89fc5..52f04ea 100644
+--- a/gmf/common/scenes/Interface/Interface.gd
++++ b/gmf/common/scenes/Interface/Interface.gd
+@@ -1,8 +1,9 @@
+ extends Control
+ 
+-
+-func set_new_name(new_name: String):
+-	$Name.text = new_name
++var display_name: String = "":
++	set(new_name):
++		display_name = new_name
++		$Name.text = new_name
+ 
+ 
+ func update_hp_bar(hp: int, max_hp: int):

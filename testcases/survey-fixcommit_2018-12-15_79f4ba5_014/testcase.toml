@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2018-12-15_79f4ba5_014"
+category = "precise_edit"
+source_kind = "git"
+baseline_ref = "60adbb097b44bfdc9b72e29528be31fc6b4c76a4"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: godot/addons/rect_extents_gizmo/plugin.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2018-12-15_79f4ba5_014"
+bad_case_type = "C2"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

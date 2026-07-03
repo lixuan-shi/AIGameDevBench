@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-09-27_7728cce_050"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "e4334dbb7afe7d1f275d065afb158983582db86a"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scripts/UI/CustomLevelMenu.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-09-27_7728cce_050"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

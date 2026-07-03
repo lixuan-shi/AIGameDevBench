@@ -1,0 +1,276 @@
+diff --git a/source/match/maps/BigArena.tscn b/source/match/maps/BigArena.tscn
+index fd7ba0c..07f8f46 100644
+--- a/source/match/maps/BigArena.tscn
++++ b/source/match/maps/BigArena.tscn
+@@ -19,28 +19,28 @@ size = Vector2(100, 100)
+ mesh = SubResource("PlaneMesh_43n1t")
+ 
+ [node name="Marker3D" type="Marker3D" parent="SpawnPoints" index="0"]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0, 35)
++transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 15, 0, 35)
+ 
+ [node name="Marker3D2" type="Marker3D" parent="SpawnPoints" index="1"]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35, 0, 15)
++transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 35, 0, 15)
+ 
+ [node name="Marker3D3" type="Marker3D" parent="SpawnPoints" index="2"]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 65, 0, 15)
++transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 65, 0, 15)
+ 
+ [node name="Marker3D4" type="Marker3D" parent="SpawnPoints" index="3"]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 85, 0, 35)
++transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 85, 0, 35)
+ 
+ [node name="Marker3D5" type="Marker3D" parent="SpawnPoints" index="4"]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 85, 0, 65)
++transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 85, 0, 65)
+ 
+ [node name="Marker3D6" type="Marker3D" parent="SpawnPoints" index="5"]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 65, 0, 85)
++transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 65, 0, 85)
+ 
+ [node name="Marker3D7" type="Marker3D" parent="SpawnPoints" index="6"]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35, 0, 85)
++transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 35, 0, 85)
+ 
+ [node name="Marker3D8" type="Marker3D" parent="SpawnPoints" index="7"]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0, 65)
++transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 15, 0, 65)
+ 
+ [node name="Spot0" type="Node3D" parent="Resources" index="0"]
+ 
+diff --git a/source/match/units/AircraftFactory.tscn b/source/match/units/AircraftFactory.tscn
+index 8d02a4e..32601e1 100644
+--- a/source/match/units/AircraftFactory.tscn
++++ b/source/match/units/AircraftFactory.tscn
+@@ -24,11 +24,11 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+ shape = SubResource("CylinderShape3D_uvm5u")
+ 
+ [node name="Highlight" parent="." instance=ExtResource("1_r5i7t")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ radius = 1.5
+ 
+ [node name="Selection" parent="." instance=ExtResource("2_56ml3")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ radius = 1.5
+ 
+ [node name="MovementObstacle" parent="." instance=ExtResource("3_j1buj")]
+@@ -41,7 +41,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+ size = Vector2(250, 10)
+ 
+ [node name="Targetability" parent="." instance=ExtResource("9_qqlap")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ radius = 1.5
+ 
+ [editable path="Geometry"]
+diff --git a/source/match/units/AntiAirTurret.tscn b/source/match/units/AntiAirTurret.tscn
+index edfa6f4..6104901 100644
+--- a/source/match/units/AntiAirTurret.tscn
++++ b/source/match/units/AntiAirTurret.tscn
+@@ -46,11 +46,11 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+ shape = SubResource("CylinderShape3D_xa2u4")
+ 
+ [node name="Highlight" parent="." instance=ExtResource("1_tbjvv")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ radius = 0.6
+ 
+ [node name="Selection" parent="." instance=ExtResource("2_ookx0")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ radius = 0.6
+ 
+ [node name="MovementObstacle" parent="." instance=ExtResource("3_hgb44")]
+@@ -63,7 +63,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+ size = Vector2(110, 10)
+ 
+ [node name="Targetability" parent="." instance=ExtResource("7_6bghh")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ radius = 0.6
+ 
+ [node name="RotateRandomlyWhenLookingForTargetsIdle" parent="." instance=ExtResource("8_hqxqv")]
+diff --git a/source/match/units/AntiGroundTurret.tscn b/source/match/units/AntiGroundTurret.tscn
+index 8422b8c..a38abaf 100644
+--- a/source/match/units/AntiGroundTurret.tscn
++++ b/source/match/units/AntiGroundTurret.tscn
+@@ -40,11 +40,11 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+ shape = SubResource("CylinderShape3D_7usmv")
+ 
+ [node name="Highlight" parent="." instance=ExtResource("1_5gp2d")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ radius = 0.6
+ 
+ [node name="Selection" parent="." instance=ExtResource("2_f1d12")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ radius = 0.6
+ 
+ [node name="MovementObstacle" parent="." instance=ExtResource("3_ds80w")]
+@@ -57,7 +57,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+ size = Vector2(110, 10)
+ 
+ [node name="Targetability" parent="." instance=ExtResource("7_4hifs")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ radius = 0.6
+ 
+ [node name="RotateRandomlyWhenLookingForTargets" parent="." instance=ExtResource("8_l7mop")]
+diff --git a/source/match/units/CommandCenter.tscn b/source/match/units/CommandCenter.tscn
+index ce5e074..720ea32 100644
+--- a/source/match/units/CommandCenter.tscn
++++ b/source/match/units/CommandCenter.tscn
+@@ -24,11 +24,11 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+ shape = SubResource("CylinderShape3D_pav5c")
+ 
+ [node name="Highlight" parent="." instance=ExtResource("2_c41i5")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ radius = 2.0
+ 
+ [node name="Selection" parent="." instance=ExtResource("3_slmue")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ radius = 2.0
+ 
+ [node name="MovementObstacle" parent="." instance=ExtResource("4_f5u8t")]
+@@ -41,7 +41,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+ size = Vector2(380, 10)
+ 
+ [node name="Targetability" parent="." instance=ExtResource("17_dco2r")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ radius = 2.0
+ 
+ [editable path="Geometry"]
+diff --git a/source/match/units/Tank.tscn b/source/match/units/Tank.tscn
+index fa8ab8d..a168f25 100644
+--- a/source/match/units/Tank.tscn
++++ b/source/match/units/Tank.tscn
+@@ -35,10 +35,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
+ shape = SubResource("CylinderShape3D_sjc11")
+ 
+ [node name="Highlight" parent="." instance=ExtResource("1_n4t54")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ 
+ [node name="Selection" parent="." instance=ExtResource("2_mbcqe")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ 
+ [node name="Movement" parent="." instance=ExtResource("3_4m8ma")]
+ path_desired_distance = 0.5
+@@ -56,4 +56,4 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+ size = Vector2(160, 10)
+ 
+ [node name="Targetability" parent="." instance=ExtResource("8_ca2nt")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+diff --git a/source/match/units/VehicleFactory.tscn b/source/match/units/VehicleFactory.tscn
+index b4698e1..7c77a1b 100644
+--- a/source/match/units/VehicleFactory.tscn
++++ b/source/match/units/VehicleFactory.tscn
+@@ -24,11 +24,11 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+ shape = SubResource("CylinderShape3D_2mws5")
+ 
+ [node name="Highlight" parent="." instance=ExtResource("1_8fcgb")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ radius = 1.5
+ 
+ [node name="Selection" parent="." instance=ExtResource("2_h27kt")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ radius = 1.5
+ 
+ [node name="MovementObstacle" parent="." instance=ExtResource("3_cp6bx")]
+@@ -41,7 +41,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.75, 0)
+ size = Vector2(250, 10)
+ 
+ [node name="Targetability" parent="." instance=ExtResource("7_j4kwk")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ radius = 1.5
+ 
+ [editable path="Geometry"]
+diff --git a/source/match/units/Worker.tscn b/source/match/units/Worker.tscn
+index ddaec26..77015cb 100644
+--- a/source/match/units/Worker.tscn
++++ b/source/match/units/Worker.tscn
+@@ -26,11 +26,11 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
+ shape = SubResource("CylinderShape3D_hiufi")
+ 
+ [node name="Highlight" parent="." instance=ExtResource("2_bt6lt")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ radius = 0.6
+ 
+ [node name="Selection" parent="." instance=ExtResource("3_yl7si")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ radius = 0.6
+ 
+ [node name="Movement" parent="." instance=ExtResource("4_lmprj")]
+@@ -49,7 +49,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+ size = Vector2(100, 10)
+ 
+ [node name="Targetability" parent="." instance=ExtResource("7_i4ri4")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ radius = 0.6
+ 
+ [editable path="Geometry/rover"]
+diff --git a/source/match/units/non-player/ResourceA.tscn b/source/match/units/non-player/ResourceA.tscn
+index b1e0753..7aa7850 100644
+--- a/source/match/units/non-player/ResourceA.tscn
++++ b/source/match/units/non-player/ResourceA.tscn
+@@ -23,11 +23,11 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
+ shape = SubResource("CylinderShape3D_msmnm")
+ 
+ [node name="Highlight" parent="." instance=ExtResource("1_d3pi2")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ radius = 0.6
+ 
+ [node name="Selection" parent="." instance=ExtResource("2_pgrb1")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ radius = 0.6
+ 
+ [node name="MovementObstacle" parent="." instance=ExtResource("3_xabt4")]
+@@ -36,5 +36,5 @@ radius = 0.6
+ agent_height_offset = 0.5
+ 
+ [node name="Targetability" parent="." instance=ExtResource("5_vqxvf")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ radius = 0.6
+diff --git a/source/match/units/non-player/ResourceB.tscn b/source/match/units/non-player/ResourceB.tscn
+index 00494bc..6838bb9 100644
+--- a/source/match/units/non-player/ResourceB.tscn
++++ b/source/match/units/non-player/ResourceB.tscn
+@@ -23,11 +23,11 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+ shape = SubResource("CylinderShape3D_msmnm")
+ 
+ [node name="Highlight" parent="." instance=ExtResource("2_c8mwe")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ radius = 0.6
+ 
+ [node name="Selection" parent="." instance=ExtResource("3_6dh54")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ radius = 0.6
+ 
+ [node name="MovementObstacle" parent="." instance=ExtResource("4_sxjck")]
+@@ -36,5 +36,5 @@ radius = 0.6
+ agent_height_offset = 0.5
+ 
+ [node name="Targetability" parent="." instance=ExtResource("5_y6273")]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+ radius = 0.6

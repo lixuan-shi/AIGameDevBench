@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-11-17_bd6f8f0_033"
+category = "intent_translation"
+source_kind = "git"
+baseline_ref = "20de71824832f8057aa7a3945eeb33c06e8923e3"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\tabletop-club"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: game/Scripts/Game/3D/Room.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-11-17_bd6f8f0_033"
+bad_case_type = "B2"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

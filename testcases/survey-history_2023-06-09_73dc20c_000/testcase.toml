@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-history_2023-06-09_73dc20c_000"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "ce74c0e10f21cd63d4fc804653c700615c71b6a8"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: project.godot, src/common/music_player/music_player.tscn, src/field/field.gd, src/field/field_cursor.gd, src/field/gameboard/events/event.gd, src/field/gameboard/events/interaction.gd, src/field/gamepieces/controllers/player_controller.gd, src/field/gamepieces/gamepiece.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "history_2023-06-09_73dc20c_000"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

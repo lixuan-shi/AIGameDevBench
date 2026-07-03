@@ -1,0 +1,2758 @@
+diff --git a/assets/characters/generic_character_gfx.tscn b/assets/characters/generic_character_gfx.tscn
+index 803e993..761ead9 100644
+--- a/assets/characters/generic_character_gfx.tscn
++++ b/assets/characters/generic_character_gfx.tscn
+@@ -1,7 +1,8 @@
+-[gd_scene load_steps=3 format=3 uid="uid://cdkha7cc72h35"]
++[gd_scene load_steps=4 format=3 uid="uid://cdkha7cc72h35"]
+ 
+ [ext_resource type="PackedScene" uid="uid://caxhff6by5nqu" path="res://src/field/gamepieces/animation/gamepiece_animation.tscn" id="1_pdtfs"]
+ [ext_resource type="AnimationLibrary" uid="uid://dmmjb8ambpwar" path="res://assets/characters/default_animations/standard_animations.res" id="2_ljcdi"]
++[ext_resource type="Texture2D" uid="uid://doea2mk0aaedo" path="res://assets/characters/character_generic.png" id="3_vttgk"]
+ 
+ [node name="GenericAnimation" instance=ExtResource("1_pdtfs")]
+ 
+@@ -13,4 +14,6 @@ autoplay = "idle"
+ speed_scale = 2.0
+ 
+ [node name="Sprite" parent="Anchor" index="0"]
++texture = ExtResource("3_vttgk")
++region_enabled = true
+ region_rect = Rect2(1, 1, 16, 16)
+diff --git a/assets/characters/ ghost.atlastex b/assets/characters/ghost.atlastex
+similarity index 100%
+rename from assets/characters/ ghost.atlastex
+rename to assets/characters/ghost.atlastex
+diff --git a/assets/characters/ghost_gfx.tscn b/assets/characters/ghost_gfx.tscn
+index 67d8261..88ec9d9 100644
+--- a/assets/characters/ghost_gfx.tscn
++++ b/assets/characters/ghost_gfx.tscn
+@@ -1,6 +1,7 @@
+-[gd_scene load_steps=5 format=3 uid="uid://cgwailb13nkcd"]
++[gd_scene load_steps=6 format=3 uid="uid://cgwailb13nkcd"]
+ 
+ [ext_resource type="PackedScene" uid="uid://caxhff6by5nqu" path="res://src/field/gamepieces/animation/gamepiece_animation.tscn" id="1_iqw7y"]
++[ext_resource type="Texture2D" uid="uid://dopua6orsf0bs" path="res://assets/characters/ghost.atlastex" id="2_ip52p"]
+ 
+ [sub_resource type="Animation" id="Animation_sr8xj"]
+ length = 0.001
+@@ -46,3 +47,6 @@ libraries = {
+ &"": SubResource("AnimationLibrary_6yooh")
+ }
+ autoplay = "idle"
++
++[node name="Sprite" parent="Anchor" index="0"]
++texture = ExtResource("2_ip52p")
+diff --git a/assets/characters/knight_gfx.tscn b/assets/characters/knight_gfx.tscn
+index 964ba5f..30ca3b1 100644
+--- a/assets/characters/knight_gfx.tscn
++++ b/assets/characters/knight_gfx.tscn
+@@ -1,6 +1,7 @@
+-[gd_scene load_steps=5 format=3 uid="uid://se1wnxu5svgj"]
++[gd_scene load_steps=6 format=3 uid="uid://se1wnxu5svgj"]
+ 
+ [ext_resource type="PackedScene" uid="uid://caxhff6by5nqu" path="res://src/field/gamepieces/animation/gamepiece_animation.tscn" id="1_c58iv"]
++[ext_resource type="Texture2D" uid="uid://ti2vhkpokeib" path="res://assets/characters/knight.atlastex" id="2_f3pos"]
+ 
+ [sub_resource type="Animation" id="Animation_sr8xj"]
+ length = 0.001
+@@ -46,3 +47,6 @@ libraries = {
+ &"": SubResource("AnimationLibrary_6yooh")
+ }
+ autoplay = "idle"
++
++[node name="Sprite" parent="Anchor" index="0"]
++texture = ExtResource("2_f3pos")
+diff --git a/assets/characters/monk_gfx.tscn b/assets/characters/monk_gfx.tscn
+index 5ce5c9e..240c66e 100644
+--- a/assets/characters/monk_gfx.tscn
++++ b/assets/characters/monk_gfx.tscn
+@@ -1,6 +1,7 @@
+-[gd_scene load_steps=5 format=3 uid="uid://dqdk6eehxsrmn"]
++[gd_scene load_steps=6 format=3 uid="uid://dqdk6eehxsrmn"]
+ 
+ [ext_resource type="PackedScene" uid="uid://caxhff6by5nqu" path="res://src/field/gamepieces/animation/gamepiece_animation.tscn" id="1_3s0fl"]
++[ext_resource type="Texture2D" uid="uid://2kiqbt7c1s65" path="res://assets/characters/monk.atlastex" id="2_ay6b6"]
+ 
+ [sub_resource type="Animation" id="Animation_r565k"]
+ length = 0.001
+@@ -47,3 +48,6 @@ libraries = {
+ &"": SubResource("AnimationLibrary_fx0ff")
+ }
+ autoplay = "idle"
++
++[node name="Sprite" parent="Anchor" index="0"]
++texture = ExtResource("2_ay6b6")
+diff --git a/assets/characters/smith_gfx.tscn b/assets/characters/smith_gfx.tscn
+index e941545..7462c71 100644
+--- a/assets/characters/smith_gfx.tscn
++++ b/assets/characters/smith_gfx.tscn
+@@ -1,6 +1,7 @@
+-[gd_scene load_steps=5 format=3 uid="uid://bvtk5qllej4b8"]
++[gd_scene load_steps=6 format=3 uid="uid://bvtk5qllej4b8"]
+ 
+ [ext_resource type="PackedScene" uid="uid://caxhff6by5nqu" path="res://src/field/gamepieces/animation/gamepiece_animation.tscn" id="1_jgl7k"]
++[ext_resource type="Texture2D" uid="uid://b4py6kf410yhh" path="res://assets/characters/smith.atlastex" id="2_fia7k"]
+ 
+ [sub_resource type="Animation" id="Animation_h6akm"]
+ length = 0.001
+@@ -47,3 +48,6 @@ libraries = {
+ &"": SubResource("AnimationLibrary_y0jyp")
+ }
+ autoplay = "idle"
++
++[node name="Sprite" parent="Anchor" index="0"]
++texture = ExtResource("2_fia7k")
+diff --git a/assets/characters/lady_gfx.tscn b/assets/characters/thief_gfx.tscn
+similarity index 83%
+rename from assets/characters/lady_gfx.tscn
+rename to assets/characters/thief_gfx.tscn
+index 2a79c91..fba57c8 100644
+--- a/assets/characters/lady_gfx.tscn
++++ b/assets/characters/thief_gfx.tscn
+@@ -1,6 +1,7 @@
+-[gd_scene load_steps=5 format=3 uid="uid://kiwma43jc3n6"]
++[gd_scene load_steps=6 format=3 uid="uid://kiwma43jc3n6"]
+ 
+ [ext_resource type="PackedScene" uid="uid://caxhff6by5nqu" path="res://src/field/gamepieces/animation/gamepiece_animation.tscn" id="1_lnhvj"]
++[ext_resource type="Texture2D" uid="uid://da8xa6fkwyv4r" path="res://assets/characters/thief.atlastex" id="2_6n3f7"]
+ 
+ [sub_resource type="Animation" id="Animation_r565k"]
+ length = 0.001
+@@ -47,3 +48,6 @@ libraries = {
+ &"": SubResource("AnimationLibrary_fx0ff")
+ }
+ autoplay = "idle"
++
++[node name="Sprite" parent="Anchor" index="0"]
++texture = ExtResource("2_6n3f7")
+diff --git a/assets/characters/wizard_gfx.tscn b/assets/characters/wizard_gfx.tscn
+index 6251ddf..7783de2 100644
+--- a/assets/characters/wizard_gfx.tscn
++++ b/assets/characters/wizard_gfx.tscn
+@@ -1,6 +1,7 @@
+-[gd_scene load_steps=5 format=3 uid="uid://ccm8tsjysf8b5"]
++[gd_scene load_steps=6 format=3 uid="uid://ccm8tsjysf8b5"]
+ 
+ [ext_resource type="PackedScene" uid="uid://caxhff6by5nqu" path="res://src/field/gamepieces/animation/gamepiece_animation.tscn" id="1_7u2js"]
++[ext_resource type="Texture2D" uid="uid://8ry5inpldbfg" path="res://assets/characters/wizard.atlastex" id="2_b6oqf"]
+ 
+ [sub_resource type="Animation" id="Animation_8lv7x"]
+ length = 0.001
+@@ -47,3 +48,6 @@ libraries = {
+ &"": SubResource("AnimationLibrary_hgdni")
+ }
+ autoplay = "idle"
++
++[node name="Sprite" parent="Anchor" index="0"]
++texture = ExtResource("2_b6oqf")
+diff --git a/assets/terrain/tilesets/kenney_obstacles.tres b/assets/terrain/tilesets/kenney_obstacles.tres
+index e573272..994ede5 100644
+--- a/assets/terrain/tilesets/kenney_obstacles.tres
++++ b/assets/terrain/tilesets/kenney_obstacles.tres
+@@ -8,24 +8,32 @@ texture = ExtResource("1_g3gb6")
+ separation = Vector2i(1, 1)
+ 3:1/0 = 0
+ 3:1/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++3:1/0/custom_data_0 = true
+ 3:0/0 = 0
++3:0/0/custom_data_0 = true
+ 3:2/0 = 0
+ 3:2/0/terrain_set = 0
+ 3:2/0/terrain = 1
+ 3:2/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++3:2/0/custom_data_0 = true
+ 4:2/0 = 0
+ 4:2/0/terrain_set = 0
+ 4:2/0/terrain = 0
+ 4:2/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++4:2/0/custom_data_0 = true
+ 4:1/0 = 0
+ 4:1/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++4:1/0/custom_data_0 = true
+ 4:0/0 = 0
++4:0/0/custom_data_0 = true
+ 5:0/0 = 0
+ 5:0/0/terrain_set = 0
+ 5:0/0/terrain = 0
+ 5:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++5:0/0/custom_data_0 = true
+ 5:1/0 = 0
+ 5:1/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++5:1/0/custom_data_0 = true
+ 5:2/0 = 0
+ 5:2/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+ 6:2/0 = 0
+@@ -34,44 +42,52 @@ separation = Vector2i(1, 1)
+ 6:2/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+ 6:2/0/terrains_peering_bit/right_side = 0
+ 6:2/0/terrains_peering_bit/top_side = 0
++6:2/0/custom_data_0 = true
+ 7:2/0 = 0
+ 7:2/0/terrain_set = 0
+ 7:2/0/terrain = 0
+ 7:2/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+ 7:2/0/terrains_peering_bit/top_side = 0
++7:2/0/custom_data_0 = true
+ 8:2/0 = 0
+ 8:2/0/terrain_set = 0
+ 8:2/0/terrain = 0
+ 8:2/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+ 8:2/0/terrains_peering_bit/left_side = 0
+ 8:2/0/terrains_peering_bit/top_side = 0
++8:2/0/custom_data_0 = true
+ 8:1/0 = 0
+ 8:1/0/terrain_set = 0
+ 8:1/0/terrain = 0
+ 8:1/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+ 8:1/0/terrains_peering_bit/left_side = 0
++8:1/0/custom_data_0 = true
+ 8:0/0 = 0
+ 8:0/0/terrain_set = 0
+ 8:0/0/terrain = 0
+ 8:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+ 8:0/0/terrains_peering_bit/bottom_side = 0
+ 8:0/0/terrains_peering_bit/left_side = 0
++8:0/0/custom_data_0 = true
+ 7:0/0 = 0
+ 7:0/0/terrain_set = 0
+ 7:0/0/terrain = 0
+ 7:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+ 7:0/0/terrains_peering_bit/bottom_side = 0
++7:0/0/custom_data_0 = true
+ 6:0/0 = 0
+ 6:0/0/terrain_set = 0
+ 6:0/0/terrain = 0
+ 6:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+ 6:0/0/terrains_peering_bit/right_side = 0
+ 6:0/0/terrains_peering_bit/bottom_side = 0
++6:0/0/custom_data_0 = true
+ 6:1/0 = 0
+ 6:1/0/terrain_set = 0
+ 6:1/0/terrain = 0
+ 6:1/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+ 6:1/0/terrains_peering_bit/right_side = 0
++6:1/0/custom_data_0 = true
+ 7:1/0 = 0
+ 7:1/0/terrain_set = 0
+ 7:1/0/terrain = 0
+@@ -80,50 +96,59 @@ separation = Vector2i(1, 1)
+ 7:1/0/terrains_peering_bit/bottom_side = 0
+ 7:1/0/terrains_peering_bit/left_side = 0
+ 7:1/0/terrains_peering_bit/top_side = 0
++7:1/0/custom_data_0 = true
+ 9:1/0 = 0
+ 9:1/0/terrain_set = 0
+ 9:1/0/terrain = 1
+ 9:1/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+ 9:1/0/terrains_peering_bit/right_side = 1
++9:1/0/custom_data_0 = true
+ 9:2/0 = 0
+ 9:2/0/terrain_set = 0
+ 9:2/0/terrain = 1
+ 9:2/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+ 9:2/0/terrains_peering_bit/right_side = 1
+ 9:2/0/terrains_peering_bit/top_side = 1
++9:2/0/custom_data_0 = true
+ 10:2/0 = 0
+ 10:2/0/terrain_set = 0
+ 10:2/0/terrain = 1
+ 10:2/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+ 10:2/0/terrains_peering_bit/top_side = 1
++10:2/0/custom_data_0 = true
+ 11:2/0 = 0
+ 11:2/0/terrain_set = 0
+ 11:2/0/terrain = 1
+ 11:2/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+ 11:2/0/terrains_peering_bit/left_side = 1
+ 11:2/0/terrains_peering_bit/top_side = 1
++11:2/0/custom_data_0 = true
+ 11:1/0 = 0
+ 11:1/0/terrain_set = 0
+ 11:1/0/terrain = 1
+ 11:1/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+ 11:1/0/terrains_peering_bit/left_side = 1
++11:1/0/custom_data_0 = true
+ 11:0/0 = 0
+ 11:0/0/terrain_set = 0
+ 11:0/0/terrain = 1
+ 11:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+ 11:0/0/terrains_peering_bit/bottom_side = 1
+ 11:0/0/terrains_peering_bit/left_side = 1
++11:0/0/custom_data_0 = true
+ 10:0/0 = 0
+ 10:0/0/terrain_set = 0
+ 10:0/0/terrain = 1
+ 10:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+ 10:0/0/terrains_peering_bit/bottom_side = 1
++10:0/0/custom_data_0 = true
+ 9:0/0 = 0
+ 9:0/0/terrain_set = 0
+ 9:0/0/terrain = 1
+ 9:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+ 9:0/0/terrains_peering_bit/right_side = 1
+ 9:0/0/terrains_peering_bit/bottom_side = 1
++9:0/0/custom_data_0 = true
+ 10:1/0 = 0
+ 10:1/0/terrain_set = 0
+ 10:1/0/terrain = 1
+@@ -132,134 +157,200 @@ separation = Vector2i(1, 1)
+ 10:1/0/terrains_peering_bit/bottom_side = 1
+ 10:1/0/terrains_peering_bit/left_side = 1
+ 10:1/0/terrains_peering_bit/top_side = 1
++10:1/0/custom_data_0 = true
+ 10:6/0 = 0
+ 10:6/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++10:6/0/custom_data_0 = true
+ 9:6/0 = 0
+ 9:6/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++9:6/0/custom_data_0 = true
+ 8:6/0 = 0
+ 8:6/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++8:6/0/custom_data_0 = true
+ 8:5/0 = 0
+ 8:5/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++8:5/0/custom_data_0 = true
+ 8:4/0 = 0
+ 8:4/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++8:4/0/custom_data_0 = true
+ 8:3/0 = 0
+ 8:3/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++8:3/0/custom_data_0 = true
+ 9:3/0 = 0
+ 9:3/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++9:3/0/custom_data_0 = true
+ 10:3/0 = 0
+ 10:3/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++10:3/0/custom_data_0 = true
+ 10:4/0 = 0
+ 10:4/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++10:4/0/custom_data_0 = true
+ 11:4/0 = 0
+ 11:4/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++11:4/0/custom_data_0 = true
+ 11:5/0 = 0
+ 11:5/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++11:5/0/custom_data_0 = true
+ 10:5/0 = 0
+ 10:5/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++10:5/0/custom_data_0 = true
+ 9:5/0 = 0
+ 9:5/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++9:5/0/custom_data_0 = true
+ 11:3/0 = 0
+ 11:3/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++11:3/0/custom_data_0 = true
+ 0:8/0 = 0
+ 0:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++0:8/0/custom_data_0 = true
+ 1:8/0 = 0
+ 1:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++1:8/0/custom_data_0 = true
+ 2:8/0 = 0
+ 2:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++2:8/0/custom_data_0 = true
+ 2:9/0 = 0
+ 2:9/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++2:9/0/custom_data_0 = true
+ 2:10/0 = 0
+ 2:10/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++2:10/0/custom_data_0 = true
+ 1:10/0 = 0
+ 1:10/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++1:10/0/custom_data_0 = true
+ 0:10/0 = 0
+ 0:10/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++0:10/0/custom_data_0 = true
+ 0:9/0 = 0
+ 0:9/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++0:9/0/custom_data_0 = true
+ 1:9/0 = 0
+ 1:9/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++1:9/0/custom_data_0 = true
+ 3:8/0 = 0
+ 3:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++3:8/0/custom_data_0 = true
+ 4:8/0 = 0
+ 4:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++4:8/0/custom_data_0 = true
+ 5:8/0 = 0
+ 5:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++5:8/0/custom_data_0 = true
+ 6:8/0 = 0
+ 6:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++6:8/0/custom_data_0 = true
+ 6:10/0 = 0
+ 6:10/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++6:10/0/custom_data_0 = true
+ 5:10/0 = 0
+ 5:10/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++5:10/0/custom_data_0 = true
+ 4:10/0 = 0
+ 4:10/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++4:10/0/custom_data_0 = true
+ 3:10/0 = 0
+ 3:10/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++3:10/0/custom_data_0 = true
+ 3:9/0 = 0
++3:9/0/custom_data_0 = true
+ 4:9/0 = 0
++4:9/0/custom_data_0 = true
+ 5:9/0 = 0
++5:9/0/custom_data_0 = true
+ 6:9/0 = 0
++6:9/0/custom_data_0 = true
+ 7:6/0 = 0
+ 7:6/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++7:6/0/custom_data_0 = true
+ 7:5/0 = 0
+ 7:5/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++7:5/0/custom_data_0 = true
+ 7:4/0 = 0
+ 7:4/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++7:4/0/custom_data_0 = true
+ 6:4/0 = 0
+ 6:4/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++6:4/0/custom_data_0 = true
+ 5:4/0 = 0
+ 5:4/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++5:4/0/custom_data_0 = true
+ 4:4/0 = 0
+ 4:4/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++4:4/0/custom_data_0 = true
+ 3:4/0 = 0
+ 3:4/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++3:4/0/custom_data_0 = true
+ 2:4/0 = 0
+ 2:4/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++2:4/0/custom_data_0 = true
+ 1:4/0 = 0
+ 1:4/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++1:4/0/custom_data_0 = true
+ 0:4/0 = 0
+ 0:4/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++0:4/0/custom_data_0 = true
+ 0:5/0 = 0
+ 0:5/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++0:5/0/custom_data_0 = true
+ 0:6/0 = 0
+ 0:6/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++0:6/0/custom_data_0 = true
+ 1:6/0 = 0
+ 1:6/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++1:6/0/custom_data_0 = true
+ 2:6/0 = 0
+ 3:6/0 = 0
+ 3:6/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++3:6/0/custom_data_0 = true
+ 4:6/0 = 0
+ 4:6/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++4:6/0/custom_data_0 = true
+ 5:6/0 = 0
+ 5:6/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++5:6/0/custom_data_0 = true
+ 6:6/0 = 0
+ 6:5/0 = 0
+ 6:5/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++6:5/0/custom_data_0 = true
+ 5:5/0 = 0
+ 5:5/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++5:5/0/custom_data_0 = true
+ 4:5/0 = 0
+ 4:5/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++4:5/0/custom_data_0 = true
+ 3:5/0 = 0
+ 3:5/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++3:5/0/custom_data_0 = true
+ 2:5/0 = 0
+ 2:5/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++2:5/0/custom_data_0 = true
+ 1:5/0 = 0
+ 1:5/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++1:5/0/custom_data_0 = true
+ 4:7/0 = 0
+ 4:7/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++4:7/0/custom_data_0 = true
+ 0:7/0 = 0
+ 0:7/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++0:7/0/custom_data_0 = true
+ 1:7/0 = 0
+ 1:7/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++1:7/0/custom_data_0 = true
+ 5:7/0 = 0
+ 5:7/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++5:7/0/custom_data_0 = true
+ 11:6/0 = 0
+ 11:6/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++11:6/0/custom_data_0 = true
+ 10:7/0 = 0
+ 10:7/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++10:7/0/custom_data_0 = true
+ 8:8/0 = 0
+ 8:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++8:8/0/custom_data_0 = true
+ 8:7/0 = 0
+ 7:8/0 = 0
++7:8/0/custom_data_0 = true
+ 7:3/0 = 0
+ 7:3/0/terrain_set = 1
+ 7:3/0/terrain = 2
+@@ -354,11 +445,16 @@ separation = Vector2i(1, 1)
+ 1:1/0/terrains_peering_bit/bottom_left_corner = 0
+ 9:4/0 = 0
+ 9:4/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++9:4/0/custom_data_0 = true
+ 11:8/0 = 0
+ 11:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
++11:8/0/custom_data_0 = true
+ 9:8/0 = 0
++9:8/0/custom_data_0 = true
+ 11:10/0 = 0
++11:10/0/custom_data_0 = true
+ 10:10/0 = 0
++10:10/0/custom_data_0 = true
+ 
+ [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_xmrbd"]
+ texture = ExtResource("2_ou4ia")
+@@ -456,5 +552,7 @@ terrain_set_1/terrain_1/name = "Grass"
+ terrain_set_1/terrain_1/color = Color(0.152941, 0.329412, 0, 1)
+ terrain_set_1/terrain_2/name = "Cobblestone"
+ terrain_set_1/terrain_2/color = Color(0.262745, 0.239216, 0.223529, 1)
++custom_data_layer_0/name = "IsCellBlocked"
++custom_data_layer_0/type = 1
+ sources/0 = SubResource("TileSetAtlasSource_2gcu3")
+ sources/1 = SubResource("TileSetAtlasSource_xmrbd")
+diff --git a/assets/terrain/tilesets/kenney_terrain.tres b/assets/terrain/tilesets/kenney_terrain.tres
+index 7445df7..4447c71 100644
+--- a/assets/terrain/tilesets/kenney_terrain.tres
++++ b/assets/terrain/tilesets/kenney_terrain.tres
+@@ -127,6 +127,6 @@ terrain_set_0/terrain_0/name = "Grass"
+ terrain_set_0/terrain_0/color = Color(0, 0.215686, 0.0117647, 1)
+ terrain_set_0/terrain_1/name = "Dirt"
+ terrain_set_0/terrain_1/color = Color(0.262745, 0.223529, 0.113725, 1)
+-custom_data_layer_0/name = "BlocksMovement"
++custom_data_layer_0/name = "IsCellBlocked"
+ custom_data_layer_0/type = 1
+ sources/0 = SubResource("TileSetAtlasSource_4cs30")
+diff --git a/maps/grove/game_end_trigger.gd b/maps/forest/game_end_trigger.gd
+similarity index 100%
+rename from maps/grove/game_end_trigger.gd
+rename to maps/forest/game_end_trigger.gd
+diff --git a/maps/grove/game_end_trigger.gd.uid b/maps/forest/game_end_trigger.gd.uid
+similarity index 100%
+rename from maps/grove/game_end_trigger.gd.uid
+rename to maps/forest/game_end_trigger.gd.uid
+diff --git a/maps/grove/ghost.dch b/maps/forest/ghost.dch
+similarity index 100%
+rename from maps/grove/ghost.dch
+rename to maps/forest/ghost.dch
+diff --git a/maps/grove/ghost.dch.uid b/maps/forest/ghost.dch.uid
+similarity index 100%
+rename from maps/grove/ghost.dch.uid
+rename to maps/forest/ghost.dch.uid
+diff --git a/maps/grove/ghost.dtl b/maps/forest/ghost.dtl
+similarity index 100%
+rename from maps/grove/ghost.dtl
+rename to maps/forest/ghost.dtl
+diff --git a/maps/grove/ghost.dtl.uid b/maps/forest/ghost.dtl.uid
+similarity index 100%
+rename from maps/grove/ghost.dtl.uid
+rename to maps/forest/ghost.dtl.uid
+diff --git a/maps/village/gbprops_village.tres b/maps/gbprops.tres
+similarity index 100%
+rename from maps/village/gbprops_village.tres
+rename to maps/gbprops.tres
+diff --git a/maps/town/fan_interaction.gd b/maps/town/fan_interaction.gd
+index 55e95db..8dee9e9 100644
+--- a/maps/town/fan_interaction.gd
++++ b/maps/town/fan_interaction.gd
+@@ -26,7 +26,8 @@ func _execute() -> void:
+ 
+ 
+ func _on_initial_conversation_finished() -> void:
+-	controller.travel_to_cell(Vector2(23, 13))
++	var source_cell: = Gameboard.pixel_to_cell(_adoring_fan.position)
++	controller.move_path = Gameboard.pathfinder.get_path_to_cell(source_cell, Vector2(23, 13))
+ 	await _adoring_fan.arrived
+ 
+ 
+diff --git a/maps/town/strange_tree_interaction.gd b/maps/town/strange_tree_interaction.gd
+index 1712c9a..20459ec 100644
+--- a/maps/town/strange_tree_interaction.gd
++++ b/maps/town/strange_tree_interaction.gd
+@@ -24,9 +24,5 @@ func _on_dialogic_signal_event(_argument: String) -> void:
+ 	_popup.hide_and_free()
+ 	
+ 	# Clearing the secret path is controlled exclusively by the animation player.
+-	# Once the animation has finished, pathfinders will need to be updated via the
+-	# terrain_chagned signal below.
+ 	_anim.play("disappear")
+ 	await _anim.animation_finished
+-	
+-	FieldEvents.terrain_changed.emit()
+diff --git a/project.godot b/project.godot
+index aadf26d..5c11bd2 100644
+--- a/project.godot
++++ b/project.godot
+@@ -23,6 +23,7 @@ FieldEvents="*res://src/field/field_events.gd"
+ Gameboard="*res://src/field/gameboard/gameboard.gd"
+ GamepieceRegistry="*res://src/field/gamepieces/gamepiece_registry.gd"
+ Music="*res://src/common/music/music_player.tscn"
++Player="*res://src/common/player.gd"
+ Transition="*res://src/common/screen_transitions/ScreenTransition.tscn"
+ Dialogic="*res://addons/dialogic/Core/DialogicGameHandler.gd"
+ 
+@@ -74,7 +75,7 @@ settings/text_speed=1.0
+ directories/dch_directory={
+ "enemy_ghost": "res://maps/town/enemy_ghost.dch",
+ "fan_of_four": "res://maps/town/fan_of_four.dch",
+-"ghost": "res://maps/grove/ghost.dch",
++"ghost": "res://maps/forest/ghost.dch",
+ "monk": "res://maps/town/monk.dch",
+ "runner": "res://maps/town/runner.dch",
+ "smith": "res://maps/town/smith.dch",
+@@ -87,7 +88,7 @@ directories/dtl_directory={
+ "encounter_on_loss": "res://maps/town/encounter_on_loss.dtl",
+ "encounter_on_victory": "res://maps/town/encounter_on_victory.dtl",
+ "fan_of_four": "res://maps/town/fan_of_four.dtl",
+-"ghost": "res://maps/grove/ghost.dtl",
++"ghost": "res://maps/forest/ghost.dtl",
+ "monk": "res://maps/town/monk.dtl",
+ "opening_cutscene": "res://maps/opening_cutscene.dtl",
+ "runner": "res://maps/town/runner.dtl",
+diff --git a/src/Main2.tscn b/src/Main2.tscn
+index 941d030..7839363 100644
+--- a/src/Main2.tscn
++++ b/src/Main2.tscn
+@@ -1,15 +1,15 @@
+-[gd_scene load_steps=19 format=4 uid="uid://dve3nxx0ohm1g"]
++[gd_scene load_steps=17 format=4 uid="uid://dve3nxx0ohm1g"]
+ 
+ [ext_resource type="Script" uid="uid://ccm6jxmjt0frp" path="res://src/main_2.gd" id="1_d0xvx"]
+ [ext_resource type="Script" uid="uid://bt8owd5e0ns68" path="res://src/field/gameboard/gameboard_layer.gd" id="2_08ad2"]
+-[ext_resource type="Script" uid="uid://drugj534rnwxw" path="res://src/map.gd" id="2_dn3vx"]
++[ext_resource type="Script" uid="uid://drugj534rnwxw" path="res://src/field/map.gd" id="2_dn3vx"]
+ [ext_resource type="Texture2D" uid="uid://d2qfi5sncf72b" path="res://assets/terrain/town_tilemap.png" id="2_dsdwj"]
+ [ext_resource type="PackedScene" uid="uid://b626e0bngfvjj" path="res://src/field/gamepieces/gamepiece.tscn" id="2_nevdf"]
+ [ext_resource type="PackedScene" uid="uid://qxua6ekob7fa" path="res://assets/characters/gobot_gfx.tscn" id="3_08ad2"]
+-[ext_resource type="Script" uid="uid://yukpiyvqb6m3" path="res://src/field/ui/debug/debug_gameboard.gd" id="3_ppad8"]
+-[ext_resource type="Texture2D" uid="uid://dbpvlf2f8ajxy" path="res://assets/terrain/debug_cell_occupancy.png" id="4_u7xvm"]
+-[ext_resource type="Script" uid="uid://27j187rqxg64" path="res://src/field/gameboard/debug_map_boundaries.gd" id="6_ndalr"]
+-[ext_resource type="Resource" uid="uid://k63mv5dbd1uk" path="res://maps/village/gbprops_village.tres" id="7_7v0vs"]
++[ext_resource type="Script" uid="uid://yukpiyvqb6m3" path="res://src/field/gameboard/debug/debug_pathfinder_map.gd" id="3_ppad8"]
++[ext_resource type="TileSet" uid="uid://dhda7bse8tu6l" path="res://src/field/gameboard/debug/tileset_debug_pathfinder_map.tres" id="6_dn3vx"]
++[ext_resource type="Script" uid="uid://27j187rqxg64" path="res://src/field/gameboard/debug/debug_map_boundaries.gd" id="6_ndalr"]
++[ext_resource type="Resource" uid="uid://k63mv5dbd1uk" path="res://maps/gbprops.tres" id="7_7v0vs"]
+ [ext_resource type="TileSet" uid="uid://cnlvvllr0ici" path="res://src/field/gamepieces/controllers/cursor/tileset_cursor.tres" id="8_vw0ml"]
+ [ext_resource type="Script" uid="uid://dwq2jtul5j1rc" path="res://src/field/gamepieces/controllers/cursor/field_cursor.gd" id="9_xqwga"]
+ [ext_resource type="PackedScene" uid="uid://d2lj4blu56fte" path="res://src/field/gamepieces/controllers/player_controller.tscn" id="13_dn3vx"]
+@@ -27,16 +27,6 @@ custom_data_layer_0/name = "IsCellBlocked"
+ custom_data_layer_0/type = 1
+ sources/0 = SubResource("TileSetAtlasSource_u7xvm")
+ 
+-[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_a4m4d"]
+-texture = ExtResource("4_u7xvm")
+-separation = Vector2i(1, 0)
+-0:0/0 = 0
+-1:0/0 = 0
+-2:0/0 = 0
+-
+-[sub_resource type="TileSet" id="TileSet_ndalr"]
+-sources/0 = SubResource("TileSetAtlasSource_a4m4d")
+-
+ [node name="Main2" type="Node2D"]
+ scale = Vector2(5, 5)
+ script = ExtResource("1_d0xvx")
+@@ -59,7 +49,7 @@ script = ExtResource("2_08ad2")
+ 
+ [node name="DebugMoveGrid" type="TileMapLayer" parent="Map"]
+ modulate = Color(1, 1, 1, 0.470588)
+-tile_set = SubResource("TileSet_ndalr")
++tile_set = ExtResource("6_dn3vx")
+ script = ExtResource("3_ppad8")
+ 
+ [node name="OccupancyGrid" type="TileMapLayer" parent="Map/DebugMoveGrid"]
+diff --git a/src/common/player.gd b/src/common/player.gd
+new file mode 100644
+index 0000000..1483d83
+--- /dev/null
++++ b/src/common/player.gd
+@@ -0,0 +1,20 @@
++## An autoload that provides easy access to the player's state, including both Combat and Field
++## details.
++## Reference to the player's party, inventory, and currently active character are found here.
++## Additionally, game-wide player based signals are emitted from here.
++extends Node
++
++## Emitted whenever the player's gamepiece changes.
++signal gamepiece_changed
++
++## Emitted when the player sets a movement path for their focused gamepiece.
++## The destination is the last cell in the path.
++@warning_ignore("unused_signal")
++signal player_path_set(gamepiece: Gamepiece, destination_cell: Vector2i)
++
++## The gamepeice that the player is currently controlling. This is a read-only property.
++var gamepiece: Gamepiece = null:
++	set(value):
++		if value != gamepiece:
++			gamepiece = value
++			gamepiece_changed.emit()
+diff --git a/src/common/player.gd.uid b/src/common/player.gd.uid
+new file mode 100644
+index 0000000..18e6907
+--- /dev/null
++++ b/src/common/player.gd.uid
+@@ -0,0 +1 @@
++uid://d3r1nl6y28h5b
+diff --git a/src/field/cutscenes/popups/interaction_popup.tscn b/src/field/cutscenes/popups/interaction_popup.tscn
+index 1d117d9..bd3bc31 100644
+--- a/src/field/cutscenes/popups/interaction_popup.tscn
++++ b/src/field/cutscenes/popups/interaction_popup.tscn
+@@ -8,6 +8,7 @@ radius = 32.0
+ 
+ [node name="InteractionPopup" instance=ExtResource("1_582ge")]
+ script = ExtResource("2_2fot7")
++emote = 1
+ radius = 32
+ is_active = true
+ 
+diff --git a/src/field/cutscenes/popups/moving_interaction_popup.gd b/src/field/cutscenes/popups/moving_interaction_popup.gd
+index a8aac8a..1d60dc8 100644
+--- a/src/field/cutscenes/popups/moving_interaction_popup.gd
++++ b/src/field/cutscenes/popups/moving_interaction_popup.gd
+@@ -1,31 +1,37 @@
+ @tool
+-## An [InteractionPopup] that follows a moving [GamepieceAnimation].
++## An [InteractionPopup] that follows a moving [Gamepiece].
+ ##
+-## This [code]Popup[/code] must be a child of a [GamepieceAnimation] to function.
++## This [code]Popup[/code] must be a child of a [Gamepiece] to function.
+ ##
+ ## Note that other popup types will jump to the occupied cell of the ancestor [Gamepiece], whereas
+ ## MovingInteractionPopups sync their position to that of the gamepiece's graphical representation.
+ extends InteractionPopup
+ 
+-@onready var _gp_animation: = get_parent() as GamepieceAnimation
++@onready var _gp: = get_parent() as Gamepiece
+ 
+ 
+ func _ready() -> void:
+ 	super._ready()
+ 	
+ 	# Do not follow anything in editor or if this object's parent is not of the correct type.
+-	if Engine.is_editor_hint() or not _gp_animation:
++	if Engine.is_editor_hint() or not _gp:
+ 		set_process(false)
+ 
+ 
+ func _get_configuration_warnings() -> PackedStringArray:
+-	if not get_parent() is GamepieceAnimation:
+-		return ["This popup must be a child of a GamepieceAnimation node!"]
++	if not _gp:
++		return ["This popup must be a child of a Gamepiece node!"]
+ 	return []
+ 
+ 
++func _notification(what: int) -> void:
++	if what == NOTIFICATION_PARENTED:
++		_gp = get_parent() as Gamepiece
++		update_configuration_warnings()
++
++
+ # Every process frame the popup sets its position to that of the graphical representation of the
+ # gamepiece, appearing to follow the gamepiece around the field while still playing nicely with the
+ # physics/interaction system.
+ func _process(_delta: float) -> void:
+-	position = _gp_animation.get_gfx_position()
++	position = _gp.animation_transform.position
+diff --git a/src/field/cutscenes/templates/doors/door.gd b/src/field/cutscenes/templates/doors/door.gd
+index b5c1b63..44317d3 100644
+--- a/src/field/cutscenes/templates/doors/door.gd
++++ b/src/field/cutscenes/templates/doors/door.gd
+@@ -11,10 +11,6 @@ class_name Door extends AreaTransition
+ 				await ready
+ 			
+ 			_blocking_area.get_node("CollisionShape2D").disabled = !is_locked
+-			
+-			# Wait one frame for the physics server to update before rebuilding the pathfinders.
+-			await get_tree().physics_frame
+-			FieldEvents.terrain_changed.emit()
+ 
+ @onready var _anim: = $AnimationPlayer as AnimationPlayer
+ @onready var _blocking_area: = $Area2D/ClosedDoor/BlockingArea as Area2D
+diff --git a/src/field/field.gd b/src/field/field.gd
+index d83ab7c..b8d8255 100644
+--- a/src/field/field.gd
++++ b/src/field/field.gd
+@@ -1,31 +1,41 @@
+ extends Node2D
+ 
+-const PLAYER_CONTROLLER: = preload("res://src/field/gamepieces/controllers/player_controller.tscn")
+-
+ ## The cutscene that will play on starting a new game.
+ @export var opening_cutscene: Cutscene
+ 
+-## The gamepiece that the player is currently controlling.
+-@export var focused_game_piece: Gamepiece = null:
+-	set = set_focused_game_piece
+-
+-## The field of play for the current map. Defines map boundaries and tile sizes.
+-@export var gameboard: Gameboard:
+-	set(value):
+-		gameboard = value
+-		
+-		if not is_inside_tree():
+-			await ready
+-		
+-		debug_map_boundaries.gameboard = gameboard
++## A PlayerController that will be dynamically assigned to whichever Gamepiece the player currently
++## controls.
++@export var player_controller: PackedScene
+ 
+-@onready var debug_map_boundaries: DebugGameboardBoundaries = $MapBoundaries
++## The first gamepiece that the player will control. This may be null and assigned via an
++## introductory cutscene instead.
++@export var player_default_gamepiece: Gamepiece
+ 
+ 
+ func _ready() -> void:
+-	assert(gameboard)
+ 	randomize()
+ 	
++	# Assign proper controllers to player gamepieces whenever they change.
++	Player.gamepiece_changed.connect(
++		func _on_player_gp_changed() -> void:
++			var new_gp: = Player.gamepiece
++			Camera.gamepiece = new_gp
++	
++			# Free up any lingering controller(s).
++			for controller in get_tree().get_nodes_in_group(PlayerController.GROUP):
++				controller.queue_free()
++			
++			if new_gp:
++				var new_controller = player_controller.instantiate()
++				assert(new_controller is PlayerController, "The Field game state requires a valid
++					 PlayerController set in the editor!")
++				
++				new_gp.add_child(new_controller)
++				new_controller.is_active = true
++	)
++	
++	Player.gamepiece = player_default_gamepiece
++	
+ 	# The field state must pause/unpause with combat accordingly.
+ 	# Note that pausing/unpausing input is already wrapped up in triggers, which are what will
+ 	# initiate combat.
+@@ -33,31 +43,8 @@ func _ready() -> void:
+ 	CombatEvents.combat_finished.connect(func(_is_victory): show())
+ 	
+ 	Camera.scale = scale
+-	Camera.gameboard = gameboard
+ 	Camera.make_current()
+ 	Camera.reset_position()
+ 	
+ 	if opening_cutscene:
+ 		opening_cutscene.run.call_deferred()
+-
+-
+-func set_focused_game_piece(value: Gamepiece) -> void:
+-	if value == focused_game_piece:
+-		return
+-
+-	focused_game_piece = value
+-	
+-	if not is_inside_tree():
+-		await ready
+-	
+-	Camera.gamepiece = focused_game_piece
+-	
+-	# Free up any lingering controller(s).
+-	for controller in get_tree().get_nodes_in_group(PlayerController.GROUP):
+-		controller.queue_free()
+-	
+-	if focused_game_piece:
+-		var new_controller = PLAYER_CONTROLLER.instantiate()
+-		
+-		focused_game_piece.add_child(new_controller)
+-		new_controller.is_active = true
+diff --git a/src/field/field_camera.gd b/src/field/field_camera.gd
+index e57b218..e807345 100644
+--- a/src/field/field_camera.gd
++++ b/src/field/field_camera.gd
+@@ -15,11 +15,12 @@ extends Camera2D
+ @export var gamepiece: Gamepiece:
+ 	set(value):
+ 		if gamepiece:
+-			gamepiece.camera_anchor.remote_path = ""
++			gamepiece.animation_transform.remote_path = ""
+ 		
+ 		gamepiece = value
+ 		if gamepiece:
+-			gamepiece.camera_anchor.remote_path = gamepiece.camera_anchor.get_path_to(self)
++			gamepiece.animation_transform.remote_path \
++				= gamepiece.animation_transform.get_path_to(self)
+ 
+ 
+ func _ready() -> void:
+diff --git a/src/field/field_events.gd b/src/field/field_events.gd
+index 4b54365..6acf076 100644
+--- a/src/field/field_events.gd
++++ b/src/field/field_events.gd
+@@ -31,50 +31,7 @@ signal cutscene_began
+ @warning_ignore("unused_signal")
+ signal cutscene_ended
+ 
+-## Gamepiece related signals, usually emitted by the the gamepieces themselves.
+-signal gamepiece_cell_changed(gamepiece: Gamepiece, old_cell: Vector2i)
+-
+-## Emitted when the player sets a movement path for their focused gamepiece.
+-## The destination is the last cell in the path.
+-@warning_ignore("unused_signal")
+-signal player_path_set(gamepiece: Gamepiece, destination_cell: Vector2i)
+-
+-## Emitted whenever terrain passability changes. Pathfinders will need to be rebuilt.
+-@warning_ignore("unused_signal")
+-signal terrain_changed
+-
+ ## Emitted whenever ALL input within the field state is to be paused or resumed.
+ ## Typically emitted by combat, dialogues, etc.
+ @warning_ignore("unused_signal")
+ signal input_paused(is_paused: bool)
+-
+-# The physics engine updates a frame after physics object move, which plays havoc with our
+-# CollisionFinder class (objects are not there the same frame they move!).
+-# This is an issue for moving gamepices. Multiple Gamepieces may decide to move onto the same cell
+-# in the same frame, since their collision shapes will not yet be blocking the cell.
+-# The Field Events manager keeps track of these edge cases by recording which cells were targeted
+-# for movement THIS FRAME. The record will be cleared at the end of the frame and wait for other
+-# cell_changed signals.
+-# Please note that this is not a comprehensive list of moving gamepieces, but rather a list of
+-# changes in cells that occured from Gamepieces for this frame only.
+-var _cell_changes_this_frame: Array[Vector2i] = []
+-
+-
+-func _ready() -> void:
+-	gamepiece_cell_changed.connect(_on_gamepiece_cell_changed)
+-	
+-	# We want to clear the record of this frame's cell changes at the end of the frame, so this
+-	# class's _process() should run last.
+-	set_process_priority(PROCESS_PRIORITY)
+-
+-
+-func _process(_delta: float) -> void:
+-	_cell_changes_this_frame.clear()
+-
+-
+-func did_gp_move_to_cell_this_frame(cell: Vector2i) -> bool:
+-	return _cell_changes_this_frame.has(cell)
+-
+-
+-func _on_gamepiece_cell_changed(gamepiece: Gamepiece, _old_cell: Vector2i) -> void:
+-	_cell_changes_this_frame.append(gamepiece.cell)
+diff --git a/src/field/gameboard/debug_map_boundaries.gd b/src/field/gameboard/debug/debug_map_boundaries.gd
+similarity index 100%
+rename from src/field/gameboard/debug_map_boundaries.gd
+rename to src/field/gameboard/debug/debug_map_boundaries.gd
+diff --git a/src/field/gameboard/debug_map_boundaries.gd.uid b/src/field/gameboard/debug/debug_map_boundaries.gd.uid
+similarity index 100%
+rename from src/field/gameboard/debug_map_boundaries.gd.uid
+rename to src/field/gameboard/debug/debug_map_boundaries.gd.uid
+diff --git a/src/field/ui/debug/debug_gameboard.gd b/src/field/gameboard/debug/debug_pathfinder_map.gd
+similarity index 100%
+rename from src/field/ui/debug/debug_gameboard.gd
+rename to src/field/gameboard/debug/debug_pathfinder_map.gd
+diff --git a/src/field/ui/debug/debug_gameboard.gd.uid b/src/field/gameboard/debug/debug_pathfinder_map.gd.uid
+similarity index 100%
+rename from src/field/ui/debug/debug_gameboard.gd.uid
+rename to src/field/gameboard/debug/debug_pathfinder_map.gd.uid
+diff --git a/src/field/gameboard/debug/tileset_debug_pathfinder_map.tres b/src/field/gameboard/debug/tileset_debug_pathfinder_map.tres
+new file mode 100644
+index 0000000..fe57d9c
+--- /dev/null
++++ b/src/field/gameboard/debug/tileset_debug_pathfinder_map.tres
+@@ -0,0 +1,13 @@
++[gd_resource type="TileSet" load_steps=3 format=3 uid="uid://dhda7bse8tu6l"]
++
++[ext_resource type="Texture2D" uid="uid://dbpvlf2f8ajxy" path="res://assets/terrain/debug_cell_occupancy.png" id="1_wxru5"]
++
++[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_a4m4d"]
++texture = ExtResource("1_wxru5")
++separation = Vector2i(1, 0)
++0:0/0 = 0
++1:0/0 = 0
++2:0/0 = 0
++
++[resource]
++sources/0 = SubResource("TileSetAtlasSource_a4m4d")
+diff --git a/src/field/gameboard/pathfinder_old.gd b/src/field/gameboard/pathfinder_old.gd
+deleted file mode 100644
+index 47a13fe..0000000
+--- a/src/field/gameboard/pathfinder_old.gd
++++ /dev/null
+@@ -1,137 +0,0 @@
+-## A wrapper for [AStar2D] that allows working with [Vector2i] coordinates.
+-##
+-## Additionally provides utility methods for easily dealing with cell availability and passability.
+-class_name PathfinderOld
+-extends AStar2D
+-
+-# Requires the gameboard for board boundaries and cell <-> index conversion.
+-var _gameboard: Gameboard = null
+-
+-
+-# Only cells within the gameboard's boundary will be considered.
+-func _init(pathable_cells: Array[Vector2i], gameboard: Gameboard) -> void:
+-	_gameboard = gameboard
+-	assert(_gameboard, "Pathfinder::init error: invalid gameboard reference!")
+-	
+-	_build_cell_list(pathable_cells)
+-	_connect_cells()
+-
+-
+-## Find a path between two cells. Returns an empty array if no path is available.
+-func get_path_cells(source_cell: Vector2i, target_cell: Vector2i) -> Array[Vector2i]:
+-	# Check to make sure that the source and target cells fall within the gameboard boundaries...
+-	if not _gameboard.boundaries.has_point(source_cell) \
+-			or not _gameboard.boundaries.has_point(target_cell):
+-		return []
+-	
+-	# ...and that the source and target cells are registered with the pathfinder.
+-	var source_id: = _gameboard.cell_to_index(source_cell)
+-	var target_id: = _gameboard.cell_to_index(target_cell)
+-	if not has_point(source_id) or not has_point(target_id):
+-		return []
+-	
+-	# Disabled cells are usually occupied. Allow movement out of a disabled cell.
+-	var disable_source: = is_point_disabled(source_id)
+-	set_point_disabled(source_id, false)
+-	
+-	var path_cells: Array[Vector2i] = []
+-	for cell in get_point_path(source_id, target_id):
+-		path_cells.append(Vector2i(cell))
+-	
+-	# Re-disable the start cell if it was blocked.
+-	set_point_disabled(source_id, disable_source)
+-	
+-	return path_cells
+-
+-
+-## Get the shortest path to any cell adjacent to the specified target. Essentially allows moving
+-## [i]next[/i] to a target cell.
+-##
+-## Returns an empty array if there are no paths available.
+-func get_path_cells_to_adjacent_cell(source_cell: Vector2i, 
+-		target_cell: Vector2i) -> Array[Vector2i]:
+-	var shortest_path: Array[Vector2i] = []
+-	var shortest_path_length: = INF
+-	
+-	for cell in _gameboard.get_adjacent_cells(target_cell):
+-		var cell_path: = get_path_cells(source_cell, cell)
+-		
+-		if not cell_path.is_empty() and cell_path.size() < shortest_path_length:
+-			shortest_path_length = cell_path.size()
+-			shortest_path = cell_path
+-	
+-	return shortest_path
+-
+-
+-## Manually update whether or not a single cell is blocked.
+-## [br][br][b]Note:[/b] Blocked cells are usually occupied by a blocking [Gamepiece]. Cells that are 
+-## no longer pathable due to changes in terrain should be removed from the pathfinder entirely.
+-func block_cell(cell: Vector2i, value: = true) -> void:
+-	var cell_id: = _gameboard.cell_to_index(cell)
+-	if has_point(cell_id) and cell_id != Gameboard.INVALID_INDEX:
+-		set_point_disabled(cell_id, value)
+-
+-
+-## Update all blocked cells in the pathfinder in a single batch.
+-##
+-## [br][br][b]Note:[/b] Cells that were previously blocked but that are not included in the
+-## 'blocked' parameter will be unblocked.
+-func set_blocked_cells(blocked: Array[Vector2i]) -> void:
+-	for id in get_point_ids():
+-		var cell: = _gameboard.index_to_cell(id)
+-		block_cell(cell, cell in blocked)
+-
+-
+-## Returns a list of all cells that are currently blocked.
+-func get_blocked_cells() -> Array[Vector2i]:
+-	var blocked_cells: Array[Vector2i] = []
+-	for id in get_point_ids():
+-		if is_point_disabled(id):
+-			blocked_cells.append(_gameboard.index_to_cell(id))
+-	
+-	return blocked_cells
+-
+-
+-## Verify that a cell exists within the pathfinder. It may or may not be blocked.
+-func has_cell(value: Vector2i) -> bool:
+-	var index: = _gameboard.cell_to_index(value)
+-	return has_point(index)
+-
+-
+-## Get all cells that are registered with the pathfinder. Cells may or may not be blocked.
+-func get_cells() -> Array[Vector2i]:
+-	var cells: Array[Vector2i] = []
+-	
+-	for index in get_point_ids():
+-		var cell: = _gameboard.index_to_cell(index)
+-		cells.append(cell)
+-	
+-	return cells
+-
+-
+-func _build_cell_list(pathable_cells: Array[Vector2i]) -> void:
+-	for cell in pathable_cells:
+-		if not has_cell(cell) and _gameboard.boundaries.has_point(cell):
+-			var cell_id: = _gameboard.cell_to_index(cell)
+-			if cell_id != Gameboard.INVALID_INDEX:
+-				add_point(cell_id, cell)
+-
+-
+-func _connect_cells() -> void:
+-	for source_id in get_point_ids():
+-		var source_cell: = _gameboard.index_to_cell(source_id)
+-		
+-		var adjacent_cells: Array[Vector2i] = _gameboard.get_adjacent_cells(source_cell)
+-		for neighbour in adjacent_cells:
+-				var target_id: = _gameboard.cell_to_index(neighbour)
+-				
+-				if target_id != Gameboard.INVALID_INDEX and has_point(target_id):
+-					connect_points(source_id, target_id)
+-
+-
+-func _to_string() -> String:
+-	var value: = "\nPathfinder:"
+-	for index in get_point_ids():
+-		value += "\n%s - Id: %d; Linked to: %s" % [str(_gameboard.index_to_cell(index)), index, 
+-			get_point_connections(index)]
+-	return value + "\n"
+diff --git a/src/field/gameboard/pathfinder_old.gd.uid b/src/field/gameboard/pathfinder_old.gd.uid
+deleted file mode 100644
+index f232550..0000000
+--- a/src/field/gameboard/pathfinder_old.gd.uid
++++ /dev/null
+@@ -1 +0,0 @@
+-uid://blf0tpby0jwq4
+diff --git a/src/field/gamepieces/controller.gd b/src/field/gamepieces/controller.gd
+deleted file mode 100644
+index 4087c24..0000000
+--- a/src/field/gamepieces/controller.gd
++++ /dev/null
+@@ -1,117 +0,0 @@
+-@tool
+-@icon("res://assets/editor/icons/IconGamepieceController.svg")
+-class_name GamepieceController extends Node2D
+-
+-# The controller operates on its direct parent, which must be a gamepiece object.
+-var _gamepiece: Gamepiece
+-
+-# Keep track of a move path. The controller will check that the path is clear each time the 
+-# gamepiece needs to continue on to the next cell.
+-var move_path: Array[Vector2i] = []:
+-	set = move_along_path
+-var _current_waypoint: Vector2i
+-
+-## An active controller will receive inputs (player or otherwise). An inactive controller does
+-## nothing. This is useful, for example, when toggling of gamepiece movement during cutscenes.
+-var is_active: = false:
+-	set = set_is_active
+-
+-
+-func _ready() -> void:
+-	set_process(false)
+-	set_physics_process(false)
+-	
+-	if not Engine.is_editor_hint():
+-		is_active = true
+-		
+-		_gamepiece.arriving.connect(_on_gamepiece_arriving)
+-		_gamepiece.arrived.connect(_on_gamepiece_arrived)
+-		
+-		#FieldEvents.input_paused.connect(_on_input_paused)
+-
+-
+-#func _unhandled_input(event: InputEvent) -> void:
+-	#if event.is_action_released("select"):
+-		#var source_cell: = GamepieceRegistry.get_cell(_gamepiece)
+-		#var clicked_cell: = Gameboard.pixel_to_cell(get_global_mouse_position()/global_scale)
+-		#
+-		#var new_move_path: = Gameboard.pathfinder.get_path_to_cell(source_cell, clicked_cell)
+-		#if not new_move_path.is_empty():
+-			##print("Found path. ", move_path)
+-			#move_path = new_move_path
+-		#
+-		#else:
+-			#var adjacent_path: = Gameboard.pathfinder.get_path_cells_to_adjacent_cell(source_cell, clicked_cell)
+-			#if adjacent_path:
+-				##print("No path, use adjacent instead", adjacent_path)
+-				#move_path = adjacent_path
+-			#
+-			#else:
+-				#print("No path found.")
+-
+-
+-func _get_configuration_warnings() -> PackedStringArray:
+-	var warnings: PackedStringArray = []
+-	if not _gamepiece:
+-		warnings.append("This object must be a child of a gamepiece!")
+-	
+-	return warnings
+-
+-
+-func _notification(what: int) -> void:
+-	if what == NOTIFICATION_PARENTED:
+-		_gamepiece = get_parent() as Gamepiece
+-		update_configuration_warnings()
+-
+-
+-func move_along_path(value: Array[Vector2i]) -> void:
+-	move_path = value
+-	_move_to_next_waypoint()
+-
+-
+-## Set whether or not the controller may exert control over the gamepiece.
+-## There are a number of occasions (such as cutscenes or combat) where gamepieces are inactive.
+-func set_is_active(value: bool) -> void:
+-	is_active = value
+-	_move_to_next_waypoint() # Will only affect the gamepiece if is_active == true.
+-
+-
+-# Finds the [member move_path]'s waypoint using [method Array.pop_front] and begins moveing the
+-# gamepiece towards it.
+-# The method will do nothing if the controller is currently inactive.
+-# Returns the distance (in pixels) to the next waypoint.
+-func _move_to_next_waypoint() -> float:
+-	var distance_to_point: = 0.0
+-	
+-	if is_active:
+-		if move_path.size() >= 1 and Gameboard.pathfinder.can_move_to(move_path[0]):
+-			_current_waypoint = move_path.pop_front()
+-			var destination = Gameboard.cell_to_pixel(_current_waypoint)
+-			
+-			# Report how far away the waypoint is.
+-			distance_to_point = _gamepiece.position.distance_to(destination)
+-			_gamepiece.move_to(Gameboard.cell_to_pixel(_current_waypoint))
+-			
+-			GamepieceRegistry.move_gamepiece(_gamepiece, _current_waypoint)
+-	
+-	return distance_to_point
+-
+-
+-# The controller's gamepiece will finish travelling this frame unless it is extended. When following
+-# a path, the gamepiece will want to travel to the next waypoint.
+-# excess_distance covers cases where the gamepiece will move past the current waypoint and prevents
+-# stuttering for a single frame (or slower-than-expected movement for *very* fast gamepieces).
+-func _on_gamepiece_arriving(excess_distance: float) -> void:
+-	if not move_path.is_empty() and is_active:
+-		# Fast gamepieces could jump several waypoints at once, so check to see which waypoint is
+-		# next in line. 
+-		while not move_path.is_empty() and excess_distance > 0.0:
+-			if not Gameboard.pathfinder.can_move_to(move_path[0]):
+-				return
+-			
+-			var distance_to_waypoint: = _move_to_next_waypoint()
+-			excess_distance -= distance_to_waypoint
+-
+-
+-func _on_gamepiece_arrived() -> void:
+-	move_path.clear()
+diff --git a/src/field/gamepieces/controller.gd.uid b/src/field/gamepieces/controller.gd.uid
+deleted file mode 100644
+index 02e4413..0000000
+--- a/src/field/gamepieces/controller.gd.uid
++++ /dev/null
+@@ -1 +0,0 @@
+-uid://ht3xm51xvouh
+diff --git a/src/field/gamepieces/controllers/cursor/player_path_destination_marker.gd b/src/field/gamepieces/controllers/cursor/player_path_destination_marker.gd
+index 701d912..b9f16e2 100644
+--- a/src/field/gamepieces/controllers/cursor/player_path_destination_marker.gd
++++ b/src/field/gamepieces/controllers/cursor/player_path_destination_marker.gd
+@@ -4,7 +4,7 @@ extends Sprite2D
+ 
+ 
+ func _ready() -> void:
+-	FieldEvents.player_path_set.connect(
++	Player.player_path_set.connect(
+ 		func(gamepiece: Gamepiece, destination_cell: Vector2i) -> void:
+ 			gamepiece.arrived.connect(hide, CONNECT_ONE_SHOT)
+ 			position = gameboard.cell_to_pixel(destination_cell)
+diff --git a/src/field/gamepieces/controllers/gamepiece_controller.gd b/src/field/gamepieces/controllers/gamepiece_controller.gd
+index e69de29..417bf26 100644
+--- a/src/field/gamepieces/controllers/gamepiece_controller.gd
++++ b/src/field/gamepieces/controllers/gamepiece_controller.gd
+@@ -0,0 +1,118 @@
++@tool
++@icon("res://assets/editor/icons/IconGamepieceController.svg")
++class_name GamepieceController extends Node2D
++
++## An active controller will receive inputs (player or otherwise). An inactive controller does
++## nothing. This is useful, for example, when toggling of gamepiece movement during cutscenes.
++var is_active: = false:
++	set = set_is_active
++
++## Keep track of a move path. The controller will check that the path is clear each time the 
++## gamepiece needs to continue on to the next cell.
++var move_path: Array[Vector2i] = []:
++	set = move_along_path
++var _current_waypoint: Vector2i
++
++# The controller operates on its direct parent, which must be a gamepiece object.
++var _gamepiece: Gamepiece
++
++
++
++func _ready() -> void:
++	set_process(false)
++	set_physics_process(false)
++	
++	if not Engine.is_editor_hint():
++		is_active = true
++		
++		_gamepiece.arriving.connect(_on_gamepiece_arriving)
++		_gamepiece.arrived.connect(_on_gamepiece_arrived)
++		
++		#FieldEvents.input_paused.connect(_on_input_paused)
++
++
++#func _unhandled_input(event: InputEvent) -> void:
++	#if event.is_action_released("select"):
++		#var source_cell: = GamepieceRegistry.get_cell(_gamepiece)
++		#var clicked_cell: = Gameboard.pixel_to_cell(get_global_mouse_position()/global_scale)
++		#
++		#var new_move_path: = Gameboard.pathfinder.get_path_to_cell(source_cell, clicked_cell)
++		#if not new_move_path.is_empty():
++			##print("Found path. ", move_path)
++			#move_path = new_move_path
++		#
++		#else:
++			#var adjacent_path: = Gameboard.pathfinder.get_path_cells_to_adjacent_cell(source_cell, clicked_cell)
++			#if adjacent_path:
++				##print("No path, use adjacent instead", adjacent_path)
++				#move_path = adjacent_path
++			#
++			#else:
++				#print("No path found.")
++
++
++func _get_configuration_warnings() -> PackedStringArray:
++	var warnings: PackedStringArray = []
++	if not _gamepiece:
++		warnings.append("This object must be a child of a gamepiece!")
++	
++	return warnings
++
++
++func _notification(what: int) -> void:
++	if what == NOTIFICATION_PARENTED:
++		_gamepiece = get_parent() as Gamepiece
++		update_configuration_warnings()
++
++
++func move_along_path(value: Array[Vector2i]) -> void:
++	move_path = value
++	_move_to_next_waypoint()
++
++
++## Set whether or not the controller may exert control over the gamepiece.
++## There are a number of occasions (such as cutscenes or combat) where gamepieces are inactive.
++func set_is_active(value: bool) -> void:
++	is_active = value
++	_move_to_next_waypoint() # Will only affect the gamepiece if is_active == true.
++
++
++# Finds the [member move_path]'s waypoint using [method Array.pop_front] and begins moveing the
++# gamepiece towards it.
++# The method will do nothing if the controller is currently inactive.
++# Returns the distance (in pixels) to the next waypoint.
++func _move_to_next_waypoint() -> float:
++	var distance_to_point: = 0.0
++	
++	if is_active:
++		if move_path.size() >= 1 and Gameboard.pathfinder.can_move_to(move_path[0]):
++			_current_waypoint = move_path.pop_front()
++			var destination = Gameboard.cell_to_pixel(_current_waypoint)
++			
++			# Report how far away the waypoint is.
++			distance_to_point = _gamepiece.position.distance_to(destination)
++			_gamepiece.move_to(Gameboard.cell_to_pixel(_current_waypoint))
++			
++			GamepieceRegistry.move_gamepiece(_gamepiece, _current_waypoint)
++	
++	return distance_to_point
++
++
++# The controller's gamepiece will finish travelling this frame unless it is extended. When following
++# a path, the gamepiece will want to travel to the next waypoint.
++# excess_distance covers cases where the gamepiece will move past the current waypoint and prevents
++# stuttering for a single frame (or slower-than-expected movement for *very* fast gamepieces).
++func _on_gamepiece_arriving(excess_distance: float) -> void:
++	if not move_path.is_empty() and is_active:
++		# Fast gamepieces could jump several waypoints at once, so check to see which waypoint is
++		# next in line. 
++		while not move_path.is_empty() and excess_distance > 0.0:
++			if not Gameboard.pathfinder.can_move_to(move_path[0]):
++				return
++			
++			var distance_to_waypoint: = _move_to_next_waypoint()
++			excess_distance -= distance_to_waypoint
++
++
++func _on_gamepiece_arrived() -> void:
++	move_path.clear()
+diff --git a/src/field/gamepieces/controllers/gamepiece_controller.gd.uid b/src/field/gamepieces/controllers/gamepiece_controller.gd.uid
+index 3f4c196..02e4413 100644
+--- a/src/field/gamepieces/controllers/gamepiece_controller.gd.uid
++++ b/src/field/gamepieces/controllers/gamepiece_controller.gd.uid
+@@ -1 +1 @@
+-uid://pfbspn48phnw
++uid://ht3xm51xvouh
+diff --git a/src/field/gamepieces/controllers/player_controller.gd b/src/field/gamepieces/controllers/player_controller.gd
+index 046d441..a249298 100644
+--- a/src/field/gamepieces/controllers/player_controller.gd
++++ b/src/field/gamepieces/controllers/player_controller.gd
+@@ -1,174 +1,170 @@
+-#@tool
+-### Applied to any gamepiece to allow player control.
+-###
+-### The controller responds to player input to handle movement and interaction.
+-#class_name PlayerController extends GamepieceController
+-#
+-#const GROUP_NAME: = "_PLAYER_CONTROLLER_GROUP"
+-#
+-#var is_active: = false:
+-	#set(value):
+-		#is_active = value
+-		#
+-		#set_process(is_active)
+-		#set_physics_process(is_active)
+-		#set_process_input(is_active)
+-		#set_process_unhandled_input(is_active)
+-#
+-## Keep track of a targeted interaction. Used to face & interact with the object at a path's end.
+-## It is reset on cancelling the move path or continuing movement via arrows/gamepad directions.
+-#var _target: Interaction = null
+-#
+-#@onready var _interaction_searcher: = $InteractionSearcher as Area2D
+-#@onready var _player_collision: = $PlayerCollision as Area2D
+-#
+-#
+-#func _ready() -> void:
+-	#super._ready()
+-	#
+-	#set_process(false)
+-	#set_physics_process(false)
+-	#
+-	#if not Engine.is_editor_hint():
+-		#add_to_group(GROUP_NAME)
+-		#
++@tool
++## Applied to any gamepiece to allow player control.
++##
++## The controller responds to player input to handle movement and interaction.
++class_name PlayerController extends GamepieceController
++
++const GROUP: = "_PLAYER_CONTROLLER_GROUP"
++
++# Keep track of a targeted interaction. Used to face & interact with the object at a path's end.
++# It is reset on cancelling the move path or continuing movement via arrows/gamepad directions.
++var _target: Interaction = null
++
++# Also keep track of the most recently pressed move key (e.g. WASD keys). This makes keyboard input
++# feel more intuitive, since the gamepiece will move towards the most recently pressed key rather
++# than prefering an arbitrary axis.
++var _last_input_direction: = Vector2.ZERO
++
++# The "interaction searcher" area basically activates any Interactions, which means that they'll
++# respond to key/button input.
++@onready var _interaction_searcher: = $InteractionSearcher as Area2D
++
++# The player collision area activates Triggers whenever the player moves onto their collision
++# shape.
++@onready var _player_collision: = $PlayerCollision as Area2D
++
++
++func _ready() -> void:
++	super._ready()
++	
++	if not Engine.is_editor_hint():
++		add_to_group(GROUP)
++		
+ 		## Refer the various player collision shapes to their gamepiece (parent of the controller).
+ 		## This will allow other objects/systems to quickly find which gamepiece they are working on
+ 		## via the collision "owners".
+-		#_interaction_searcher.owner = _gamepiece
+-		#_player_collision.owner = _gamepiece
+-		#
+-		#FieldEvents.cell_selected.connect(_on_cell_selected)
+-		#
+-		## Connect to a few lambdas that change the cell at which the player searches for
+-		## interactions. These come into play whenever the player's gamepiece moves to a new cell or
+-		## changes direction.
+-		#_gamepiece.cell_changed.connect(
+-			#func(old_cell):
+-				#super._on_gamepiece_cell_changed(_gamepiece, old_cell)
+-				#_align_interaction_searcher_to_faced_cell()
+-		#)
+-		#_gamepiece.direction_changed.connect(
+-			#func(_direction): _align_interaction_searcher_to_faced_cell()
+-		#)
+-		#
+-		#is_active = true
+-		#
+-		#_align_interaction_searcher_to_faced_cell()
+-#
+-#
+-#func set_is_paused(paused: bool) -> void:
+-	#super.set_is_paused(paused)
+-	#set_process(!paused)
+-	#set_physics_process(!paused)
++		_interaction_searcher.owner = _gamepiece
++		_player_collision.owner = _gamepiece
++		
++		_gamepiece.direction_changed.connect(
++			func _on_gamepiece_direction_changed(new_direction: Directions.Points):
++				var offset: Vector2 = Directions.MAPPINGS[new_direction] * 16
++				_interaction_searcher.position = offset
++		)
++		
++		FieldEvents.cell_selected.connect(_on_cell_selected)
++		FieldEvents.interaction_selected.connect(_on_interaction_selected)
++
++
++#func _process(_delta: float) -> void:
++	#if _gamepiece.is_moving():
++		#return
+ 	#
+-#
+-#
+-#func _physics_process(_delta: float) -> void:
+-	#var move_dir: = _get_move_direction()
+-	#if move_dir:
+-		#_target = null
+-		#
++	#var input_direction: = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
++	#if input_direction:
+ 		#if not _gamepiece.is_moving():
++			#var source_cell: = GamepieceRegistry.get_cell(_gamepiece)
+ 			#var target_cell: = Vector2i.ZERO
+ 			#
+ 			## Unless using 8-direction movement, one movement axis must be preferred. 
+ 			##	Default to the x-axis.
+-			#if not is_zero_approx(move_dir.x):
+-				#move_dir = Vector2(move_dir.x, 0)
++			#if not is_zero_approx(input_direction.x):
++				#input_direction = Vector2(input_direction.x, 0)
+ 			#else:
+-				#move_dir = Vector2(0, move_dir.y)
++				#input_direction = Vector2(0, input_direction.y)
++			#target_cell = Gameboard.pixel_to_cell(_gamepiece.position) + Vector2i(input_direction)
+ 			#
+-			#_gamepiece.direction = move_dir
+-			#target_cell = _gamepiece.cell + Vector2i(move_dir)
++			## Try to get a path to destination (will fail if cell is occupied)
++			#var new_move_path: = Gameboard.pathfinder.get_path_to_cell(source_cell, target_cell)
+ 			#
+-			## If there is a gamepiece at the target cell, do not move on top of it.
+-			#_update_changed_cells()
+-			#if not is_cell_blocked(target_cell) and \
+-					#not FieldEvents.did_gp_move_to_cell_this_frame(target_cell):
+-				#var move_path: = pathfinder.get_path_cells(_gamepiece.cell, target_cell)
+-				#
+-				## Path is invalid. Bump animation?
+-				#if move_path.size() <= 1:
+-					#pass
+-				#
+-				#else:
+-					#_gamepiece.travel_to_cell(target_cell)
+-		#
+-		#else:
+-			#_target = null
+-			#_waypoints.clear()
+-#
+-#
+-#func _get_move_direction() -> Vector2:
+-	#return Vector2(
+-		#Input.get_axis("ui_left", "ui_right"),
+-		#Input.get_axis("ui_up", "ui_down")
+-	#)
+-#
+-#
+-#func _align_interaction_searcher_to_faced_cell() -> void:
+-	#var cell_coordinates: = Vector2(_gameboard.cell_to_pixel(_gamepiece.get_faced_cell()))
+-	#_interaction_searcher.global_position = cell_coordinates*_gamepiece.global_scale
+-#
+-#
+-## The controller's focus will finish travelling this frame unless it is extended.
+-## There are a few cases where the controller will want to extend the path:
+-##	a) The gamepiece is following a series of waypoints, and needs to know which cell is next. Note
+-##		that the controller is responsible for the waypoints (instead of the gamepiece, for
+-##		instance) so that the path can be checked for any changes *as the gamepiece travels*.
+-##	b) A movement key/button is held down and the gamepiece should smoothly flow into the next cell.
+-#func _on_gamepiece_arriving(excess_distance: float) -> void:
+-	## Handle moving to the next waypoint in the path.
+-	#super._on_gamepiece_arriving(excess_distance)
+-	#
+-	## Allow movement keys/buttons to override path following.
+-	#var move_direction: = _get_move_direction()
+-	#if move_direction and not is_paused:
+-		#_target = null
+-		#_waypoints.clear()
+-		#
+-		#var next_cell: Vector2i
+-		#if not is_zero_approx(move_direction.x):
+-			#next_cell = _gamepiece.cell + Vector2i(int(move_direction.x), 0)
+-		#else:
+-			#next_cell = _gamepiece.cell + Vector2i(0, int(move_direction.y))
+-		#
+-		#if pathfinder.has_cell(next_cell) and not is_cell_blocked(next_cell) and \
+-				#not FieldEvents.did_gp_move_to_cell_this_frame(next_cell):
+-			#_gamepiece.travel_to_cell(next_cell)
+-#
+-#
+-#func _on_gamepiece_arrived() -> void:
+-	#super._on_gamepiece_arrived()
+-	#
+-	#if _target:
+-		#var distance_to_target: = _target.global_position/_target.global_scale - _gamepiece.position
+-		#_gamepiece.direction = distance_to_target
+-		#
+-		#_target.run()
+-		#_target = null
+-#
+-#
+-#func _on_cell_selected(cell: Vector2i) -> void:
+-	#if is_active and not _gamepiece.is_moving():
+-		## Don't move to the cell the focus is standing on. May want to open inventory.
+-		#if cell == _gamepiece.cell:
+-			#return
++			## Path is invalid. Bump animation?
++			#if new_move_path.size() <= 1:
++				#pass
+ 			#
+-		## We'll want different behaviour depending on what's underneath the cursor.
+-		#var collisions: = get_collisions(cell)
+-		#
+-		## If there is an interaction underneath the cursor the player's gamepiece should flag the
+-		## target and move to an adjacent cell.
++			#else:
++				#GamepieceRegistry.move_gamepiece(_gamepiece, target_cell)
++				#_gamepiece.move_to(Gameboard.cell_to_pixel(target_cell))
++#
++			##print(Gameboard.pathfinder.get_path_to_cell())
++			## If path is valid, move.
++
++
++func _unhandled_input(event: InputEvent) -> void:
++	if event.is_action_released("select"):
++		stop_moving()
++	
++	elif event is InputEventKey:
++		if event.is_action_pressed("ui_up"):
++			_last_input_direction = Vector2.UP
++			if _gamepiece.is_moving():	stop_moving()
++			else:	move_to_pressed_key(Vector2.UP)
++			
++		elif event.is_action_pressed("ui_down"):
++			_last_input_direction = Vector2.DOWN
++			if _gamepiece.is_moving():	stop_moving()
++			else:	move_to_pressed_key(Vector2.DOWN)
++			
++		elif event.is_action_pressed("ui_left"):
++			_last_input_direction = Vector2.LEFT
++			if _gamepiece.is_moving():	stop_moving()
++			else:	move_to_pressed_key(Vector2.LEFT)
++			
++		elif event.is_action_pressed("ui_right"):
++			_last_input_direction = Vector2.RIGHT
++			if _gamepiece.is_moving():	stop_moving()
++			else:	move_to_pressed_key(Vector2.RIGHT)
++
++			#print(Gameboard.pathfinder.get_path_to_cell())
++			# If path is valid, move.
++
++
++func move_to_pressed_key(input_direction: Vector2) -> void:
++	if is_active:
++		var source_cell: = GamepieceRegistry.get_cell(_gamepiece)
++		var target_cell: = Vector2i.ZERO
++		
++		# Unless using 8-direction movement, one movement axis must be preferred. 
++		#	Default to the x-axis.
++		target_cell = source_cell + Vector2i(input_direction)
++		
++		# Try to get a path to destination (will fail if cell is occupied)
++		var new_move_path: = Gameboard.pathfinder.get_path_to_cell(source_cell, target_cell)
++		
++		# Path is invalid. Bump animation?
++		if new_move_path.size() < 1:
++			_gamepiece.direction = Directions.angle_to_direction(input_direction.angle())
++		
++		else:
++			move_path = new_move_path.duplicate()
++			Player.player_path_set.emit(_gamepiece, new_move_path.back())
++
++
++func stop_moving() -> void:
++	move_path.clear()
++	_target = null
++
++
++# The player has clicked on an empty gameboard cell. We'll try to move _gamepiece to the cell.
++func _on_cell_selected(cell: Vector2i) -> void:
++	if is_active and not _gamepiece.is_moving():
++		var source_cell: = Gameboard.pixel_to_cell(_gamepiece.position)
++		
++		# Don't move to the cell the focus is standing on.
++		if cell == source_cell:
++			return
++		
++		# Take a look at what's underneath the cursor. If there's an interaction, move towards it
++		# and try to interact with it.
++		
++		# Otherwise it's just the empty gameboard, so we'll try to move the player towards the
++		# selected cell.
++		var new_path = Gameboard.pathfinder.get_path_to_cell(source_cell, cell)
++		if not new_path.is_empty():
++			move_path = new_path.duplicate()
++			Player.player_path_set.emit(_gamepiece, new_path.back())
++		
++		# If there is an interaction underneath the cursor the player's gamepiece should flag the
++		# target and move to an adjacent cell.
+ 		#if not collisions.is_empty():
+ 			#for collision: Dictionary in collisions:
+ 				#if collision.collider.owner is Interaction:
+ 					#_target = collision.collider.owner
+ 					#break
+-		#
+-		## The following method will move to an empty cell OR adjacent to a blocked cell that has
+-		## an interaction located on it.
++		
++		# The following method will move to an empty cell OR adjacent to a blocked cell that has
++		# an interaction located on it.
++		
++		
+ 		#travel_to_cell(cell, _target != null)
+ 		#if not _waypoints.is_empty():
+ 			#FieldEvents.player_path_set.emit(_gamepiece, _waypoints.back())
+@@ -177,3 +173,61 @@
+ 		## to the target interaction.
+ 		#elif _target:
+ 			#_on_gamepiece_arrived()
++
++
++# The player has clicked on something interactable. We'll try to move next to the interaction and
++# then run the interaction.
++func _on_interaction_selected(interaction: Interaction) -> void:
++	if is_active and not _gamepiece.is_moving():
++		var source_cell: = Gameboard.pixel_to_cell(_gamepiece.position)
++		var target_cell: = Gameboard.pixel_to_cell(interaction.position)
++		
++		if target_cell == source_cell:
++			return
++		
++		# First of all, check to see if the target is adjacent to the source.
++		if target_cell in Gameboard.get_adjacent_cells(source_cell):
++			_gamepiece.direction \
++				= Directions.vector_to_direction(interaction.position - _gamepiece.position)
++			interaction.run()
++		
++		else:
++			# Only cache the interaction and move towards it if there is a valid move path.
++			var new_path = Gameboard.pathfinder.get_path_cells_to_adjacent_cell(source_cell, 
++				target_cell)
++			if not new_path.is_empty():
++				_target = interaction
++				
++				move_path = new_path.duplicate()
++				Player.player_path_set.emit(_gamepiece, new_path.back())
++	
++	# If the player is already moving, cancel that movement.
++	else:
++		stop_moving()
++
++
++func _on_gamepiece_arriving(excess_distance: float) -> void:
++	super._on_gamepiece_arriving(excess_distance)
++	
++	# It may be that the player is holding the keys down. In that case, continue moving the
++	# gamepiece towards the pressed direction.
++	var input_direction: = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
++	if not input_direction.is_equal_approx(Vector2.ZERO):
++		move_to_pressed_key(_last_input_direction)
++
++
++func _on_gamepiece_arrived() -> void:
++	super._on_gamepiece_arrived()
++	if _target:
++		# Will be normalized by the setter.
++		_gamepiece.direction \
++			= Directions.vector_to_direction(_target.position - _gamepiece.position)
++		_target.run()
++		_target = null
++	
++	# No target, but check to see if the player is holding a key down and face in the direction of
++	# the last pressed key.
++	else:
++		var input_direction: = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
++		if not input_direction.is_equal_approx(Vector2.ZERO):
++			_gamepiece.direction = Directions.vector_to_direction(_last_input_direction)
+diff --git a/src/field/gamepieces/controllers/player_controller.gd.uid b/src/field/gamepieces/controllers/player_controller.gd.uid
+index cbec584..e27f5e3 100644
+--- a/src/field/gamepieces/controllers/player_controller.gd.uid
++++ b/src/field/gamepieces/controllers/player_controller.gd.uid
+@@ -1 +1 @@
+-uid://cqlx3rgg16wkv
++uid://vnofet0hi8mx
+diff --git a/src/field/gamepieces/controllers/player_controller.tscn b/src/field/gamepieces/controllers/player_controller.tscn
+index 383dd81..f68ac19 100644
+--- a/src/field/gamepieces/controllers/player_controller.tscn
++++ b/src/field/gamepieces/controllers/player_controller.tscn
+@@ -1,6 +1,6 @@
+ [gd_scene load_steps=4 format=3 uid="uid://d2lj4blu56fte"]
+ 
+-[ext_resource type="Script" uid="uid://vnofet0hi8mx" path="res://src/field/gamepieces/player_controller.gd" id="1_5pjdg"]
++[ext_resource type="Script" uid="uid://vnofet0hi8mx" path="res://src/field/gamepieces/controllers/player_controller.gd" id="1_5pjdg"]
+ 
+ [sub_resource type="CircleShape2D" id="CircleShape2D_3ejyl"]
+ radius = 7.0
+diff --git a/src/field/gamepieces/gamepiece.gd b/src/field/gamepieces/gamepiece.gd
+index c668728..d2735dc 100644
+--- a/src/field/gamepieces/gamepiece.gd
++++ b/src/field/gamepieces/gamepiece.gd
+@@ -86,8 +86,12 @@ var rest_position: = Vector2.ZERO
+ ## follower, at which the GamepieceAnimation is rendered.
+ var destination: Vector2
+ 
+-## A camera may smoothly follow a travelling gamepiece by receiving the camera_anchor's transform.
+-@onready var camera_anchor: = $PathFollow2D/CameraAnchor as RemoteTransform2D
++## Node2Ds may want to follow the gamepiece's animation, rather than position (which updates only at
++## the end of a path). Nodes may follow a travelling gamepiece by receiving the path follower's 
++## transform.[/br][/br]
++## The [member RemoteTransform2D.remote_path] is reserved for the player camera, but other nodes
++## may access the anchor's position directly.
++@onready var animation_transform: = $PathFollow2D/CameraAnchor as RemoteTransform2D
+ 
+ # The following objects allow the gamepiece to appear to move smoothly around the gameboard.
+ # Please note that the path is decoupled from the gamepiece's position (scale is set to match
+diff --git a/src/field/gamepieces/player_controller.gd b/src/field/gamepieces/player_controller.gd
+deleted file mode 100644
+index 42ae2c7..0000000
+--- a/src/field/gamepieces/player_controller.gd
++++ /dev/null
+@@ -1,233 +0,0 @@
+-@tool
+-## Applied to any gamepiece to allow player control.
+-##
+-## The controller responds to player input to handle movement and interaction.
+-class_name PlayerController extends GamepieceController
+-
+-const GROUP: = "_PLAYER_CONTROLLER_GROUP"
+-
+-# Keep track of a targeted interaction. Used to face & interact with the object at a path's end.
+-# It is reset on cancelling the move path or continuing movement via arrows/gamepad directions.
+-var _target: Interaction = null
+-
+-# Also keep track of the most recently pressed move key (e.g. WASD keys). This makes keyboard input
+-# feel more intuitive, since the gamepiece will move towards the most recently pressed key rather
+-# than prefering an arbitrary axis.
+-var _last_input_direction: = Vector2.ZERO
+-
+-# The "interaction searcher" area basically activates any Interactions, which means that they'll
+-# respond to key/button input.
+-@onready var _interaction_searcher: = $InteractionSearcher as Area2D
+-
+-# The player collision area activates Triggers whenever the player moves onto their collision
+-# shape.
+-@onready var _player_collision: = $PlayerCollision as Area2D
+-
+-
+-func _ready() -> void:
+-	super._ready()
+-	
+-	if not Engine.is_editor_hint():
+-		add_to_group(GROUP)
+-		
+-		## Refer the various player collision shapes to their gamepiece (parent of the controller).
+-		## This will allow other objects/systems to quickly find which gamepiece they are working on
+-		## via the collision "owners".
+-		_interaction_searcher.owner = _gamepiece
+-		_player_collision.owner = _gamepiece
+-		
+-		_gamepiece.direction_changed.connect(
+-			func _on_gamepiece_direction_changed(new_direction: Directions.Points):
+-				var offset: Vector2 = Directions.MAPPINGS[new_direction] * 16
+-				_interaction_searcher.position = offset
+-		)
+-		
+-		FieldEvents.cell_selected.connect(_on_cell_selected)
+-		FieldEvents.interaction_selected.connect(_on_interaction_selected)
+-
+-
+-#func _process(_delta: float) -> void:
+-	#if _gamepiece.is_moving():
+-		#return
+-	#
+-	#var input_direction: = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
+-	#if input_direction:
+-		#if not _gamepiece.is_moving():
+-			#var source_cell: = GamepieceRegistry.get_cell(_gamepiece)
+-			#var target_cell: = Vector2i.ZERO
+-			#
+-			## Unless using 8-direction movement, one movement axis must be preferred. 
+-			##	Default to the x-axis.
+-			#if not is_zero_approx(input_direction.x):
+-				#input_direction = Vector2(input_direction.x, 0)
+-			#else:
+-				#input_direction = Vector2(0, input_direction.y)
+-			#target_cell = Gameboard.pixel_to_cell(_gamepiece.position) + Vector2i(input_direction)
+-			#
+-			## Try to get a path to destination (will fail if cell is occupied)
+-			#var new_move_path: = Gameboard.pathfinder.get_path_to_cell(source_cell, target_cell)
+-			#
+-			## Path is invalid. Bump animation?
+-			#if new_move_path.size() <= 1:
+-				#pass
+-			#
+-			#else:
+-				#GamepieceRegistry.move_gamepiece(_gamepiece, target_cell)
+-				#_gamepiece.move_to(Gameboard.cell_to_pixel(target_cell))
+-#
+-			##print(Gameboard.pathfinder.get_path_to_cell())
+-			## If path is valid, move.
+-
+-
+-func _unhandled_input(event: InputEvent) -> void:
+-	if event.is_action_released("select"):
+-		stop_moving()
+-	
+-	elif event is InputEventKey:
+-		if event.is_action_pressed("ui_up"):
+-			_last_input_direction = Vector2.UP
+-			if _gamepiece.is_moving():	stop_moving()
+-			else:	move_to_pressed_key(Vector2.UP)
+-			
+-		elif event.is_action_pressed("ui_down"):
+-			_last_input_direction = Vector2.DOWN
+-			if _gamepiece.is_moving():	stop_moving()
+-			else:	move_to_pressed_key(Vector2.DOWN)
+-			
+-		elif event.is_action_pressed("ui_left"):
+-			_last_input_direction = Vector2.LEFT
+-			if _gamepiece.is_moving():	stop_moving()
+-			else:	move_to_pressed_key(Vector2.LEFT)
+-			
+-		elif event.is_action_pressed("ui_right"):
+-			_last_input_direction = Vector2.RIGHT
+-			if _gamepiece.is_moving():	stop_moving()
+-			else:	move_to_pressed_key(Vector2.RIGHT)
+-
+-			#print(Gameboard.pathfinder.get_path_to_cell())
+-			# If path is valid, move.
+-
+-
+-func move_to_pressed_key(input_direction: Vector2) -> void:
+-	if is_active:
+-		var source_cell: = GamepieceRegistry.get_cell(_gamepiece)
+-		var target_cell: = Vector2i.ZERO
+-		
+-		# Unless using 8-direction movement, one movement axis must be preferred. 
+-		#	Default to the x-axis.
+-		target_cell = source_cell + Vector2i(input_direction)
+-		
+-		# Try to get a path to destination (will fail if cell is occupied)
+-		var new_move_path: = Gameboard.pathfinder.get_path_to_cell(source_cell, target_cell)
+-		
+-		# Path is invalid. Bump animation?
+-		if new_move_path.size() < 1:
+-			_gamepiece.direction = Directions.angle_to_direction(input_direction.angle())
+-		
+-		else:
+-			move_path = new_move_path.duplicate()
+-			FieldEvents.player_path_set.emit(_gamepiece, new_move_path.back())
+-
+-
+-func stop_moving() -> void:
+-	move_path.clear()
+-	_target = null
+-
+-
+-# The player has clicked on an empty gameboard cell. We'll try to move _gamepiece to the cell.
+-func _on_cell_selected(cell: Vector2i) -> void:
+-	if is_active and not _gamepiece.is_moving():
+-		var source_cell: = Gameboard.pixel_to_cell(_gamepiece.position)
+-		
+-		# Don't move to the cell the focus is standing on.
+-		if cell == source_cell:
+-			return
+-		
+-		# Take a look at what's underneath the cursor. If there's an interaction, move towards it
+-		# and try to interact with it.
+-		
+-		# Otherwise it's just the empty gameboard, so we'll try to move the player towards the
+-		# selected cell.
+-		var new_path = Gameboard.pathfinder.get_path_to_cell(source_cell, cell)
+-		if not new_path.is_empty():
+-			move_path = new_path.duplicate()
+-			FieldEvents.player_path_set.emit(_gamepiece, new_path.back())
+-		
+-		# If there is an interaction underneath the cursor the player's gamepiece should flag the
+-		# target and move to an adjacent cell.
+-		#if not collisions.is_empty():
+-			#for collision: Dictionary in collisions:
+-				#if collision.collider.owner is Interaction:
+-					#_target = collision.collider.owner
+-					#break
+-		
+-		# The following method will move to an empty cell OR adjacent to a blocked cell that has
+-		# an interaction located on it.
+-		
+-		
+-		#travel_to_cell(cell, _target != null)
+-		#if not _waypoints.is_empty():
+-			#FieldEvents.player_path_set.emit(_gamepiece, _waypoints.back())
+-		#
+-		## There is no path but there is a target, which means that the player is standing right next
+-		## to the target interaction.
+-		#elif _target:
+-			#_on_gamepiece_arrived()
+-
+-
+-# The player has clicked on something interactable. We'll try to move next to the interaction and
+-# then run the interaction.
+-func _on_interaction_selected(interaction: Interaction) -> void:
+-	if is_active and not _gamepiece.is_moving():
+-		var source_cell: = Gameboard.pixel_to_cell(_gamepiece.position)
+-		var target_cell: = Gameboard.pixel_to_cell(interaction.position)
+-		
+-		if target_cell == source_cell:
+-			return
+-		
+-		# First of all, check to see if the target is adjacent to the source.
+-		if target_cell in Gameboard.get_adjacent_cells(source_cell):
+-			_gamepiece.direction \
+-				= Directions.vector_to_direction(interaction.position - _gamepiece.position)
+-			interaction.run()
+-		
+-		else:
+-			# Only cache the interaction and move towards it if there is a valid move path.
+-			var new_path = Gameboard.pathfinder.get_path_cells_to_adjacent_cell(source_cell, 
+-				target_cell)
+-			if not new_path.is_empty():
+-				_target = interaction
+-				
+-				move_path = new_path.duplicate()
+-				FieldEvents.player_path_set.emit(_gamepiece, new_path.back())
+-	
+-	# If the player is already moving, cancel that movement.
+-	else:
+-		stop_moving()
+-
+-
+-func _on_gamepiece_arriving(excess_distance: float) -> void:
+-	super._on_gamepiece_arriving(excess_distance)
+-	
+-	# It may be that the player is holding the keys down. In that case, continue moving the
+-	# gamepiece towards the pressed direction.
+-	var input_direction: = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
+-	if not input_direction.is_equal_approx(Vector2.ZERO):
+-		move_to_pressed_key(_last_input_direction)
+-
+-
+-func _on_gamepiece_arrived() -> void:
+-	super._on_gamepiece_arrived()
+-	if _target:
+-		# Will be normalized by the setter.
+-		_gamepiece.direction \
+-			= Directions.vector_to_direction(_target.position - _gamepiece.position)
+-		_target.run()
+-		_target = null
+-	
+-	# No target, but check to see if the player is holding a key down and face in the direction of
+-	# the last pressed key.
+-	else:
+-		var input_direction: = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
+-		if not input_direction.is_equal_approx(Vector2.ZERO):
+-			_gamepiece.direction = Directions.vector_to_direction(_last_input_direction)
+diff --git a/src/field/gamepieces/player_controller.gd.uid b/src/field/gamepieces/player_controller.gd.uid
+deleted file mode 100644
+index e27f5e3..0000000
+--- a/src/field/gamepieces/player_controller.gd.uid
++++ /dev/null
+@@ -1 +0,0 @@
+-uid://vnofet0hi8mx
+diff --git a/src/field/map.gd b/src/field/map.gd
+new file mode 100644
+index 0000000..b8dc282
+--- /dev/null
++++ b/src/field/map.gd
+@@ -0,0 +1,36 @@
++@tool
++extends Node2D
++
++## The map defines the properties of the playable grid, which will be applied on _ready to the
++## [Gameboard]. These properties usually correspond to one or multiple tilesets.
++@export var gameboard_properties: GameboardProperties:
++	set(value):
++		gameboard_properties = value
++		
++		if not is_inside_tree():
++			await ready
++		
++		_debug_boundaries.gameboard_properties = gameboard_properties 
++
++@onready var _debug_boundaries: DebugGameboardBoundaries = $DebugBoundaries
++
++func _ready() -> void:
++	if not Engine.is_editor_hint():
++		Camera.gameboard_properties = gameboard_properties
++		Gameboard.properties = gameboard_properties
++		
++		# Gamepieces need to be registered according to which cells they currently occupy.
++		# Gamepieces may not overlap, and only the first gamepiece registered to a given cell will
++		# be kept.
++		for gp: Gamepiece in find_children("*", "Gamepiece"):
++			var cell: = Gameboard.pixel_to_cell(gp.position)
++			gp.position = Gameboard.cell_to_pixel(cell)
++			
++			if GamepieceRegistry.register(gp, cell) == false:
++				gp.queue_free()
++		
++		await get_tree().process_frame
++		await get_tree().process_frame
++		await get_tree().process_frame
++		await get_tree().process_frame
++		print(Gameboard.pathfinder)
+diff --git a/src/map.gd.uid b/src/field/map.gd.uid
+similarity index 100%
+rename from src/map.gd.uid
+rename to src/field/map.gd.uid
+diff --git a/src/main.tscn b/src/main.tscn
+index 0807812..1a4f849 100644
+--- a/src/main.tscn
++++ b/src/main.tscn
+@@ -1,7 +1,10 @@
+-[gd_scene load_steps=87 format=3 uid="uid://p01fb6nvi144"]
++[gd_scene load_steps=92 format=3 uid="uid://p01fb6nvi144"]
+ 
+ [ext_resource type="Script" uid="uid://m3oktjc6gmsb" path="res://src/field/field.gd" id="2_bkxev"]
++[ext_resource type="PackedScene" uid="uid://d2lj4blu56fte" path="res://src/field/gamepieces/controllers/player_controller.tscn" id="2_esa52"]
++[ext_resource type="Script" uid="uid://drugj534rnwxw" path="res://src/field/map.gd" id="2_la2p5"]
+ [ext_resource type="TileSet" uid="uid://cnlvvllr0ici" path="res://src/field/gamepieces/controllers/cursor/tileset_cursor.tres" id="3_2v5er"]
++[ext_resource type="Resource" uid="uid://k63mv5dbd1uk" path="res://maps/gbprops.tres" id="3_esa52"]
+ [ext_resource type="Script" uid="uid://dwq2jtul5j1rc" path="res://src/field/gamepieces/controllers/cursor/field_cursor.gd" id="5_3guor"]
+ [ext_resource type="TileSet" uid="uid://biq84075xlypd" path="res://assets/terrain/tilesets/kenney_obstacles.tres" id="7_po5fq"]
+ [ext_resource type="Texture2D" uid="uid://dm4h0uo6gjp22" path="res://assets/terrain/dungeon_tilemap.png" id="9_woa3f"]
+@@ -17,10 +20,10 @@
+ [ext_resource type="Script" uid="uid://jka4efg1wci6" path="res://src/field/cutscenes/templates/conversations/conversation_template.gd" id="14_b3y71"]
+ [ext_resource type="Resource" uid="uid://cp5k342d2qao1" path="res://maps/town/runner.dtl" id="16_ybo02"]
+ [ext_resource type="PackedScene" uid="uid://dqdk6eehxsrmn" path="res://assets/characters/monk_gfx.tscn" id="17_qgtho"]
+-[ext_resource type="PackedScene" uid="uid://kiwma43jc3n6" path="res://assets/characters/lady_gfx.tscn" id="17_sieyv"]
++[ext_resource type="PackedScene" uid="uid://kiwma43jc3n6" path="res://assets/characters/thief_gfx.tscn" id="17_sieyv"]
+ [ext_resource type="PackedScene" uid="uid://bvtk5qllej4b8" path="res://assets/characters/smith_gfx.tscn" id="18_2msel"]
+ [ext_resource type="Script" uid="uid://cmtpjnqderv2u" path="res://src/field/cutscenes/popups/moving_interaction_popup.gd" id="18_8igsj"]
+-[ext_resource type="Script" uid="uid://27j187rqxg64" path="res://src/field/gameboard/debug_map_boundaries.gd" id="18_cqtg7"]
++[ext_resource type="Script" uid="uid://27j187rqxg64" path="res://src/field/gameboard/debug/debug_map_boundaries.gd" id="18_cqtg7"]
+ [ext_resource type="PackedScene" uid="uid://ccm8tsjysf8b5" path="res://assets/characters/wizard_gfx.tscn" id="19_ius2d"]
+ [ext_resource type="Script" uid="uid://ch0v602x6lumo" path="res://addons/dialogic/Modules/Text/node_name_label.gd" id="19_lpxfg"]
+ [ext_resource type="PackedScene" uid="uid://oot0x5n44b2r" path="res://src/field/cutscenes/Interaction.tscn" id="19_sa6jd"]
+@@ -31,7 +34,7 @@
+ [ext_resource type="Resource" uid="uid://c5gfpb2ghma5w" path="res://maps/town/smith.dtl" id="22_dko83"]
+ [ext_resource type="Resource" uid="uid://b6cc3gmd8nlty" path="res://maps/town/thief.dtl" id="22_rd6oa"]
+ [ext_resource type="Resource" uid="uid://cu4um6ppwmk03" path="res://maps/town/monk.dtl" id="24_grnqa"]
+-[ext_resource type="Script" uid="uid://pfbspn48phnw" path="res://src/field/gamepieces/controllers/gamepiece_controller.gd" id="26_p8jrd"]
++[ext_resource type="Script" uid="uid://ht3xm51xvouh" path="res://src/field/gamepieces/controllers/gamepiece_controller.gd" id="26_p8jrd"]
+ [ext_resource type="Resource" uid="uid://vbo7p1nxgkrv" path="res://maps/town/wizard.dtl" id="28_ll4xp"]
+ [ext_resource type="Script" uid="uid://b2vp0gl62wukl" path="res://maps/town/fan_interaction.gd" id="29_at3vc"]
+ [ext_resource type="PackedScene" uid="uid://chgku8dii7mu8" path="res://src/field/cutscenes/templates/pickups/pickup.tscn" id="29_gxq7u"]
+@@ -53,12 +56,12 @@
+ [ext_resource type="Resource" uid="uid://gcpgk7rnyguj" path="res://maps/town/encounter_before_combat.dtl" id="36_fu3a1"]
+ [ext_resource type="PackedScene" uid="uid://bd624fi8r2avm" path="res://src/field/cutscenes/templates/area_transitions/area_transition.tscn" id="37_6xxks"]
+ [ext_resource type="Resource" uid="uid://dmmexun61mw4j" path="res://maps/town/encounter_on_victory.dtl" id="37_8j2gh"]
+-[ext_resource type="Resource" uid="uid://r1aeyknxv1hr" path="res://maps/grove/ghost.dtl" id="37_uncgg"]
++[ext_resource type="Resource" uid="uid://r1aeyknxv1hr" path="res://maps/forest/ghost.dtl" id="37_uncgg"]
+ [ext_resource type="Resource" uid="uid://c4ns5mfdjc11e" path="res://maps/town/encounter_on_loss.dtl" id="38_f1335"]
+ [ext_resource type="PackedScene" uid="uid://ctuol1ff8u5e2" path="res://maps/house/wand_pedestal_interaction.tscn" id="38_n1c7a"]
+ [ext_resource type="AudioStream" uid="uid://ohgp0pb24my4" path="res://assets/sfx/chop.ogg" id="39_02ti3"]
+ [ext_resource type="PackedScene" uid="uid://dpopnsfpfdasl" path="res://src/field/cutscenes/Trigger.tscn" id="39_p2lth"]
+-[ext_resource type="Script" uid="uid://cstx0ojahlkxk" path="res://maps/grove/game_end_trigger.gd" id="40_lduow"]
++[ext_resource type="Script" uid="uid://cstx0ojahlkxk" path="res://maps/forest/game_end_trigger.gd" id="40_lduow"]
+ [ext_resource type="AudioStream" uid="uid://ctnn0hqkx67k7" path="res://assets/music/Apple Cider.mp3" id="41_uxhyb"]
+ [ext_resource type="AudioStream" uid="uid://c5w0ripyqfl68" path="res://assets/sfx/drop_002.ogg" id="42_bc1t5"]
+ [ext_resource type="AudioStream" uid="uid://dhr63rdgg3dn2" path="res://assets/sfx/error_006.ogg" id="43_qeoai"]
+@@ -70,6 +73,8 @@
+ [ext_resource type="AudioStream" uid="uid://dnboblpkf0fqi" path="res://addons/dialogic/Example Assets/sound-effects/typing3.wav" id="56_prbwr"]
+ [ext_resource type="AudioStream" uid="uid://c2viukvbub6v6" path="res://addons/dialogic/Example Assets/sound-effects/typing4.wav" id="57_tomnb"]
+ [ext_resource type="AudioStream" uid="uid://dwcre3fjf3cj8" path="res://addons/dialogic/Example Assets/sound-effects/typing5.wav" id="58_br2ni"]
++[ext_resource type="TileSet" uid="uid://dhda7bse8tu6l" path="res://src/field/gameboard/debug/tileset_debug_pathfinder_map.tres" id="59_nl04t"]
++[ext_resource type="Script" uid="uid://yukpiyvqb6m3" path="res://src/field/gameboard/debug/debug_pathfinder_map.gd" id="60_a8sfs"]
+ [ext_resource type="Resource" uid="uid://bwjallq2c71rq" path="res://maps/opening_cutscene.dtl" id="68_jcriq"]
+ [ext_resource type="Script" uid="uid://i6j3l72wljdc" path="res://src/combat/combat.gd" id="69_meyff"]
+ 
+@@ -352,12 +357,17 @@ size = Vector2(15, 15)
+ 
+ [node name="Main" type="Node2D"]
+ 
+-[node name="Field" type="Node2D" parent="." node_paths=PackedStringArray("focused_game_piece")]
++[node name="Field" type="Node2D" parent="." node_paths=PackedStringArray("player_default_gamepiece")]
+ scale = Vector2(5, 5)
+ script = ExtResource("2_bkxev")
+-focused_game_piece = NodePath("Terrain/Gamepieces/Player")
++player_controller = ExtResource("2_esa52")
++player_default_gamepiece = NodePath("Map/Terrain/Gamepieces/Player")
+ 
+-[node name="Terrain" type="TileMap" parent="Field"]
++[node name="Map" type="Node2D" parent="Field"]
++script = ExtResource("2_la2p5")
++gameboard_properties = ExtResource("3_esa52")
++
++[node name="Terrain" type="TileMap" parent="Field/Map"]
+ y_sort_enabled = true
+ tile_set = ExtResource("7_po5fq")
+ format = 2
+@@ -371,174 +381,148 @@ layer_2/name = "Overlay"
+ layer_2/z_index = 100
+ layer_2/tile_data = PackedInt32Array(589838, 524288, 7, 786440, 262144, 0, 786439, 262144, 0, 917513, 262144, 0, 851972, 262144, 0, 786434, 262144, 0, 917507, 262144, 0, 851983, 262144, 0, 589836, 262144, 0, 589834, 262144, 0, 851989, 262144, 0, 524312, 262144, 0, 327683, 262144, 0, 65554, 262144, 0, 131088, 262144, 0, 20, 262144, 0, 589831, 196608, 5, 655360, 458752, 0, 1703982, 393216, 2, 1835053, 393216, 0, 2031665, 393216, 0, 1835067, 393216, 0, 327738, 196609, 5, 393269, 196609, 5, 1507397, 458752, 0, 1507394, 458752, 0, 1572929, 393216, 0, 1638463, 393216, 0, 1703998, 393216, 0, 1769533, 393216, 0, 1769532, 458752, 0, 1572928, 458752, 0, 1507398, 393216, 0)
+ 
+-[node name="PlayerCursor" type="TileMap" parent="Field/Terrain"]
+-tile_set = ExtResource("3_2v5er")
+-format = 2
+-script = ExtResource("5_3guor")
+-
+-[node name="PlayerPathDestinationMarker" type="Sprite2D" parent="Field/Terrain"]
+-visible = false
+-modulate = Color(0.909804, 0.270588, 0.215686, 0.705882)
+-texture = ExtResource("13_osl4o")
+-script = ExtResource("14_0j4ru")
+-
+-[node name="Gamepieces" type="Node2D" parent="Field/Terrain"]
++[node name="Gamepieces" type="Node2D" parent="Field/Map/Terrain"]
+ y_sort_enabled = true
+ 
+-[node name="Player" parent="Field/Terrain/Gamepieces" instance=ExtResource("11_yntrj")]
++[node name="Player" parent="Field/Map/Terrain/Gamepieces" instance=ExtResource("11_yntrj")]
+ position = Vector2(24, 200)
++animation_scene = ExtResource("12_oablq")
+ move_speed = 96.0
+ metadata/_edit_group_ = true
+ 
+-[node name="GoBotGFX" parent="Field/Terrain/Gamepieces/Player" instance=ExtResource("12_oablq")]
+-
+-[node name="Town" type="Node2D" parent="Field/Terrain/Gamepieces"]
++[node name="Town" type="Node2D" parent="Field/Map/Terrain/Gamepieces"]
+ y_sort_enabled = true
+ metadata/_edit_lock_ = true
+ 
+-[node name="MoodyHero" parent="Field/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
++[node name="MoodyHero" parent="Field/Map/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
+ position = Vector2(296, 24)
++animation_scene = ExtResource("14_av6f5")
+ metadata/_edit_group_ = true
+ 
+-[node name="KnightGFX" parent="Field/Terrain/Gamepieces/Town/MoodyHero" instance=ExtResource("14_av6f5")]
+-
+-[node name="Interaction" parent="Field/Terrain/Gamepieces/Town/MoodyHero" instance=ExtResource("19_sa6jd")]
++[node name="Interaction" parent="Field/Map/Terrain/Gamepieces/Town/MoodyHero" instance=ExtResource("19_sa6jd")]
+ script = ExtResource("13_0rh60")
+ timeline = ExtResource("14_68y0v")
+ 
+-[node name="InteractionPopup" parent="Field/Terrain/Gamepieces/Town/MoodyHero/Interaction" instance=ExtResource("34_qs25x")]
+-emote = 1
++[node name="InteractionPopup" parent="Field/Map/Terrain/Gamepieces/Town/MoodyHero/Interaction" instance=ExtResource("34_qs25x")]
+ 
+-[node name="Runner" parent="Field/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
++[node name="Runner" parent="Field/Map/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
+ position = Vector2(296, 184)
++animation_scene = ExtResource("12_n5rm1")
+ metadata/_edit_group_ = true
+ 
+-[node name="GenericCharacterAnimation" parent="Field/Terrain/Gamepieces/Town/Runner" instance=ExtResource("12_n5rm1")]
+-
+-[node name="InteractionPopup" parent="Field/Terrain/Gamepieces/Town/Runner/GenericCharacterAnimation" instance=ExtResource("34_qs25x")]
+-script = ExtResource("18_8igsj")
+-emote = 1
+-
+-[node name="Interaction" parent="Field/Terrain/Gamepieces/Town/Runner" instance=ExtResource("19_sa6jd")]
++[node name="Interaction" parent="Field/Map/Terrain/Gamepieces/Town/Runner" instance=ExtResource("19_sa6jd")]
+ script = ExtResource("14_b3y71")
+ timeline = ExtResource("16_ybo02")
+ 
+-[node name="LoopAI" type="Node2D" parent="Field/Terrain/Gamepieces/Town/Runner"]
++[node name="LoopAI" type="Node2D" parent="Field/Map/Terrain/Gamepieces/Town/Runner" node_paths=PackedStringArray("path_to_follow")]
+ script = ExtResource("12_glwd5")
++path_to_follow = NodePath("MovePath")
+ 
+-[node name="WaitTimer" type="Timer" parent="Field/Terrain/Gamepieces/Town/Runner/LoopAI"]
++[node name="WaitTimer" type="Timer" parent="Field/Map/Terrain/Gamepieces/Town/Runner/LoopAI"]
+ wait_time = 1.5
+ one_shot = true
+ 
+-[node name="MovePath" type="Line2D" parent="Field/Terrain/Gamepieces/Town/Runner/LoopAI"]
++[node name="MovePath" type="Line2D" parent="Field/Map/Terrain/Gamepieces/Town/Runner/LoopAI"]
+ points = PackedVector2Array(1.52588e-05, 1.52588e-05, 0, -32, -32, -32, -32, 0, 0, 0)
+ width = 2.0
+ 
+-[node name="Thief" parent="Field/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
++[node name="InteractionPopup" parent="Field/Map/Terrain/Gamepieces/Town/Runner" instance=ExtResource("34_qs25x")]
++script = ExtResource("18_8igsj")
++
++[node name="Thief" parent="Field/Map/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
+ position = Vector2(248, 8)
++animation_scene = ExtResource("17_sieyv")
+ metadata/_edit_group_ = true
+ 
+-[node name="ThiefGFX" parent="Field/Terrain/Gamepieces/Town/Thief" instance=ExtResource("17_sieyv")]
+-
+-[node name="Interaction" parent="Field/Terrain/Gamepieces/Town/Thief" instance=ExtResource("19_sa6jd")]
++[node name="Interaction" parent="Field/Map/Terrain/Gamepieces/Town/Thief" instance=ExtResource("19_sa6jd")]
+ script = ExtResource("13_0rh60")
+ timeline = ExtResource("22_rd6oa")
+ 
+-[node name="InteractionPopup" parent="Field/Terrain/Gamepieces/Town/Thief/Interaction" instance=ExtResource("34_qs25x")]
+-emote = 1
++[node name="InteractionPopup" parent="Field/Map/Terrain/Gamepieces/Town/Thief/Interaction" instance=ExtResource("34_qs25x")]
+ 
+-[node name="Monk" parent="Field/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
++[node name="Monk" parent="Field/Map/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
+ position = Vector2(344, 8)
++animation_scene = ExtResource("17_qgtho")
+ metadata/_edit_group_ = true
+ 
+-[node name="MonkGFX" parent="Field/Terrain/Gamepieces/Town/Monk" instance=ExtResource("17_qgtho")]
+-
+-[node name="Interaction" parent="Field/Terrain/Gamepieces/Town/Monk" instance=ExtResource("19_sa6jd")]
++[node name="Interaction" parent="Field/Map/Terrain/Gamepieces/Town/Monk" instance=ExtResource("19_sa6jd")]
+ script = ExtResource("13_0rh60")
+ timeline = ExtResource("24_grnqa")
+ 
+-[node name="InteractionPopup" parent="Field/Terrain/Gamepieces/Town/Monk/Interaction" instance=ExtResource("34_qs25x")]
+-emote = 1
++[node name="InteractionPopup" parent="Field/Map/Terrain/Gamepieces/Town/Monk/Interaction" instance=ExtResource("34_qs25x")]
+ 
+-[node name="Smith" parent="Field/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
++[node name="Smith" parent="Field/Map/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
+ position = Vector2(136, 88)
++animation_scene = ExtResource("18_2msel")
+ metadata/_edit_group_ = true
+ 
+-[node name="KnightGFX" parent="Field/Terrain/Gamepieces/Town/Smith" instance=ExtResource("18_2msel")]
+-
+-[node name="Interaction" parent="Field/Terrain/Gamepieces/Town/Smith" instance=ExtResource("19_sa6jd")]
++[node name="Interaction" parent="Field/Map/Terrain/Gamepieces/Town/Smith" instance=ExtResource("19_sa6jd")]
+ script = ExtResource("14_b3y71")
+ timeline = ExtResource("22_dko83")
+ 
+-[node name="InteractionPopup" parent="Field/Terrain/Gamepieces/Town/Smith/Interaction" instance=ExtResource("34_qs25x")]
+-emote = 1
++[node name="InteractionPopup" parent="Field/Map/Terrain/Gamepieces/Town/Smith/Interaction" instance=ExtResource("34_qs25x")]
+ 
+-[node name="Wizard" parent="Field/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
++[node name="Wizard" parent="Field/Map/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
+ position = Vector2(344, 72)
++animation_scene = ExtResource("19_ius2d")
+ metadata/_edit_group_ = true
+ 
+-[node name="WizardGFX" parent="Field/Terrain/Gamepieces/Town/Wizard" instance=ExtResource("19_ius2d")]
+-
+-[node name="Interaction" parent="Field/Terrain/Gamepieces/Town/Wizard" instance=ExtResource("19_sa6jd")]
++[node name="Interaction" parent="Field/Map/Terrain/Gamepieces/Town/Wizard" instance=ExtResource("19_sa6jd")]
+ script = ExtResource("13_0rh60")
+ timeline = ExtResource("28_ll4xp")
+ 
+-[node name="InteractionPopup" parent="Field/Terrain/Gamepieces/Town/Wizard/Interaction" instance=ExtResource("34_qs25x")]
+-emote = 1
++[node name="InteractionPopup" parent="Field/Map/Terrain/Gamepieces/Town/Wizard/Interaction" instance=ExtResource("34_qs25x")]
+ 
+-[node name="AdoringFan" parent="Field/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
++[node name="AdoringFan" parent="Field/Map/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
+ position = Vector2(280, 104)
++animation_scene = ExtResource("12_n5rm1")
+ move_speed = 235.0
+ metadata/_edit_group_ = true
+ 
+-[node name="GFX" parent="Field/Terrain/Gamepieces/Town/AdoringFan" instance=ExtResource("12_n5rm1")]
+-
+-[node name="Controller" type="Node2D" parent="Field/Terrain/Gamepieces/Town/AdoringFan"]
++[node name="GamepieceController" type="Node2D" parent="Field/Map/Terrain/Gamepieces/Town/AdoringFan"]
+ script = ExtResource("26_p8jrd")
+ 
+-[node name="Interaction" parent="Field/Terrain/Gamepieces/Town/AdoringFan" instance=ExtResource("19_sa6jd")]
++[node name="Interaction" parent="Field/Map/Terrain/Gamepieces/Town/AdoringFan" node_paths=PackedStringArray("controller") instance=ExtResource("19_sa6jd")]
+ script = ExtResource("29_at3vc")
++controller = NodePath("../GamepieceController")
+ timeline = null
+ 
+-[node name="InteractionPopup" parent="Field/Terrain/Gamepieces/Town/AdoringFan/Interaction" instance=ExtResource("34_qs25x")]
+-emote = 1
++[node name="InteractionPopup" parent="Field/Map/Terrain/Gamepieces/Town/AdoringFan/Interaction" instance=ExtResource("34_qs25x")]
+ 
+-[node name="RoamingEncounter" parent="Field/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
++[node name="RoamingEncounter" type="Node2D" parent="Field/Map/Terrain/Gamepieces/Town"]
+ position = Vector2(200, 264)
+-move_speed = 235.0
+-metadata/_edit_group_ = true
+ 
+-[node name="GhostGFX" parent="Field/Terrain/Gamepieces/Town/RoamingEncounter" instance=ExtResource("36_7n3c5")]
++[node name="GhostGFX" parent="Field/Map/Terrain/Gamepieces/Town/RoamingEncounter" instance=ExtResource("36_7n3c5")]
+ 
+-[node name="CombatStartTrigger" parent="Field/Terrain/Gamepieces/Town/RoamingEncounter" instance=ExtResource("39_p2lth")]
++[node name="CombatStartTrigger" parent="Field/Map/Terrain/Gamepieces/Town/RoamingEncounter" instance=ExtResource("39_p2lth")]
++position = Vector2(200, 264)
+ script = ExtResource("33_0gswb")
+ combat_arena = ExtResource("34_moieg")
+ 
+-[node name="InteractionPopup" parent="Field/Terrain/Gamepieces/Town/RoamingEncounter/CombatStartTrigger" instance=ExtResource("34_qs25x")]
++[node name="InteractionPopup" parent="Field/Map/Terrain/Gamepieces/Town/RoamingEncounter/CombatStartTrigger" instance=ExtResource("34_qs25x")]
+ emote = 0
+ radius = 64
+ 
+-[node name="ConversationEncounter" parent="Field/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
++[node name="ConversationEncounter" parent="Field/Map/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
+ position = Vector2(83.2, 6.39999)
++animation_scene = ExtResource("36_7n3c5")
+ metadata/_edit_group_ = true
+ 
+-[node name="GhostGFX" parent="Field/Terrain/Gamepieces/Town/ConversationEncounter" instance=ExtResource("36_7n3c5")]
+-
+-[node name="Interaction" parent="Field/Terrain/Gamepieces/Town/ConversationEncounter" instance=ExtResource("19_sa6jd")]
++[node name="Interaction" parent="Field/Map/Terrain/Gamepieces/Town/ConversationEncounter" instance=ExtResource("19_sa6jd")]
+ script = ExtResource("35_i66wm")
+ pre_combat_timeline = ExtResource("36_fu3a1")
+ victory_timeline = ExtResource("37_8j2gh")
+ loss_timeline = ExtResource("38_f1335")
+ combat_arena = ExtResource("35_x5y1m")
+ 
+-[node name="InteractionPopup" parent="Field/Terrain/Gamepieces/Town/ConversationEncounter/Interaction" instance=ExtResource("34_qs25x")]
++[node name="InteractionPopup" parent="Field/Map/Terrain/Gamepieces/Town/ConversationEncounter/Interaction" instance=ExtResource("34_qs25x")]
+ emote = 0
+ 
+-[node name="KeyPickup" parent="Field/Terrain/Gamepieces/Town" instance=ExtResource("29_gxq7u")]
++[node name="KeyPickup" parent="Field/Map/Terrain/Gamepieces/Town" instance=ExtResource("29_gxq7u")]
+ position = Vector2(40, 24)
+ metadata/_edit_lock_ = true
+ 
+-[node name="Door" parent="Field/Terrain/Gamepieces/Town" instance=ExtResource("33_lbtsh")]
++[node name="Door" parent="Field/Map/Terrain/Gamepieces/Town" instance=ExtResource("33_lbtsh")]
+ position = Vector2(120, 176)
+ is_locked = true
+ arrival_coordinates = Vector2(824, 40)
+@@ -546,78 +530,77 @@ new_music = ExtResource("34_xbc6u")
+ metadata/_edit_group_ = true
+ metadata/_edit_lock_ = true
+ 
+-[node name="Interaction" parent="Field/Terrain/Gamepieces/Town/Door" instance=ExtResource("19_sa6jd")]
++[node name="Interaction" parent="Field/Map/Terrain/Gamepieces/Town/Door" instance=ExtResource("19_sa6jd")]
+ position = Vector2(0, -8)
+ script = ExtResource("34_xtrml")
+ 
+-[node name="InteractionPopup" parent="Field/Terrain/Gamepieces/Town/Door/Interaction" instance=ExtResource("34_qs25x")]
++[node name="InteractionPopup" parent="Field/Map/Terrain/Gamepieces/Town/Door/Interaction" instance=ExtResource("34_qs25x")]
+ z_index = 100
+-emote = 1
+ 
+-[node name="StrangeTreeInteraction" parent="Field/Terrain/Gamepieces/Town" instance=ExtResource("19_sa6jd")]
++[node name="StrangeTreeInteraction" parent="Field/Map/Terrain/Gamepieces/Town" instance=ExtResource("19_sa6jd")]
+ position = Vector2(56, 72)
+ script = ExtResource("31_y2el4")
+ timeline = ExtResource("32_m0jee")
+ metadata/_edit_group_ = true
+ metadata/_edit_lock_ = true
+ 
+-[node name="PathBlocker" type="Area2D" parent="Field/Terrain/Gamepieces/Town/StrangeTreeInteraction"]
++[node name="PathBlocker" type="Area2D" parent="Field/Map/Terrain/Gamepieces/Town/StrangeTreeInteraction"]
+ collision_layer = 2
+ collision_mask = 0
+ 
+-[node name="CollisionShape2D" type="CollisionShape2D" parent="Field/Terrain/Gamepieces/Town/StrangeTreeInteraction/PathBlocker"]
++[node name="CollisionShape2D" type="CollisionShape2D" parent="Field/Map/Terrain/Gamepieces/Town/StrangeTreeInteraction/PathBlocker"]
+ position = Vector2(-16, 16)
+ shape = SubResource("RectangleShape2D_0ughy")
+ 
+-[node name="AnimationPlayer" type="AnimationPlayer" parent="Field/Terrain/Gamepieces/Town/StrangeTreeInteraction"]
++[node name="AnimationPlayer" type="AnimationPlayer" parent="Field/Map/Terrain/Gamepieces/Town/StrangeTreeInteraction"]
+ libraries = {
+ &"": SubResource("AnimationLibrary_37hna")
+ }
+ 
+-[node name="TileMap" type="TileMap" parent="Field/Terrain/Gamepieces/Town/StrangeTreeInteraction"]
++[node name="TileMap" type="TileMap" parent="Field/Map/Terrain/Gamepieces/Town/StrangeTreeInteraction"]
+ position = Vector2(-8, -8)
+ tile_set = SubResource("TileSet_tinid")
+ format = 2
+ layer_0/tile_data = PackedInt32Array(65532, 458752, 1, 65533, 458752, 1, -3, 458752, 1, -65539, 458752, 1, -4, 458752, 1, -65540, 458752, 1, 131069, 458752, 1, -2, 458752, 1, 65534, 458752, 1, 131070, 458752, 1, 196606, 524288, 2, 131071, 524288, 2, 65535, 524288, 0, -1, 524288, 1, -65538, 524288, 0)
+ 
+-[node name="InteractionPopup" parent="Field/Terrain/Gamepieces/Town/StrangeTreeInteraction" instance=ExtResource("34_qs25x")]
++[node name="InteractionPopup" parent="Field/Map/Terrain/Gamepieces/Town/StrangeTreeInteraction" instance=ExtResource("34_qs25x")]
+ emote = 2
+ 
+-[node name="SignInteraction" parent="Field/Terrain/Gamepieces/Town" instance=ExtResource("19_sa6jd")]
++[node name="SignInteraction" parent="Field/Map/Terrain/Gamepieces/Town" instance=ExtResource("19_sa6jd")]
+ position = Vector2(152, 168)
+ script = ExtResource("14_b3y71")
+ timeline = ExtResource("35_gv62s")
+ metadata/_edit_group_ = true
+ metadata/_edit_lock_ = true
+ 
+-[node name="InteractionPopup" parent="Field/Terrain/Gamepieces/Town/SignInteraction" instance=ExtResource("34_qs25x")]
++[node name="InteractionPopup" parent="Field/Map/Terrain/Gamepieces/Town/SignInteraction" instance=ExtResource("34_qs25x")]
+ emote = 2
+ 
+-[node name="TownToGrove" parent="Field/Terrain/Gamepieces/Town" instance=ExtResource("37_6xxks")]
++[node name="TownToGrove" parent="Field/Map/Terrain/Gamepieces/Town" instance=ExtResource("37_6xxks")]
+ position = Vector2(200, 280)
+ arrival_coordinates = Vector2(632, 424)
+ new_music = ExtResource("41_uxhyb")
+ metadata/_edit_lock_ = true
+ 
+-[node name="Grove" type="Node2D" parent="Field/Terrain/Gamepieces"]
++[node name="Grove" type="Node2D" parent="Field/Map/Terrain/Gamepieces"]
+ y_sort_enabled = true
+ metadata/_edit_lock_ = true
+ 
+-[node name="Ghost" parent="Field/Terrain/Gamepieces/Grove" instance=ExtResource("11_yntrj")]
++[node name="Ghost" parent="Field/Map/Terrain/Gamepieces/Grove" instance=ExtResource("11_yntrj")]
+ position = Vector2(840, 488)
+ metadata/_edit_group_ = true
+ metadata/_edit_lock_ = true
+ 
+-[node name="GhostGFX" parent="Field/Terrain/Gamepieces/Grove/Ghost" instance=ExtResource("36_7n3c5")]
++[node name="GhostGFX" parent="Field/Map/Terrain/Gamepieces/Grove/Ghost" instance=ExtResource("36_7n3c5")]
+ 
+-[node name="AnimationPlayer" type="AnimationPlayer" parent="Field/Terrain/Gamepieces/Grove/Ghost"]
++[node name="AnimationPlayer" type="AnimationPlayer" parent="Field/Map/Terrain/Gamepieces/Grove/Ghost"]
+ libraries = {
+ &"": SubResource("AnimationLibrary_d6ycm")
+ }
+ 
+-[node name="WinScreen" type="CanvasLayer" parent="Field/Terrain/Gamepieces/Grove/Ghost/AnimationPlayer"]
++[node name="WinScreen" type="CanvasLayer" parent="Field/Map/Terrain/Gamepieces/Grove/Ghost/AnimationPlayer"]
+ 
+-[node name="ColorRect" type="ColorRect" parent="Field/Terrain/Gamepieces/Grove/Ghost/AnimationPlayer/WinScreen"]
++[node name="ColorRect" type="ColorRect" parent="Field/Map/Terrain/Gamepieces/Grove/Ghost/AnimationPlayer/WinScreen"]
+ visible = false
+ modulate = Color(1, 1, 1, 0)
+ anchors_preset = 15
+@@ -628,7 +611,7 @@ grow_vertical = 2
+ mouse_filter = 2
+ color = Color(0, 0, 0, 1)
+ 
+-[node name="VBoxContainer" type="CenterContainer" parent="Field/Terrain/Gamepieces/Grove/Ghost/AnimationPlayer/WinScreen/ColorRect"]
++[node name="VBoxContainer" type="CenterContainer" parent="Field/Map/Terrain/Gamepieces/Grove/Ghost/AnimationPlayer/WinScreen/ColorRect"]
+ layout_mode = 1
+ anchors_preset = 15
+ anchor_right = 1.0
+@@ -636,16 +619,16 @@ anchor_bottom = 1.0
+ grow_horizontal = 2
+ grow_vertical = 2
+ 
+-[node name="VBoxContainer" type="VBoxContainer" parent="Field/Terrain/Gamepieces/Grove/Ghost/AnimationPlayer/WinScreen/ColorRect/VBoxContainer"]
++[node name="VBoxContainer" type="VBoxContainer" parent="Field/Map/Terrain/Gamepieces/Grove/Ghost/AnimationPlayer/WinScreen/ColorRect/VBoxContainer"]
+ modulate = Color(1, 1, 1, 0)
+ layout_mode = 2
+ 
+-[node name="Label" type="Label" parent="Field/Terrain/Gamepieces/Grove/Ghost/AnimationPlayer/WinScreen/ColorRect/VBoxContainer/VBoxContainer"]
++[node name="Label" type="Label" parent="Field/Map/Terrain/Gamepieces/Grove/Ghost/AnimationPlayer/WinScreen/ColorRect/VBoxContainer/VBoxContainer"]
+ layout_mode = 2
+ text = "THANK YOU FOR PLAYING!"
+ label_settings = SubResource("LabelSettings_dkg5i")
+ 
+-[node name="Label2" type="Label" parent="Field/Terrain/Gamepieces/Grove/Ghost/AnimationPlayer/WinScreen/ColorRect/VBoxContainer/VBoxContainer"]
++[node name="Label2" type="Label" parent="Field/Map/Terrain/Gamepieces/Grove/Ghost/AnimationPlayer/WinScreen/ColorRect/VBoxContainer/VBoxContainer"]
+ custom_minimum_size = Vector2(800, 0)
+ layout_mode = 2
+ text = "Find more info or ways to help out at
+@@ -653,75 +636,75 @@ github.com/gdquest-demos/godot-open-rpg!"
+ horizontal_alignment = 1
+ autowrap_mode = 3
+ 
+-[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="Field/Terrain/Gamepieces/Grove/Ghost"]
++[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="Field/Map/Terrain/Gamepieces/Grove/Ghost"]
+ bus = &"SFX"
+ 
+-[node name="Pickup" parent="Field/Terrain/Gamepieces/Grove" instance=ExtResource("29_gxq7u")]
++[node name="Pickup" parent="Field/Map/Terrain/Gamepieces/Grove" instance=ExtResource("29_gxq7u")]
+ position = Vector2(776, 424)
+ item_type = 5
+ 
+-[node name="GameEndTrigger" parent="Field/Terrain/Gamepieces/Grove" node_paths=PackedStringArray("ghost_animation_player") instance=ExtResource("39_p2lth")]
++[node name="GameEndTrigger" parent="Field/Map/Terrain/Gamepieces/Grove" node_paths=PackedStringArray("ghost_animation_player") instance=ExtResource("39_p2lth")]
+ position = Vector2(888, 472)
+ script = ExtResource("40_lduow")
+ timeline = ExtResource("37_uncgg")
+ ghost_animation_player = NodePath("../Ghost/AnimationPlayer")
+ 
+-[node name="Area2D2" type="Area2D" parent="Field/Terrain/Gamepieces/Grove/GameEndTrigger"]
++[node name="Area2D2" type="Area2D" parent="Field/Map/Terrain/Gamepieces/Grove/GameEndTrigger"]
+ position = Vector2(9.76562e-05, 16)
+ collision_layer = 32
+ collision_mask = 4
+ monitorable = false
+ 
+-[node name="CollisionShape2D" type="CollisionShape2D" parent="Field/Terrain/Gamepieces/Grove/GameEndTrigger/Area2D2"]
++[node name="CollisionShape2D" type="CollisionShape2D" parent="Field/Map/Terrain/Gamepieces/Grove/GameEndTrigger/Area2D2"]
+ position = Vector2(0, 3.5)
+ shape = SubResource("RectangleShape2D_giaot")
+ debug_color = Color(1, 0.55, 0.8, 0.42)
+ 
+-[node name="Timer" type="Timer" parent="Field/Terrain/Gamepieces/Grove/GameEndTrigger"]
++[node name="Timer" type="Timer" parent="Field/Map/Terrain/Gamepieces/Grove/GameEndTrigger"]
+ wait_time = 0.25
+ one_shot = true
+ 
+-[node name="GroveToHouse" parent="Field/Terrain/Gamepieces/Grove" instance=ExtResource("37_6xxks")]
++[node name="GroveToHouse" parent="Field/Map/Terrain/Gamepieces/Grove" instance=ExtResource("37_6xxks")]
+ position = Vector2(952, 440)
+ arrival_coordinates = Vector2(936, 24)
+ new_music = ExtResource("34_xbc6u")
+ metadata/_edit_lock_ = true
+ 
+-[node name="GroveToTown" parent="Field/Terrain/Gamepieces/Grove" instance=ExtResource("37_6xxks")]
++[node name="GroveToTown" parent="Field/Map/Terrain/Gamepieces/Grove" instance=ExtResource("37_6xxks")]
+ position = Vector2(632, 408)
+ arrival_coordinates = Vector2(200, 264)
+ new_music = ExtResource("41_uxhyb")
+ metadata/_edit_lock_ = true
+ 
+-[node name="House" type="Node2D" parent="Field/Terrain/Gamepieces"]
++[node name="House" type="Node2D" parent="Field/Map/Terrain/Gamepieces"]
+ y_sort_enabled = true
+ metadata/_edit_lock_ = true
+ 
+-[node name="PedestalPuzzle" type="Node2D" parent="Field/Terrain/Gamepieces/House"]
++[node name="PedestalPuzzle" type="Node2D" parent="Field/Map/Terrain/Gamepieces/House"]
+ y_sort_enabled = true
+ metadata/_edit_lock_ = true
+ 
+-[node name="GreenPedestal" parent="Field/Terrain/Gamepieces/House/PedestalPuzzle" node_paths=PackedStringArray("spikes_animation") instance=ExtResource("38_n1c7a")]
++[node name="GreenPedestal" parent="Field/Map/Terrain/Gamepieces/House/PedestalPuzzle" node_paths=PackedStringArray("spikes_animation") instance=ExtResource("38_n1c7a")]
+ position = Vector2(856, 40)
+ spikes_animation = NodePath("../Spikes")
+ pedestal_requirement = "Green"
+ 
+-[node name="BluePedestal" parent="Field/Terrain/Gamepieces/House/PedestalPuzzle" node_paths=PackedStringArray("spikes_animation") instance=ExtResource("38_n1c7a")]
++[node name="BluePedestal" parent="Field/Map/Terrain/Gamepieces/House/PedestalPuzzle" node_paths=PackedStringArray("spikes_animation") instance=ExtResource("38_n1c7a")]
+ position = Vector2(872, 40)
+ spikes_animation = NodePath("../Spikes")
+ pedestal_requirement = "Blue"
+ 
+-[node name="RedPedestal" parent="Field/Terrain/Gamepieces/House/PedestalPuzzle" node_paths=PackedStringArray("spikes_animation") instance=ExtResource("38_n1c7a")]
++[node name="RedPedestal" parent="Field/Map/Terrain/Gamepieces/House/PedestalPuzzle" node_paths=PackedStringArray("spikes_animation") instance=ExtResource("38_n1c7a")]
+ position = Vector2(888, 40)
+ spikes_animation = NodePath("../Spikes")
+ pedestal_requirement = "Red"
+ 
+-[node name="Spikes" type="AnimationPlayer" parent="Field/Terrain/Gamepieces/House/PedestalPuzzle"]
++[node name="Spikes" type="AnimationPlayer" parent="Field/Map/Terrain/Gamepieces/House/PedestalPuzzle"]
+ libraries = {
+ &"": SubResource("AnimationLibrary_jktnn")
+ }
+ 
+-[node name="SpikesArea" type="Area2D" parent="Field/Terrain/Gamepieces/House/PedestalPuzzle/Spikes"]
++[node name="SpikesArea" type="Area2D" parent="Field/Map/Terrain/Gamepieces/House/PedestalPuzzle/Spikes"]
+ position = Vector2(4680, 360)
+ scale = Vector2(5, 5)
+ collision_layer = 2
+@@ -729,35 +712,65 @@ collision_mask = 0
+ monitoring = false
+ metadata/_edit_group_ = true
+ 
+-[node name="Sprite2D" type="Sprite2D" parent="Field/Terrain/Gamepieces/House/PedestalPuzzle/Spikes/SpikesArea"]
++[node name="Sprite2D" type="Sprite2D" parent="Field/Map/Terrain/Gamepieces/House/PedestalPuzzle/Spikes/SpikesArea"]
+ texture = ExtResource("9_woa3f")
+ region_enabled = true
+ region_rect = Rect2(85, 51, 16, 16)
+ 
+-[node name="CollisionShape2D" type="CollisionShape2D" parent="Field/Terrain/Gamepieces/House/PedestalPuzzle/Spikes/SpikesArea"]
++[node name="CollisionShape2D" type="CollisionShape2D" parent="Field/Map/Terrain/Gamepieces/House/PedestalPuzzle/Spikes/SpikesArea"]
+ shape = SubResource("RectangleShape2D_44b32")
+ 
+-[node name="SpikesClick" type="AudioStreamPlayer" parent="Field/Terrain/Gamepieces/House/PedestalPuzzle/Spikes"]
++[node name="SpikesClick" type="AudioStreamPlayer" parent="Field/Map/Terrain/Gamepieces/House/PedestalPuzzle/Spikes"]
+ bus = &"SFX"
+ 
+-[node name="HouseToTown" parent="Field/Terrain/Gamepieces/House" instance=ExtResource("37_6xxks")]
++[node name="HouseToTown" parent="Field/Map/Terrain/Gamepieces/House" instance=ExtResource("37_6xxks")]
+ position = Vector2(824, 24)
+ arrival_coordinates = Vector2(120, 184)
+ new_music = ExtResource("41_uxhyb")
+ metadata/_edit_lock_ = true
+ 
+-[node name="HouseToGrove" parent="Field/Terrain/Gamepieces/House" instance=ExtResource("37_6xxks")]
++[node name="HouseToGrove" parent="Field/Map/Terrain/Gamepieces/House" instance=ExtResource("37_6xxks")]
+ position = Vector2(936, 8)
+ arrival_coordinates = Vector2(936, 440)
+ new_music = ExtResource("41_uxhyb")
+ metadata/_edit_lock_ = true
+ 
+-[node name="Chest" parent="Field/Terrain/Gamepieces/House" instance=ExtResource("33_7djdg")]
++[node name="Chest" parent="Field/Map/Terrain/Gamepieces/House" instance=ExtResource("33_7djdg")]
+ position = Vector2(840, 120)
+ item_type = 3
+ 
+-[node name="MapBoundaries" type="Node2D" parent="Field"]
++[node name="Town" type="Node2D" parent="Field/Map/Terrain"]
++
++[node name="House" type="Node2D" parent="Field/Map/Terrain"]
++
++[node name="Ground" type="TileMapLayer" parent="Field/Map/Terrain/House"]
++
++[node name="Walls" type="TileMapLayer" parent="Field/Map/Terrain/House"]
++
++[node name="Decoration" type="TileMapLayer" parent="Field/Map/Terrain/House"]
++
++[node name="Forest" type="Node2D" parent="Field/Map/Terrain"]
++
++[node name="DebugMoveGrid" type="TileMapLayer" parent="Field/Map"]
++modulate = Color(1, 1, 1, 0.470588)
++tile_set = ExtResource("59_nl04t")
++script = ExtResource("60_a8sfs")
++
++[node name="OccupancyGrid" type="TileMapLayer" parent="Field/Map/DebugMoveGrid"]
++
++[node name="Cursor" type="TileMapLayer" parent="Field/Map"]
++tile_set = ExtResource("3_2v5er")
++script = ExtResource("5_3guor")
++
++[node name="PlayerPathDestinationMarker" type="Sprite2D" parent="Field/Map"]
++visible = false
++modulate = Color(0.909804, 0.270588, 0.215686, 0.705882)
++texture = ExtResource("13_osl4o")
++script = ExtResource("14_0j4ru")
++
++[node name="DebugBoundaries" type="Node2D" parent="Field/Map"]
+ script = ExtResource("18_cqtg7")
++gameboard_properties = ExtResource("3_esa52")
+ metadata/_edit_lock_ = true
+ 
+ [node name="UI" type="CanvasLayer" parent="Field"]
+@@ -920,4 +933,4 @@ metadata/_edit_lock_ = true
+ wait_time = 0.5
+ one_shot = true
+ 
+-[connection signal="area_entered" from="Field/Terrain/Gamepieces/Grove/GameEndTrigger/Area2D2" to="Field/Terrain/Gamepieces/Grove/GameEndTrigger" method="_on_area_entered"]
++[connection signal="area_entered" from="Field/Map/Terrain/Gamepieces/Grove/GameEndTrigger/Area2D2" to="Field/Map/Terrain/Gamepieces/Grove/GameEndTrigger" method="_on_area_entered"]
+diff --git a/src/map.gd b/src/map.gd
+deleted file mode 100644
+index 3348aec..0000000
+--- a/src/map.gd
++++ /dev/null
+@@ -1,18 +0,0 @@
+-@tool
+-extends Node2D
+-
+-@export var gameboard_properties: GameboardProperties:
+-	set(value):
+-		gameboard_properties = value
+-		
+-		if not is_inside_tree():
+-			await ready
+-		
+-		_debug_boundaries.gameboard_properties = gameboard_properties
+-
+-
+-@onready var _debug_boundaries: DebugGameboardBoundaries = $DebugBoundaries
+-
+-func _ready() -> void:
+-	if not Engine.is_editor_hint():
+-		Gameboard.properties = gameboard_properties

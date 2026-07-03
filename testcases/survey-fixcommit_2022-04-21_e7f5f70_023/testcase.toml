@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-04-21_e7f5f70_023"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "9b6ca1f768083ea211522e70a158b05a634a2611"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\a-little-game-called-mario"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/EndPortal.gd, scenes/levels/CharsLevels/LevelChar00.gd, scenes/levels/CharsLevels/LevelChar00.tscn, scripts/SpawnPoint.gd, scripts/WallMech.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-04-21_e7f5f70_023"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

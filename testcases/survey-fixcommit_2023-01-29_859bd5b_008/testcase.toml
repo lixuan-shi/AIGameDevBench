@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-01-29_859bd5b_008"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "53c9997493212aa9ad66430274bc7342994e9315"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rts"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: source/match/units/actions/CollectingResources.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-01-29_859bd5b_008"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

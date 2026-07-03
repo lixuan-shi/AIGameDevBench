@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2024-01-04_79cc726_078"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "971ebb29281de024906d19165fd36b21f327eea0"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scripts/classes/Boost.gd, scripts/components/networking/statssynchronizercomponent/StatsSynchronizerComponent.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2024-01-04_79cc726_078"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

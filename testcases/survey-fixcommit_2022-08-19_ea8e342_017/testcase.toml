@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-08-19_ea8e342_017"
+category = "intent_translation"
+source_kind = "git"
+baseline_ref = "525b49ce9517516bdc4c735cbe9038ceef60233c"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\tabletop-club"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: game/LICENSES.tres, game/Scenes/Game/3D/FastCircle.tscn, game/Scenes/Game/3D/Room.tscn, game/Scripts/Game/3D/FastCircle.gd, game/Scripts/Game/3D/Room.gd, game/Scripts/Game/CameraController.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-08-19_ea8e342_017"
+bad_case_type = "B2"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

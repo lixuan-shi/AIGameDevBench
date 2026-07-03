@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-08-04_5375896_042"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "88a11a6f9a7eadf9cd00f60c6ae6331755cacb44"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\a-little-game-called-mario"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/levels/story_mode/StoryMode.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-08-04_5375896_042"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

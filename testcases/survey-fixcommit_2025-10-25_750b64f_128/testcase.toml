@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-25_750b64f_128"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "51e1907b01d41210a0fc1391a2fc650f853bab43"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Levels/Credits.tscn, Scenes/Prefabs/Entities/Enemies/HammerBro.tscn, Scripts/Classes/Entities/Enemies/HammerBro.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-25_750b64f_128"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

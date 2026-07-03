@@ -1,0 +1,99 @@
+diff --git a/godot/local_map/pawns/actions/GiveQuestAction.gd b/godot/local_map/pawns/actions/GiveQuestAction.gd
+index 64233dd..e2ad6f6 100644
+--- a/godot/local_map/pawns/actions/GiveQuestAction.gd
++++ b/godot/local_map/pawns/actions/GiveQuestAction.gd
+@@ -5,5 +5,7 @@ export var quest : PackedScene
+ 
+ func interact() -> void:
+ 	get_tree().paused = false
+-	local_map.quest_system.add_quest(quest.instance())
++	var quest_instance = quest.instance()
++	if not local_map.quest_system.has_quest(quest_instance):
++		local_map.quest_system.add_quest(quest_instance)
+ 	emit_signal("finished")
+diff --git a/godot/quest_system/QuestSystem.gd b/godot/quest_system/QuestSystem.gd
+index 4058e9f..9c84f2e 100644
+--- a/godot/quest_system/QuestSystem.gd
++++ b/godot/quest_system/QuestSystem.gd
+@@ -1,28 +1,22 @@
+ extends Node
+ class_name QuestSystem
+ 
+-var active_quests = []
++var quests = []
+ 
+ func add_quest(new_quest) -> void:
+-	if has_quest(new_quest):
+-		return
+ 	add_child(new_quest)
+-	active_quests.append(new_quest)
++	quests.append(new_quest)
+ 	new_quest.connect("quest_finished", self, "_on_quest_finished")
+ 
+ func _on_quest_finished(quest) -> void:
+ 	print("Quest finished -> Give rewards")
+-	assert quest in active_quests
+-	var quest_index = active_quests.find(quest)
+-	active_quests[quest_index].queue_free()
+-	active_quests.remove(quest_index)
+ 
+ func _on_Game_combat_started() -> void:
+-	for quest in active_quests:
++	for quest in quests:
+ 		(quest as Quest).notify_slay_objectives()
+ 
+-func has_quest(quest) -> bool:
+-	for active_quest in active_quests:
+-		if active_quest.title == quest.title:
++func has_quest(other_quest) -> bool:
++	for quest in quests:
++		if quest.title == other_quest.title:
+ 			return true
+ 	return false
+diff --git a/godot/quest_system/quests/Quest.gd b/godot/quest_system/quests/Quest.gd
+index 2d2bc8b..725fa4f 100644
+--- a/godot/quest_system/quests/Quest.gd
++++ b/godot/quest_system/quests/Quest.gd
+@@ -9,8 +9,10 @@ export var description : String
+ var objectives = []
+ var finished_objectives = []
+ 
++var active : bool = false
++
+ func _ready() -> void:
+-	# Connect to signals 
++	active = true
+ 	for objective in get_children():
+ 		objectives.append(objective)
+ 		objective.connect("objective_finished", self, "_on_objective_finished")
+@@ -19,6 +21,7 @@ func _on_objective_finished(objective) -> void:
+ 	finished_objectives.append(objective)
+ 	if finished_objectives.size() == objectives.size():
+ 		emit_signal("quest_finished", self)
++		active = false
+ 
+ func notify_slay_objectives() -> void:
+ 	for objective in get_children():
+diff --git a/godot/quest_system/quests/QuestInteractObjective.gd b/godot/quest_system/quests/QuestInteractObjective.gd
+index 0dd8533..96ff1ea 100644
+--- a/godot/quest_system/quests/QuestInteractObjective.gd
++++ b/godot/quest_system/quests/QuestInteractObjective.gd
+@@ -8,5 +8,5 @@ func _ready() -> void:
+ 		interactive_pawn.connect("interaction_finished", self, "_on_interaction_finished")
+ 
+ func _on_interaction_finished(pawn) -> void:
+-	if pawn.filename == interact_with.resource_path:
+-		emit_signal("objective_finished", self)
++	if pawn.filename == interact_with.resource_path and not finished:
++		finish()
+diff --git a/godot/quest_system/quests/QuestSlayObjective.gd b/godot/quest_system/quests/QuestSlayObjective.gd
+index eda45dd..4b26175 100644
+--- a/godot/quest_system/quests/QuestSlayObjective.gd
++++ b/godot/quest_system/quests/QuestSlayObjective.gd
+@@ -11,5 +11,5 @@ func connect_signals() -> void:
+ func _on_enemy_died(battler) -> void:
+ 	if battler.filename == battler_to_slay.resource_path:
+ 		amount -= 1
+-		if amount == 0:
++		if amount == 0 and not finished:
+ 			finish()

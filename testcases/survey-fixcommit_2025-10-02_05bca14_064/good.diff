@@ -1,0 +1,217 @@
+diff --git a/Scenes/Levels/SMB1/World2/2-2.tscn b/Scenes/Levels/SMB1/World2/2-2.tscn
+index d96d2ba..8339dc6 100644
+--- a/Scenes/Levels/SMB1/World2/2-2.tscn
++++ b/Scenes/Levels/SMB1/World2/2-2.tscn
+@@ -217,30 +217,30 @@ position = Vector2(2520, -16)
+ position = Vector2(2616, -16)
+ 
+ [connection signal="collected" from="Tiles/Coin" to="Tiles/Coin/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177168" to="Tiles/@Node2D@177168/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177169" to="Tiles/@Node2D@177169/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177170" to="Tiles/@Node2D@177170/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177171" to="Tiles/@Node2D@177171/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177172" to="Tiles/@Node2D@177172/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177173" to="Tiles/@Node2D@177173/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177174" to="Tiles/@Node2D@177174/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177175" to="Tiles/@Node2D@177175/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177176" to="Tiles/@Node2D@177176/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177177" to="Tiles/@Node2D@177177/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177178" to="Tiles/@Node2D@177178/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177179" to="Tiles/@Node2D@177179/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177180" to="Tiles/@Node2D@177180/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177181" to="Tiles/@Node2D@177181/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177182" to="Tiles/@Node2D@177182/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177183" to="Tiles/@Node2D@177183/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177184" to="Tiles/@Node2D@177184/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177185" to="Tiles/@Node2D@177185/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177186" to="Tiles/@Node2D@177186/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177187" to="Tiles/@Node2D@177187/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177188" to="Tiles/@Node2D@177188/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177189" to="Tiles/@Node2D@177189/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177190" to="Tiles/@Node2D@177190/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177191" to="Tiles/@Node2D@177191/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177192" to="Tiles/@Node2D@177192/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177193" to="Tiles/@Node2D@177193/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@177194" to="Tiles/@Node2D@177194/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21479" to="Tiles/@Node2D@21479/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21480" to="Tiles/@Node2D@21480/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21481" to="Tiles/@Node2D@21481/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21482" to="Tiles/@Node2D@21482/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21483" to="Tiles/@Node2D@21483/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21484" to="Tiles/@Node2D@21484/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21485" to="Tiles/@Node2D@21485/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21486" to="Tiles/@Node2D@21486/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21487" to="Tiles/@Node2D@21487/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21488" to="Tiles/@Node2D@21488/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21489" to="Tiles/@Node2D@21489/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21490" to="Tiles/@Node2D@21490/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21491" to="Tiles/@Node2D@21491/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21492" to="Tiles/@Node2D@21492/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21493" to="Tiles/@Node2D@21493/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21494" to="Tiles/@Node2D@21494/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21495" to="Tiles/@Node2D@21495/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21496" to="Tiles/@Node2D@21496/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21497" to="Tiles/@Node2D@21497/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21498" to="Tiles/@Node2D@21498/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21499" to="Tiles/@Node2D@21499/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21500" to="Tiles/@Node2D@21500/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21501" to="Tiles/@Node2D@21501/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21502" to="Tiles/@Node2D@21502/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21503" to="Tiles/@Node2D@21503/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21504" to="Tiles/@Node2D@21504/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@21505" to="Tiles/@Node2D@21505/LevelPersistance" method="set_as_active"]
+diff --git a/Scenes/Prefabs/LevelBG.tscn b/Scenes/Prefabs/LevelBG.tscn
+index d561dd2..09d8a94 100644
+--- a/Scenes/Prefabs/LevelBG.tscn
++++ b/Scenes/Prefabs/LevelBG.tscn
+@@ -679,7 +679,6 @@ position = Vector2(256, 256)
+ amount = 128
+ lifetime = 20.0
+ preprocess = 20.0
+-fixed_fps = 30
+ local_coords = true
+ draw_order = 1
+ emission_shape = 3
+@@ -690,10 +689,9 @@ gravity = Vector2(0, 0)
+ initial_velocity_min = 20.0
+ initial_velocity_max = 50.0
+ 
+-[node name="ResourceSetter" type="Node" parent="OverlayLayer/Particles/Snow" node_paths=PackedStringArray("node_to_affect")]
++[node name="ResourceSetter" type="Node" parent="OverlayLayer/Particles/Snow"]
+ process_mode = 1
+ script = ExtResource("10_lvidp")
+-node_to_affect = NodePath("")
+ property_name = "texture"
+ mode = 1
+ resource_json = ExtResource("25_aw4cr")
+@@ -708,7 +706,6 @@ amount = 64
+ texture = ExtResource("25_q36g4")
+ lifetime = 30.0
+ preprocess = 20.0
+-fixed_fps = 30
+ local_coords = true
+ draw_order = 1
+ emission_shape = 3
+@@ -721,9 +718,8 @@ angular_velocity_min = -720.0
+ angular_velocity_max = 720.0
+ anim_offset_max = 1.0
+ 
+-[node name="ResourceSetterNew" type="Node" parent="OverlayLayer/Particles/Leaves" node_paths=PackedStringArray("node_to_affect")]
++[node name="ResourceSetterNew" type="Node" parent="OverlayLayer/Particles/Leaves"]
+ script = ExtResource("10_lvidp")
+-node_to_affect = NodePath("")
+ property_name = "texture"
+ mode = 1
+ resource_json = ExtResource("28_ugdi7")
+@@ -740,7 +736,6 @@ amount = 64
+ texture = SubResource("GradientTexture1D_78nlv")
+ lifetime = 5.0
+ preprocess = 10.0
+-fixed_fps = 30
+ fract_delta = false
+ local_coords = true
+ draw_order = 1
+diff --git a/Scenes/Prefabs/LevelObjects/WindArea.tscn b/Scenes/Prefabs/LevelObjects/WindArea.tscn
+index 7886702..1ad16ae 100644
+--- a/Scenes/Prefabs/LevelObjects/WindArea.tscn
++++ b/Scenes/Prefabs/LevelObjects/WindArea.tscn
+@@ -1,4 +1,4 @@
+-[gd_scene load_steps=14 format=3 uid="uid://ccxhom4wrgfv4"]
++[gd_scene load_steps=11 format=3 uid="uid://ccxhom4wrgfv4"]
+ 
+ [ext_resource type="Texture2D" uid="uid://dy3p03djelkb3" path="res://Assets/Sprites/Particles/Leaves.png" id="1_0tjo2"]
+ [ext_resource type="Script" uid="uid://d3kftxro4bfnv" path="res://Scripts/Classes/Entities/Objects/WindArea.gd" id="1_68lil"]
+@@ -17,27 +17,6 @@ particles_anim_h_frames = 2
+ particles_anim_v_frames = 1
+ particles_anim_loop = false
+ 
+-[sub_resource type="Curve" id="Curve_0tjo2"]
+-_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(0.894444, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+-point_count = 3
+-
+-[sub_resource type="CurveTexture" id="CurveTexture_8c2la"]
+-curve = SubResource("Curve_0tjo2")
+-
+-[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_wu018"]
+-particle_flag_disable_z = true
+-emission_shape_scale = Vector3(1, 15, 1)
+-emission_shape = 3
+-emission_box_extents = Vector3(1, 8, 1)
+-spread = 0.0
+-initial_velocity_min = 100.0
+-initial_velocity_max = 500.0
+-angular_velocity_min = -720.0
+-angular_velocity_max = 720.0
+-gravity = Vector3(0, 0, 0)
+-alpha_curve = SubResource("CurveTexture_8c2la")
+-anim_offset_max = 1.0
+-
+ [sub_resource type="Resource" id="Resource_sbjyn"]
+ script = ExtResource("5_3arhp")
+ Overworld = ExtResource("3_qar1j")
+@@ -61,7 +40,7 @@ anchor_bottom = 0.5
+ grow_vertical = 2
+ metadata/_edit_use_anchors_ = true
+ 
+-[node name="Particles" type="GPUParticles2D" parent="CanvasLayer/Control"]
++[node name="Particles" type="CPUParticles2D" parent="CanvasLayer/Control"]
+ unique_name_in_owner = true
+ material = SubResource("CanvasItemMaterial_qar1j")
+ position = Vector2(-64, 0)
+@@ -69,11 +48,20 @@ emitting = false
+ amount = 64
+ texture = ExtResource("1_0tjo2")
+ lifetime = 2.0
+-process_material = SubResource("ParticleProcessMaterial_wu018")
++draw_order = 1
++emission_shape = 3
++emission_rect_extents = Vector2(1, 8)
++spread = 0.0
++gravity = Vector2(0, 0)
++initial_velocity_min = 100.0
++initial_velocity_max = 500.0
++angular_velocity_min = -720.0
++angular_velocity_max = 720.0
++anim_offset_max = 1.0
+ 
+ [node name="ResourceSetterNew" type="Node" parent="CanvasLayer/Control/Particles" node_paths=PackedStringArray("node_to_affect")]
+ script = ExtResource("3_sbjyn")
+-node_to_affect = NodePath("..")
++node_to_affect = NodePath("")
+ property_name = "texture"
+ mode = 1
+ resource_json = ExtResource("4_qvx5e")
+diff --git a/Scripts/Classes/Entities/Player.gd b/Scripts/Classes/Entities/Player.gd
+index 6aad8a4..ef77837 100644
+--- a/Scripts/Classes/Entities/Player.gd
++++ b/Scripts/Classes/Entities/Player.gd
+@@ -669,8 +669,7 @@ func get_power_up(power_name := "") -> void:
+ 		await power_up_animation(power_name)
+ 	else:
+ 		return
+-	if new_power_state.hitbox_size == "Big" and power_state.hitbox_size == "Small":
+-		check_for_block()
++	check_for_block()
+ 	power_state = new_power_state
+ 	Global.player_power_states[player_id] = str(power_state.get_index())
+ 	can_hurt = true
+diff --git a/Scripts/Parts/GravityInverter.gd b/Scripts/Parts/GravityInverter.gd
+index cf3b06b..6ab209e 100644
+--- a/Scripts/Parts/GravityInverter.gd
++++ b/Scripts/Parts/GravityInverter.gd
+@@ -17,6 +17,9 @@ func on_player_entered(player: Player) -> void:
+ 	player.gravity_vector = new_vector
+ 	player.global_position.y -= 16
+ 	player.global_rotation = -player.gravity_vector.angle() + deg_to_rad(90)
++	player.get_node("CameraHandler").global_rotation = 0
++	player.get_node("CameraHandler").position.x = 0
++	player.get_node("CameraHandler").can_diff = false
+ 	player.reset_physics_interpolation()
+ 
+ func on_player_exited(player: Player) -> void:
+@@ -26,4 +29,5 @@ func on_player_exited(player: Player) -> void:
+ 	player.global_position.y += 16
+ 	player.velocity.y *= 1.1
+ 	player.global_rotation = -player.gravity_vector.angle() + deg_to_rad(90)
++	player.get_node("CameraHandler").position.x = 0
+ 	player.reset_physics_interpolation()

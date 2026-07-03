@@ -1,0 +1,20 @@
+diff --git a/scripts/mariocontroller/Bus.gd b/scripts/mariocontroller/Bus.gd
+index c89ab27..18dfba1 100644
+--- a/scripts/mariocontroller/Bus.gd
++++ b/scripts/mariocontroller/Bus.gd
+@@ -15,7 +15,7 @@ func _ready() -> void:
+ 
+ func _process(_delta: float) -> void:
+ 	sprite.flip_h = !player.sprite.flip_h
+-	if isBus:
++	if player.inventory.has_bus:
+ 		player.powerupspeed = 4
+ 		player.powerupaccel = 2
+ 	else:
+@@ -39,4 +39,4 @@ func _activate_bus() -> void:
+ func _update_player() -> void:
+ 	player.sprite.visible = false
+ 	player.get_node("CollisionShape2D").set_deferred("disabled", true)
+-	player.trail.height = 15
+\ No newline at end of file
++	player.trail.height = 15

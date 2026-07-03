@@ -1,0 +1,43 @@
+diff --git a/Scripts/Classes/Components/ResourceSetterNew.gd b/Scripts/Classes/Components/ResourceSetterNew.gd
+index 7ff9fd1..2b5390c 100644
+--- a/Scripts/Classes/Components/ResourceSetterNew.gd
++++ b/Scripts/Classes/Components/ResourceSetterNew.gd
+@@ -297,8 +297,8 @@ func get_variation_json(json := {}) -> Dictionary:
+ 	return json
+ 
+ func get_config_file(resource_pack := "") -> void:
+-	if FileAccess.file_exists("user://resource_packs/" + resource_pack + "/config.json"):
+-		config_to_use = JSON.parse_string(FileAccess.open("user://resource_packs/" + resource_pack + "/config.json", FileAccess.READ).get_as_text())
++	if FileAccess.file_exists(Global.config_path.path_join("resource_packs/" + resource_pack + "/config.json")):
++		config_to_use = JSON.parse_string(FileAccess.open(Global.config_path.path_join("resource_packs/" + resource_pack + "/config.json"), FileAccess.READ).get_as_text())
+ 		if config_to_use == null:
+ 			Global.log_error("Error parsing Config File! (" + resource_pack + ")")
+ 			config_to_use = {}
+diff --git a/Scripts/Classes/Singletons/Global.gd b/Scripts/Classes/Singletons/Global.gd
+index 39f8faf..7c6b48a 100644
+--- a/Scripts/Classes/Singletons/Global.gd
++++ b/Scripts/Classes/Singletons/Global.gd
+@@ -482,7 +482,7 @@ func sanitize_string(string := "") -> String:
+ 	return string
+ 
+ func get_base_asset_version() -> int:
+-	var json = JSON.parse_string(FileAccess.open("user://BaseAssets/pack_info.json", FileAccess.READ).get_as_text())
++	var json = JSON.parse_string(FileAccess.open(Global.config_path.path_join("BaseAssets/pack_info.json"), FileAccess.READ).get_as_text())
+ 	var version = json.version
+ 	return get_version_num_int(version)
+ 
+diff --git a/Scripts/UI/CustomLevelContainer.gd b/Scripts/UI/CustomLevelContainer.gd
+index 29eee26..da20cec 100644
+--- a/Scripts/UI/CustomLevelContainer.gd
++++ b/Scripts/UI/CustomLevelContainer.gd
+@@ -56,8 +56,8 @@ func _ready() -> void:
+ 	update_visuals()
+ 
+ func update_visuals() -> void:
+-	if is_downloaded and FileAccess.file_exists("user://custom_levels/downloaded/thumbnails/" + level_id + ".png"):
+-		thumbnail = ImageTexture.create_from_image(Image.load_from_file("user://custom_levels/downloaded/thumbnails/" + level_id + ".png"))
++	if is_downloaded and FileAccess.file_exists(Global.config_path.path_join("custom_levels/downloaded/thumbnails/" + level_id + ".png")):
++		thumbnail = ImageTexture.create_from_image(Image.load_from_file(Global.config_path.path_join("custom_levels/downloaded/thumbnails/" + level_id + ".png")))
+ 		%Thumbnail.texture = thumbnail
+ 		%LevelIcon.hide()
+ 		%Thumbnail.show()

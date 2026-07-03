@@ -1,0 +1,1192 @@
+diff --git a/src/Main2.tscn b/src/Main2.tscn
+index de62dfb..46650b3 100644
+--- a/src/Main2.tscn
++++ b/src/Main2.tscn
+@@ -1,7 +1,8 @@
+-[gd_scene load_steps=17 format=4 uid="uid://dve3nxx0ohm1g"]
++[gd_scene load_steps=19 format=4 uid="uid://dve3nxx0ohm1g"]
+ 
+ [ext_resource type="Script" uid="uid://ccm6jxmjt0frp" path="res://src/main_2.gd" id="1_d0xvx"]
+ [ext_resource type="Script" uid="uid://bt8owd5e0ns68" path="res://src/field/gameboard/gameboard_layer.gd" id="2_08ad2"]
++[ext_resource type="Script" uid="uid://drugj534rnwxw" path="res://src/map.gd" id="2_dn3vx"]
+ [ext_resource type="Texture2D" uid="uid://d2qfi5sncf72b" path="res://assets/terrain/town_tilemap.png" id="2_dsdwj"]
+ [ext_resource type="PackedScene" uid="uid://b626e0bngfvjj" path="res://src/field/gamepieces/gamepiece.tscn" id="2_nevdf"]
+ [ext_resource type="PackedScene" uid="uid://qxua6ekob7fa" path="res://assets/characters/gobot_gfx.tscn" id="3_08ad2"]
+@@ -12,6 +13,7 @@
+ [ext_resource type="TileSet" uid="uid://cnlvvllr0ici" path="res://src/field/gamepieces/controllers/cursor/tileset_cursor.tres" id="8_vw0ml"]
+ [ext_resource type="Script" uid="uid://dwq2jtul5j1rc" path="res://src/field/gamepieces/controllers/cursor/field_cursor.gd" id="9_xqwga"]
+ [ext_resource type="Script" uid="uid://vnofet0hi8mx" path="res://src/field/gamepieces/player_controller.gd" id="10_7v0vs"]
++[ext_resource type="Script" uid="uid://bm5b3nr6vn3da" path="res://src/field/gamepieces/controllers/path_loop_ai_controller.gd" id="13_xqwga"]
+ 
+ [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_u7xvm"]
+ texture = ExtResource("2_dsdwj")
+@@ -41,6 +43,8 @@ script = ExtResource("1_d0xvx")
+ metadata/_edit_lock_ = true
+ 
+ [node name="Map" type="Node2D" parent="."]
++script = ExtResource("2_dn3vx")
++gameboard_properties = ExtResource("7_7v0vs")
+ metadata/_edit_lock_ = true
+ 
+ [node name="TileMapLayer" type="TileMapLayer" parent="Map"]
+@@ -60,30 +64,40 @@ script = ExtResource("3_ppad8")
+ 
+ [node name="OccupancyGrid" type="TileMapLayer" parent="Map/DebugMoveGrid"]
+ 
+-[node name="DebugBoundaries" type="Node2D" parent="Map/DebugMoveGrid"]
+-script = ExtResource("6_ndalr")
+-gameboard_properties = ExtResource("7_7v0vs")
+-
+ [node name="Cursor" type="TileMapLayer" parent="Map"]
+ tile_set = ExtResource("8_vw0ml")
+ script = ExtResource("9_xqwga")
+ 
++[node name="DebugBoundaries" type="Node2D" parent="Map"]
++script = ExtResource("6_ndalr")
++gameboard_properties = ExtResource("7_7v0vs")
++
+ [node name="Gamepieces" type="Node2D" parent="."]
+ 
+ [node name="Gamepiece" parent="Gamepieces" instance=ExtResource("2_nevdf")]
+-position = Vector2(72.4, 38.6)
++position = Vector2(87.6, 55.8)
+ animation_scene = ExtResource("3_08ad2")
+-move_speed = 128.0
++move_speed = 640.0
+ 
+ [node name="Camera2D" type="Camera2D" parent="Gamepieces/Gamepiece"]
+ metadata/_edit_lock_ = true
+ 
+ [node name="Controller" type="Node2D" parent="Gamepieces/Gamepiece"]
+ position = Vector2(-7.62939e-06, -7.62939e-06)
+-scale = Vector2(1, 1)
+ script = ExtResource("10_7v0vs")
+ metadata/_edit_lock_ = true
+ 
+ [node name="Gamepiece2" parent="Gamepieces" instance=ExtResource("2_nevdf")]
+-position = Vector2(270.8, 118.8)
++position = Vector2(56, 69.8)
+ animation_scene = ExtResource("3_08ad2")
++
++[node name="PathLoopController" type="Node2D" parent="Gamepieces/Gamepiece2" node_paths=PackedStringArray("path_to_follow")]
++script = ExtResource("13_xqwga")
++path_to_follow = NodePath("Line2D")
++
++[node name="Line2D" type="Line2D" parent="Gamepieces/Gamepiece2/PathLoopController"]
++points = PackedVector2Array(-0.400002, 2.2, 15, 2, 14.4, -46, -1.4, -45.8)
++width = 2.0
++
++[node name="WaitTimer" type="Timer" parent="Gamepieces/Gamepiece2/PathLoopController"]
++wait_time = 2.0
+diff --git a/src/field/gameboard/gameboard.gd b/src/field/gameboard/gameboard.gd
+index c68f2bf..e8513a5 100644
+--- a/src/field/gameboard/gameboard.gd
++++ b/src/field/gameboard/gameboard.gd
+@@ -19,15 +19,11 @@ const INVALID_CELL: = Vector2i(-1, -1)
+ 
+ const INVALID_INDEX: = -1
+ 
+-## A reference to the Pathfinder for the current playable area.
+-var pathfinder: Pathfinder = null
+-
+ ## Determines the [member GameboardProperties.extents] of the Gameboard, among other details.
+ var properties: GameboardProperties = null
+ 
+-
+-func _ready() -> void:
+-	pathfinder = Pathfinder.new()
++## A reference to the Pathfinder for the current playable area.
++@onready var pathfinder: Pathfinder = Pathfinder.new()
+ 
+ 
+ ## Convert cell coordinates to pixel coordinates.
+@@ -124,6 +120,10 @@ func _add_cells_to_pathfinder(cleared_cells: Array[Vector2i]) -> Dictionary[int,
+ 			var uid: = cell_to_index(cell)
+ 			pathfinder.add_point(uid, cell)
+ 			added_cells[uid] = cell
++			
++			# Flag the cell as disabled if it is occupied.
++			if GamepieceRegistry.get_gamepiece(cell):
++				pathfinder.set_point_disabled(uid)
+ 	return added_cells
+ 
+ 
+diff --git a/src/field/gameboard/pathfinder.gd b/src/field/gameboard/pathfinder.gd
+index dee3389..ff49da1 100644
+--- a/src/field/gameboard/pathfinder.gd
++++ b/src/field/gameboard/pathfinder.gd
+@@ -5,6 +5,25 @@ class_name Pathfinder
+ extends AStar2D
+ 
+ 
++const FLAG_ALLOW_SOURCE_OCCUPANT = 1 << 0
++const FLAG_ALLOW_TARGET_OCCUPANT = 1 << 1
++const FLAG_ALLOW_ALL_OCCUPANTS = 1 << 2
++
++
++func _init() -> void:
++	# Disable/re-enable occupied cells whenever a gamepiece moves.
++	GamepieceRegistry.gamepiece_moved.connect(
++		func _on_gamepiece_moved(_gp: Gamepiece, new_cell: Vector2i, old_cell: Vector2i) -> void:
++			var new_cell_id: = Gameboard.cell_to_index(new_cell)
++			if has_point(new_cell_id):
++				set_point_disabled(new_cell_id, true)
++			
++			var old_cell_id: = Gameboard.cell_to_index(old_cell)
++			if has_point(old_cell_id):
++				set_point_disabled(old_cell_id, false)
++	)
++
++
+ ## Returns true if the coordinate is found in the Pathfinder.
+ func has_cell(coord: Vector2i) -> bool:
+ 	return has_point(Gameboard.cell_to_index(coord))
+@@ -17,15 +36,46 @@ func can_move_to(coord: Vector2i) -> bool:
+ 
+ 
+ ## Find a path between two cells. Returns an empty array if no path is available.
+-func get_path_to_cell(source_coord: Vector2i, target_coord: Vector2i) -> Array[Vector2i]:
++## If allow_blocked_source or allow_blocked_target are false, the pathinder wlil fail if a gamepiece
++## occupies the source or target cells, respectively.
++func get_path_to_cell(source_coord: Vector2i, target_coord: Vector2i, 
++		occupancy_flags: int = 1) -> Array[Vector2i]:
++	# Store the return value in a variable.
+ 	var move_path: Array[Vector2i] = []
+ 	
++	# Find the source/target IDs and keep track of whether or not the cells are occupied.
+ 	var source_id: = Gameboard.cell_to_index(source_coord)
+ 	var target_id: = Gameboard.cell_to_index(target_coord)
++	
++	# The pathfinder has several flags to ignore cell occupancy. We'll need to track which occupants
++	# are temporarily ignored and then re-disable their pathfinder points once a path is found.
++	# Key is point id, value is whether or not the point is disabled.
++	var ignored_points: Dictionary[int, bool] = {}
++	if (occupancy_flags & FLAG_ALLOW_ALL_OCCUPANTS) != 0:
++		print("Allow all occupants!")
++		for id in get_point_ids():
++			if is_point_disabled(id):
++				ignored_points[id] = true
++				set_point_disabled(id, false)
++	
+ 	if has_point(source_id) and has_point(target_id):
++		# Check to see if we want to un-disable the source/target cells.
++		if (occupancy_flags & FLAG_ALLOW_SOURCE_OCCUPANT) != 0:
++			print("Allow source occupant!")
++			ignored_points[source_id] = is_point_disabled(source_id)
++			set_point_disabled(source_id, false)
++		if (occupancy_flags & FLAG_ALLOW_TARGET_OCCUPANT) != 0:
++			print("Allow target occupant!")
++			ignored_points[target_id] = is_point_disabled(target_id)
++			set_point_disabled(target_id, false)
++		
+ 		for path_coord: Vector2i in get_point_path(source_id, target_id):
+ 			if path_coord != source_coord: # Don't include the source as the first path element.
+ 				move_path.append(path_coord)
++		
++		# Change any enabled cells back to their previous state.
++		for id in ignored_points:
++			set_point_disabled(id, ignored_points[id])
+ 	
+ 	return move_path
+ 
+@@ -47,9 +97,15 @@ func get_path_cells_to_adjacent_cell(source_coord: Vector2i,
+ 	return shortest_path
+ 
+ 
++# Format the pathfinder so that it may be easily debugged with print.
+ func _to_string() -> String:
+ 	var value: = "\nPathfinder:"
+ 	for index in get_point_ids():
+-		value += "\n%s - Id: %d; Linked to: %s" % [str(Gameboard.index_to_cell(index)), index, 
+-			get_point_connections(index)]
++		var cell_header: = "\n%s - Id: %d;" % [str(Gameboard.index_to_cell(index)), index]
++		
++		var is_disabled: = "\t\t\t"
++		if is_point_disabled(index):
++			is_disabled = " (disabled)\t"
++			
++		value += (cell_header + is_disabled + "Linked to: %s" % get_point_connections(index))
+ 	return value + "\n"
+diff --git a/src/field/gamepieces/controller.gd b/src/field/gamepieces/controller.gd
+index daa8ef6..4087c24 100644
+--- a/src/field/gamepieces/controller.gd
++++ b/src/field/gamepieces/controller.gd
+@@ -11,16 +11,10 @@ var move_path: Array[Vector2i] = []:
+ 	set = move_along_path
+ var _current_waypoint: Vector2i
+ 
+-## An active controller will receive input events and process at idle and physics frames. An
+-## inactive controller will not.
++## An active controller will receive inputs (player or otherwise). An inactive controller does
++## nothing. This is useful, for example, when toggling of gamepiece movement during cutscenes.
+ var is_active: = false:
+-	set(value):
+-		is_active = value
+-		
+-		set_process(is_active)
+-		set_physics_process(is_active)
+-		set_process_input(is_active)
+-		set_process_unhandled_input(is_active)
++	set = set_is_active
+ 
+ 
+ func _ready() -> void:
+@@ -36,39 +30,6 @@ func _ready() -> void:
+ 		#FieldEvents.input_paused.connect(_on_input_paused)
+ 
+ 
+-func _process(_delta: float) -> void:
+-	if _gamepiece.is_moving():
+-		return
+-	
+-	var input_direction: = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
+-	if input_direction:
+-		if not _gamepiece.is_moving():
+-			var source_cell: = GamepieceRegistry.get_cell(_gamepiece)
+-			var target_cell: = Vector2i.ZERO
+-			
+-			# Unless using 8-direction movement, one movement axis must be preferred. 
+-			#	Default to the x-axis.
+-			if not is_zero_approx(input_direction.x):
+-				input_direction = Vector2(input_direction.x, 0)
+-			else:
+-				input_direction = Vector2(0, input_direction.y)
+-			target_cell = Gameboard.pixel_to_cell(_gamepiece.position) + Vector2i(input_direction)
+-			
+-			# Try to get a path to destination (will fail if cell is occupied)
+-			var new_move_path: = Gameboard.pathfinder.get_path_to_cell(source_cell, target_cell)
+-			
+-			# Path is invalid. Bump animation?
+-			if new_move_path.size() <= 1:
+-				pass
+-			
+-			else:
+-				GamepieceRegistry.move_gamepiece(_gamepiece, target_cell)
+-				_gamepiece.move_to(Gameboard.cell_to_pixel(target_cell))
+-			print(new_move_path)
+-			#print(Gameboard.pathfinder.get_path_to_cell())
+-			# If path is valid, move.
+-
+-
+ #func _unhandled_input(event: InputEvent) -> void:
+ 	#if event.is_action_released("select"):
+ 		#var source_cell: = GamepieceRegistry.get_cell(_gamepiece)
+@@ -105,14 +66,35 @@ func _notification(what: int) -> void:
+ 
+ func move_along_path(value: Array[Vector2i]) -> void:
+ 	move_path = value
+-	if move_path.size() >= 1 and Gameboard.pathfinder.can_move_to(move_path[0]):
+-		_current_waypoint = move_path.pop_front()
+-		_gamepiece.move_to(Gameboard.cell_to_pixel(_current_waypoint))
+-		
+-		GamepieceRegistry.move_gamepiece(_gamepiece, _current_waypoint)
++	_move_to_next_waypoint()
++
++
++## Set whether or not the controller may exert control over the gamepiece.
++## There are a number of occasions (such as cutscenes or combat) where gamepieces are inactive.
++func set_is_active(value: bool) -> void:
++	is_active = value
++	_move_to_next_waypoint() # Will only affect the gamepiece if is_active == true.
++
++
++# Finds the [member move_path]'s waypoint using [method Array.pop_front] and begins moveing the
++# gamepiece towards it.
++# The method will do nothing if the controller is currently inactive.
++# Returns the distance (in pixels) to the next waypoint.
++func _move_to_next_waypoint() -> float:
++	var distance_to_point: = 0.0
++	
++	if is_active:
++		if move_path.size() >= 1 and Gameboard.pathfinder.can_move_to(move_path[0]):
++			_current_waypoint = move_path.pop_front()
++			var destination = Gameboard.cell_to_pixel(_current_waypoint)
++			
++			# Report how far away the waypoint is.
++			distance_to_point = _gamepiece.position.distance_to(destination)
++			_gamepiece.move_to(Gameboard.cell_to_pixel(_current_waypoint))
++			
++			GamepieceRegistry.move_gamepiece(_gamepiece, _current_waypoint)
+ 	
+-	else:
+-		move_path.clear()
++	return distance_to_point
+ 
+ 
+ # The controller's gamepiece will finish travelling this frame unless it is extended. When following
+@@ -123,19 +105,11 @@ func _on_gamepiece_arriving(excess_distance: float) -> void:
+ 	if not move_path.is_empty() and is_active:
+ 		# Fast gamepieces could jump several waypoints at once, so check to see which waypoint is
+ 		# next in line. 
+-		while not move_path.is_empty() and excess_distance > 0:
++		while not move_path.is_empty() and excess_distance > 0.0:
+ 			if not Gameboard.pathfinder.can_move_to(move_path[0]):
+-				print("Can't move to ", move_path[0])
+ 				return
+ 			
+-			_current_waypoint = move_path.pop_front()
+-			var destination = Gameboard.cell_to_pixel(_current_waypoint)
+-			var distance_to_waypoint: = \
+-				_gamepiece.position.distance_to(destination)
+-			
+-			_gamepiece.move_to(destination)
+-			GamepieceRegistry.move_gamepiece(_gamepiece, _current_waypoint)
+-			
++			var distance_to_waypoint: = _move_to_next_waypoint()
+ 			excess_distance -= distance_to_waypoint
+ 
+ 
+diff --git a/src/field/gamepieces/controllers/path_loop_ai_controller.gd b/src/field/gamepieces/controllers/path_loop_ai_controller.gd
+index 34f7e03..1bcbf5c 100644
+--- a/src/field/gamepieces/controllers/path_loop_ai_controller.gd
++++ b/src/field/gamepieces/controllers/path_loop_ai_controller.gd
+@@ -1,139 +1,215 @@
+ @tool
+ extends GamepieceController
+ 
+-## The points in the move_path will be used to generate the waypoints that the AI will follow.
+-@export var move_path: Line2D:
++## The points in the path_to_follow will be used to generate the waypoints that the controller will
++## follow.
++@export var path_to_follow: Line2D:
+ 	set(value):
+-		move_path = value
++		path_to_follow = value
+ 		update_configuration_warnings()
+ 
+-var _current_waypoint_index: = 0
+-var _path_origin: Vector2
++var _current_waypoint_index: = -1
++var _path_origin: = Vector2.ZERO
++var _start_cell: = Vector2i.ZERO
+ 
++# The Gamepiece will wait for the timer to elapse before starting on its path.
++# The timer will also trigger between iterations of the path. This means that after the gamepiece
++# has looped back to the original point it will wait for _timer.timeout before beginning the next
++# loop.
++# The timer will also trigger if the path becomes blocked, for some reason.
+ @onready var _timer: Timer = $WaitTimer
+ 
+ 
+ func _ready() -> void:
+-	super._ready()
+-	
+ 	if not Engine.is_editor_hint():
+-		move_path.hide()
++		path_to_follow.hide()
+ 		_path_origin = _gamepiece.position
+ 		
++		# The controller cannot find a path until the pathfinder has updated, and changes may
++		# require a new path. Update whenever the pathfinder changes.
++		Gameboard.pathfinder_changed.connect(
++			func _on_pathfinder_changed(_added, _removed) -> void:
++				# Log an error if the path described by path_to_follow cannot be traversed.
++				if not _find_move_path():
++					#printerr("Failed to find a path_to_follow for '%s'!" % _gamepiece.name)
++					return
++		)
++		
+ 		_timer.one_shot = true
+-		_timer.timeout.connect(_on_timer_timeout)
++		_timer.timeout.connect(_move_to_next_waypoint)
+ 		_timer.start()
++	
++	super._ready()
+ 
+ 
+-func set_is_paused(paused: bool) -> void:
+-	is_paused = paused
++# Override GamepieceController's default implementation to preserve the move_path and to make use
++# of the wait timer, if it is active.
++func set_is_active(value: bool) -> void:
++	is_active = value
+ 	
+-	# Pause/unpause the wait timer to match the controller's 'paused state'. This is only really
+-	# relevant if the controller is currently waiting to run the next loop.
+-	_timer.paused = is_paused
++	## Pause/unpause the wait timer to match the controller's 'paused state'. This is only really
++	## relevant if the controller is currently waiting to run the next loop.
++	_timer.paused = !is_active
+ 	
+-	# Otherwise, if the gamepiece is in transit, pick up where it had left off.
+-	if not paused:
+-		if _current_waypoint_index > 0 and _current_waypoint_index < _waypoints.size() - 1 and \
+-				not is_cell_blocked(_waypoints[_current_waypoint_index]):
+-			_gamepiece.travel_to_cell(_waypoints[_current_waypoint_index])
++	## Otherwise, if the gamepiece is in transit, pick up where it had left off.
++	if _timer.is_stopped():
++		_move_to_next_waypoint()
++
++#func set_is_paused(paused: bool) -> void:
++	#is_paused = paused
++	#
++	## Pause/unpause the wait timer to match the controller's 'paused state'. This is only really
++	## relevant if the controller is currently waiting to run the next loop.
++	#_timer.paused = is_paused
++	#
++	## Otherwise, if the gamepiece is in transit, pick up where it had left off.
++	#if not paused:
++		#if _current_waypoint_index > 0 and _current_waypoint_index < _waypoints.size() - 1 and \
++				#not is_cell_blocked(_waypoints[_current_waypoint_index]):
++			#_gamepiece.travel_to_cell(_waypoints[_current_waypoint_index])
+ 
+ 
+ func _get_configuration_warnings() -> PackedStringArray:
+ 	var warnings: PackedStringArray = []
+ 	
+ 	# Node exports are currently broken.
+-	if not move_path:
++	if not path_to_follow:
+ 		warnings.append("The path loop controller needs a valid Line2D to follow!")
+ 	
+ 	return warnings
+ 
+ 
+-# Ensure that the waypoints are updated whenever the pathfinder is re-created.
+-# The controller's path will NOT take blocking gamepieces into account, so temporarily unblock all
+-# cells in the pathfinder.
+-func _rebuild_pathfinder() -> void:
+-	super._rebuild_pathfinder()
+-	
+-	var blocked_cells: = pathfinder.get_blocked_cells()
+-	pathfinder.set_blocked_cells([])
+-	
+-	_find_waypoints_from_line2D()
++# Try to convert the path_to_follow into a series of cells for the gamepiece to move to.
++# Loop through the points in the Line2D, using Gameboard.pathfinder to find a path to each. Also
++# searches for the shortest path from the last point to the first point.
++# This method will fail if there is no valid path on the Gameboard between line points.
++func _find_move_path() -> bool:
++	move_path.clear()
+ 	
+-	pathfinder.set_blocked_cells(blocked_cells)
+-
+-
+-# Note that the following must be called after the pathfinder has been built.
+-func _find_waypoints_from_line2D() -> void:
+ 	# A path needs at least two points.
+-	if move_path.get_point_count() <= 1:
+-		return
++	if path_to_follow.get_point_count() <= 1:
++		return false
+ 	
+ 	# Add the first cell to the path, since subsequent additions will have the first cell removed.
+-	_waypoints.append(_gameboard.pixel_to_cell(move_path.get_point_position(0) + _path_origin))
+-	
+-	# Create a looping path from the points specified by move_path. Will fail if a path cannot be
+-	# found between some of the move_path's points.
+-	for i in range(1, move_path.get_point_count()):
+-		var source: = _gameboard.pixel_to_cell(move_path.get_point_position(i-1) + _path_origin)
+-		var target: = _gameboard.pixel_to_cell(move_path.get_point_position(i) + _path_origin)
++	_start_cell = Gameboard.pixel_to_cell(path_to_follow.get_point_position(0) + _path_origin)
++	#move_path.append(Gameboard.pixel_to_cell(path_to_follow.get_point_position(0) + _path_origin))
++	
++	# Create a looping path from the points specified by path_to_follow. Will fail if a path cannot
++	# be found between some of the path_to_follow's points.
++	for i in range(1, path_to_follow.get_point_count()):
++		var source: = Gameboard.pixel_to_cell(path_to_follow.get_point_position(i-1) + _path_origin)
++		var target: = Gameboard.pixel_to_cell(path_to_follow.get_point_position(i) + _path_origin)
+ 		
+-		var path_subset: = pathfinder.get_path_cells(source, target)
+-		if path_subset.is_empty():
+-			push_error("'%s' PathLoopAiController::_find_waypoints_from_line2D() error - " % name +
+-				"Failed to find a path between cells %s and %s." % [source, target])
+-			return
++		var path_segment: = Gameboard.pathfinder.get_path_to_cell(source, target)
++		if path_segment.is_empty():
++			#push_error("'%s' PathLoopAiController::_find_waypoints_from_line2D() error - " % name +
++				#"Failed to find a path between cells %s and %s." % [source, target])
++			return false
+ 		
+-		# Trim the first cell in the path found to prevent duplicates.
+-		_waypoints.append_array(path_subset.slice(1))
++		move_path.append_array(path_segment)
+ 	
+ 	# Finally, connect the ending and starting cells to complete the loop.
+-	var last_pos: = move_path.get_point_position(move_path.get_point_count()-1) + _path_origin
+-	var last_cell: = _gameboard.pixel_to_cell(last_pos)
+-	var first_cell: = _gameboard.pixel_to_cell(move_path.get_point_position(0) + _path_origin)
++	var last_pos: = path_to_follow.get_point_position(path_to_follow.get_point_count()-1) + _path_origin
++	var last_cell: = Gameboard.pixel_to_cell(last_pos)
++	var first_cell: = Gameboard.pixel_to_cell(path_to_follow.get_point_position(0) + _path_origin)
+ 	
+ 	# If we've made it this far there must be a path between the first and last cell.
+-	_waypoints.append_array(pathfinder.get_path_cells(last_cell, first_cell).slice(1))
++	move_path.append_array(Gameboard.pathfinder.get_path_to_cell(last_cell, first_cell, 
++		Pathfinder.FLAG_ALLOW_SOURCE_OCCUPANT | Pathfinder.FLAG_ALLOW_TARGET_OCCUPANT))
++	return true
+ 
+ 
+-func _on_gamepiece_arriving(excess_distance: float) -> void:
+-	if is_paused:
+-		return
++func _get_next_waypoint_index() -> int:
++	var next_index: = _current_waypoint_index + 1
++	if next_index >= move_path.size():
++		next_index = 0
++	return next_index
++
++
++func _move_to_next_waypoint() -> float:
++	var distance_to_point: = 0.0
+ 	
+-	# If the gamepiece is currently following a path, continue moving along the path if it is still
+-	# a valid movement path since obstacles may shift while in transit.
+-	while _current_waypoint_index >= 0 and _current_waypoint_index < _waypoints.size() - 1 \
+-			and excess_distance > 0:
+-		_current_waypoint_index += 1
+-		var waypoint: = _waypoints[_current_waypoint_index]
+-		if is_cell_blocked(waypoint) or FieldEvents.did_gp_move_to_cell_this_frame(waypoint):
+-			set_process(true)
+-			return
++	if is_active and not move_path.is_empty():
++		var next_index: = _get_next_waypoint_index()
+ 		
+-		var distance_to_waypoint: = \
+-			_gamepiece.position.distance_to(_gameboard.cell_to_pixel(waypoint))
++		# If the next waypoint is blocked, restart the timer and try again later.
++		if Gameboard.pathfinder.can_move_to(move_path[next_index]):
++			_current_waypoint_index = next_index
++			_current_waypoint = move_path[_current_waypoint_index]
++			
++			var destination = Gameboard.cell_to_pixel(_current_waypoint)
++			distance_to_point = _gamepiece.position.distance_to(destination)
++			_gamepiece.move_to(destination)
++			
++			GamepieceRegistry.move_gamepiece(_gamepiece, _current_waypoint)
++			
+ 		
+-		_gamepiece.travel_to_cell(waypoint)
+-		excess_distance -= distance_to_waypoint
++		else:
++			_timer.start()
++	
++	return distance_to_point
+ 
+ 
++# Modified from the default behaviour to always wait for wait_timer.timeout on the last point.
++func _on_gamepiece_arriving(excess_distance: float) -> void:
++	if not move_path.is_empty() and is_active:
++		# Fast gamepieces could jump several waypoints at once, so check to see which waypoint is
++		# next in line. 
++		while not move_path.is_empty() and excess_distance > 0.0:
++			if _current_waypoint == _start_cell \
++					or not Gameboard.pathfinder.can_move_to(move_path[_get_next_waypoint_index()]):
++				return
++			
++			var distance_to_waypoint: = _move_to_next_waypoint()
++			excess_distance -= distance_to_waypoint
++
++
++# Override GamepieceController's default implementation to preserve the move_path.
++#func _on_gamepiece_arriving(excess_distance: float) -> void:
++	#if not is_active:
++		#return
++	#
++	## If the gamepiece is currently following a path, continue moving along the path if it is still
++	## a valid movement path since obstacles may shift while in transit.
++	#while _current_waypoint_index >= 0 and _current_waypoint_index < move_path.size() - 1 \
++			#and excess_distance > 0:
++		#_current_waypoint_index += 1
++		#var waypoint: = move_path[_current_waypoint_index]
++		#
++		## If the gamepiece cannot move to the next cell in the path, begin the timer and wait for
++		## the path to reopen.
++		#if not Gameboard.can_move_to(waypoint):
++			#return
++		#
++		#var distance_to_waypoint: = \
++			#_gamepiece.position.distance_to(Gameboard.cell_to_pixel(waypoint))
++		#
++		#_gamepiece.travel_to_cell(waypoint)
++		#excess_distance -= distance_to_waypoint
++
++
++# Override GamepieceController's implementation to preserve the move_path.
+ func _on_gamepiece_arrived() -> void:
+ 	_timer.start()
+ 
+ 
+-func _on_timer_timeout() -> void:
+-	if _current_waypoint_index < 0 or _current_waypoint_index >= _waypoints.size():
+-		_current_waypoint_index = 0
+-	
+-	var waypoint: = _waypoints[_current_waypoint_index]
+-	if waypoint == _gamepiece.cell:
+-		_current_waypoint_index += 1
+-		if _current_waypoint_index >= _waypoints.size():
+-			_current_waypoint_index = 0
+-		waypoint = _waypoints[_current_waypoint_index]
+-	
+-	if waypoint != _gamepiece.cell and is_cell_blocked(waypoint):
+-		_timer.start()
+-	
+-	else:
+-		_gamepiece.travel_to_cell(waypoint)
++# Restart the path from the Gamepiece's current cell. If the next waypoint is blocked, the timer
++# will be restarted.
++#func _on_timer_timeout() -> void:
++	#if _current_waypoint_index < 0 or _current_waypoint_index >= move_path.size():
++		#_current_waypoint_index = 0
++	#
++	#_current_waypoint = move_path[_current_waypoint_index]
++	#if _current_waypoint == _gamepiece.cell:
++		#_current_waypoint_index += 1
++		#if _current_waypoint_index >= move_path.size():
++			#_current_waypoint_index = 0
++		#_current_waypoint = move_path[_current_waypoint_index]
++	#
++	## If the next waypoint is blocked, restart the timer and try again laer.
++	#if _current_waypoint != _gamepiece.cell and \
++			#not Gameboard.pathfinder.can_move_to(_current_waypoint):
++		#_timer.start()
++	#
++	#else:
++		#_gamepiece.move_to(Gameboard.cell_to_pixel(_current_waypoint))
+diff --git a/src/field/gamepieces/controllers/player_controller.gd b/src/field/gamepieces/controllers/player_controller.gd
+index ff37d1b..046d441 100644
+--- a/src/field/gamepieces/controllers/player_controller.gd
++++ b/src/field/gamepieces/controllers/player_controller.gd
+@@ -1,179 +1,179 @@
+-@tool
+-## Applied to any gamepiece to allow player control.
+-##
+-## The controller responds to player input to handle movement and interaction.
+-class_name PlayerController extends GamepieceController
+-
+-const GROUP_NAME: = "_PLAYER_CONTROLLER_GROUP"
+-
+-var is_active: = false:
+-	set(value):
+-		is_active = value
+-		
+-		set_process(is_active)
+-		set_physics_process(is_active)
+-		set_process_input(is_active)
+-		set_process_unhandled_input(is_active)
+-
+-# Keep track of a targeted interaction. Used to face & interact with the object at a path's end.
+-# It is reset on cancelling the move path or continuing movement via arrows/gamepad directions.
+-var _target: Interaction = null
+-
+-@onready var _interaction_searcher: = $InteractionSearcher as Area2D
+-@onready var _player_collision: = $PlayerCollision as Area2D
+-
+-
+-func _ready() -> void:
+-	super._ready()
+-	
+-	set_process(false)
+-	set_physics_process(false)
+-	
+-	if not Engine.is_editor_hint():
+-		add_to_group(GROUP_NAME)
+-		
+-		# Refer the various player collision shapes to their gamepiece (parent of the controller).
+-		# This will allow other objects/systems to quickly find which gamepiece they are working on
+-		# via the collision "owners".
+-		_interaction_searcher.owner = _gamepiece
+-		_player_collision.owner = _gamepiece
+-		
+-		FieldEvents.cell_selected.connect(_on_cell_selected)
+-		
+-		# Connect to a few lambdas that change the cell at which the player searches for
+-		# interactions. These come into play whenever the player's gamepiece moves to a new cell or
+-		# changes direction.
+-		_gamepiece.cell_changed.connect(
+-			func(old_cell):
+-				super._on_gamepiece_cell_changed(_gamepiece, old_cell)
+-				_align_interaction_searcher_to_faced_cell()
+-		)
+-		_gamepiece.direction_changed.connect(
+-			func(_direction): _align_interaction_searcher_to_faced_cell()
+-		)
+-		
+-		is_active = true
+-		
+-		_align_interaction_searcher_to_faced_cell()
+-
+-
+-func set_is_paused(paused: bool) -> void:
+-	super.set_is_paused(paused)
+-	set_process(!paused)
+-	set_physics_process(!paused)
+-	
+-
+-
+-func _physics_process(_delta: float) -> void:
+-	var move_dir: = _get_move_direction()
+-	if move_dir:
+-		_target = null
+-		
+-		if not _gamepiece.is_moving():
+-			var target_cell: = Vector2i.ZERO
+-			
+-			# Unless using 8-direction movement, one movement axis must be preferred. 
+-			#	Default to the x-axis.
+-			if not is_zero_approx(move_dir.x):
+-				move_dir = Vector2(move_dir.x, 0)
+-			else:
+-				move_dir = Vector2(0, move_dir.y)
+-			
+-			_gamepiece.direction = move_dir
+-			target_cell = _gamepiece.cell + Vector2i(move_dir)
+-			
+-			# If there is a gamepiece at the target cell, do not move on top of it.
+-			_update_changed_cells()
+-			if not is_cell_blocked(target_cell) and \
+-					not FieldEvents.did_gp_move_to_cell_this_frame(target_cell):
+-				var move_path: = pathfinder.get_path_cells(_gamepiece.cell, target_cell)
+-				
+-				# Path is invalid. Bump animation?
+-				if move_path.size() <= 1:
+-					pass
+-				
+-				else:
+-					_gamepiece.travel_to_cell(target_cell)
+-		
+-		else:
+-			_target = null
+-			_waypoints.clear()
+-
+-
+-func _get_move_direction() -> Vector2:
+-	return Vector2(
+-		Input.get_axis("ui_left", "ui_right"),
+-		Input.get_axis("ui_up", "ui_down")
+-	)
+-
+-
+-func _align_interaction_searcher_to_faced_cell() -> void:
+-	var cell_coordinates: = Vector2(_gameboard.cell_to_pixel(_gamepiece.get_faced_cell()))
+-	_interaction_searcher.global_position = cell_coordinates*_gamepiece.global_scale
+-
+-
+-# The controller's focus will finish travelling this frame unless it is extended.
+-# There are a few cases where the controller will want to extend the path:
+-#	a) The gamepiece is following a series of waypoints, and needs to know which cell is next. Note
+-#		that the controller is responsible for the waypoints (instead of the gamepiece, for
+-#		instance) so that the path can be checked for any changes *as the gamepiece travels*.
+-#	b) A movement key/button is held down and the gamepiece should smoothly flow into the next cell.
+-func _on_gamepiece_arriving(excess_distance: float) -> void:
+-	# Handle moving to the next waypoint in the path.
+-	super._on_gamepiece_arriving(excess_distance)
+-	
+-	# Allow movement keys/buttons to override path following.
+-	var move_direction: = _get_move_direction()
+-	if move_direction and not is_paused:
+-		_target = null
+-		_waypoints.clear()
+-		
+-		var next_cell: Vector2i
+-		if not is_zero_approx(move_direction.x):
+-			next_cell = _gamepiece.cell + Vector2i(int(move_direction.x), 0)
+-		else:
+-			next_cell = _gamepiece.cell + Vector2i(0, int(move_direction.y))
+-		
+-		if pathfinder.has_cell(next_cell) and not is_cell_blocked(next_cell) and \
+-				not FieldEvents.did_gp_move_to_cell_this_frame(next_cell):
+-			_gamepiece.travel_to_cell(next_cell)
+-
+-
+-func _on_gamepiece_arrived() -> void:
+-	super._on_gamepiece_arrived()
+-	
+-	if _target:
+-		var distance_to_target: = _target.global_position/_target.global_scale - _gamepiece.position
+-		_gamepiece.direction = distance_to_target
+-		
+-		_target.run()
+-		_target = null
+-
+-
+-func _on_cell_selected(cell: Vector2i) -> void:
+-	if is_active and not _gamepiece.is_moving():
+-		# Don't move to the cell the focus is standing on. May want to open inventory.
+-		if cell == _gamepiece.cell:
+-			return
+-			
+-		# We'll want different behaviour depending on what's underneath the cursor.
+-		var collisions: = get_collisions(cell)
+-		
+-		# If there is an interaction underneath the cursor the player's gamepiece should flag the
+-		# target and move to an adjacent cell.
+-		if not collisions.is_empty():
+-			for collision: Dictionary in collisions:
+-				if collision.collider.owner is Interaction:
+-					_target = collision.collider.owner
+-					break
+-		
+-		# The following method will move to an empty cell OR adjacent to a blocked cell that has
+-		# an interaction located on it.
+-		travel_to_cell(cell, _target != null)
+-		if not _waypoints.is_empty():
+-			FieldEvents.player_path_set.emit(_gamepiece, _waypoints.back())
+-		
+-		# There is no path but there is a target, which means that the player is standing right next
+-		# to the target interaction.
+-		elif _target:
+-			_on_gamepiece_arrived()
++#@tool
++### Applied to any gamepiece to allow player control.
++###
++### The controller responds to player input to handle movement and interaction.
++#class_name PlayerController extends GamepieceController
++#
++#const GROUP_NAME: = "_PLAYER_CONTROLLER_GROUP"
++#
++#var is_active: = false:
++	#set(value):
++		#is_active = value
++		#
++		#set_process(is_active)
++		#set_physics_process(is_active)
++		#set_process_input(is_active)
++		#set_process_unhandled_input(is_active)
++#
++## Keep track of a targeted interaction. Used to face & interact with the object at a path's end.
++## It is reset on cancelling the move path or continuing movement via arrows/gamepad directions.
++#var _target: Interaction = null
++#
++#@onready var _interaction_searcher: = $InteractionSearcher as Area2D
++#@onready var _player_collision: = $PlayerCollision as Area2D
++#
++#
++#func _ready() -> void:
++	#super._ready()
++	#
++	#set_process(false)
++	#set_physics_process(false)
++	#
++	#if not Engine.is_editor_hint():
++		#add_to_group(GROUP_NAME)
++		#
++		## Refer the various player collision shapes to their gamepiece (parent of the controller).
++		## This will allow other objects/systems to quickly find which gamepiece they are working on
++		## via the collision "owners".
++		#_interaction_searcher.owner = _gamepiece
++		#_player_collision.owner = _gamepiece
++		#
++		#FieldEvents.cell_selected.connect(_on_cell_selected)
++		#
++		## Connect to a few lambdas that change the cell at which the player searches for
++		## interactions. These come into play whenever the player's gamepiece moves to a new cell or
++		## changes direction.
++		#_gamepiece.cell_changed.connect(
++			#func(old_cell):
++				#super._on_gamepiece_cell_changed(_gamepiece, old_cell)
++				#_align_interaction_searcher_to_faced_cell()
++		#)
++		#_gamepiece.direction_changed.connect(
++			#func(_direction): _align_interaction_searcher_to_faced_cell()
++		#)
++		#
++		#is_active = true
++		#
++		#_align_interaction_searcher_to_faced_cell()
++#
++#
++#func set_is_paused(paused: bool) -> void:
++	#super.set_is_paused(paused)
++	#set_process(!paused)
++	#set_physics_process(!paused)
++	#
++#
++#
++#func _physics_process(_delta: float) -> void:
++	#var move_dir: = _get_move_direction()
++	#if move_dir:
++		#_target = null
++		#
++		#if not _gamepiece.is_moving():
++			#var target_cell: = Vector2i.ZERO
++			#
++			## Unless using 8-direction movement, one movement axis must be preferred. 
++			##	Default to the x-axis.
++			#if not is_zero_approx(move_dir.x):
++				#move_dir = Vector2(move_dir.x, 0)
++			#else:
++				#move_dir = Vector2(0, move_dir.y)
++			#
++			#_gamepiece.direction = move_dir
++			#target_cell = _gamepiece.cell + Vector2i(move_dir)
++			#
++			## If there is a gamepiece at the target cell, do not move on top of it.
++			#_update_changed_cells()
++			#if not is_cell_blocked(target_cell) and \
++					#not FieldEvents.did_gp_move_to_cell_this_frame(target_cell):
++				#var move_path: = pathfinder.get_path_cells(_gamepiece.cell, target_cell)
++				#
++				## Path is invalid. Bump animation?
++				#if move_path.size() <= 1:
++					#pass
++				#
++				#else:
++					#_gamepiece.travel_to_cell(target_cell)
++		#
++		#else:
++			#_target = null
++			#_waypoints.clear()
++#
++#
++#func _get_move_direction() -> Vector2:
++	#return Vector2(
++		#Input.get_axis("ui_left", "ui_right"),
++		#Input.get_axis("ui_up", "ui_down")
++	#)
++#
++#
++#func _align_interaction_searcher_to_faced_cell() -> void:
++	#var cell_coordinates: = Vector2(_gameboard.cell_to_pixel(_gamepiece.get_faced_cell()))
++	#_interaction_searcher.global_position = cell_coordinates*_gamepiece.global_scale
++#
++#
++## The controller's focus will finish travelling this frame unless it is extended.
++## There are a few cases where the controller will want to extend the path:
++##	a) The gamepiece is following a series of waypoints, and needs to know which cell is next. Note
++##		that the controller is responsible for the waypoints (instead of the gamepiece, for
++##		instance) so that the path can be checked for any changes *as the gamepiece travels*.
++##	b) A movement key/button is held down and the gamepiece should smoothly flow into the next cell.
++#func _on_gamepiece_arriving(excess_distance: float) -> void:
++	## Handle moving to the next waypoint in the path.
++	#super._on_gamepiece_arriving(excess_distance)
++	#
++	## Allow movement keys/buttons to override path following.
++	#var move_direction: = _get_move_direction()
++	#if move_direction and not is_paused:
++		#_target = null
++		#_waypoints.clear()
++		#
++		#var next_cell: Vector2i
++		#if not is_zero_approx(move_direction.x):
++			#next_cell = _gamepiece.cell + Vector2i(int(move_direction.x), 0)
++		#else:
++			#next_cell = _gamepiece.cell + Vector2i(0, int(move_direction.y))
++		#
++		#if pathfinder.has_cell(next_cell) and not is_cell_blocked(next_cell) and \
++				#not FieldEvents.did_gp_move_to_cell_this_frame(next_cell):
++			#_gamepiece.travel_to_cell(next_cell)
++#
++#
++#func _on_gamepiece_arrived() -> void:
++	#super._on_gamepiece_arrived()
++	#
++	#if _target:
++		#var distance_to_target: = _target.global_position/_target.global_scale - _gamepiece.position
++		#_gamepiece.direction = distance_to_target
++		#
++		#_target.run()
++		#_target = null
++#
++#
++#func _on_cell_selected(cell: Vector2i) -> void:
++	#if is_active and not _gamepiece.is_moving():
++		## Don't move to the cell the focus is standing on. May want to open inventory.
++		#if cell == _gamepiece.cell:
++			#return
++			#
++		## We'll want different behaviour depending on what's underneath the cursor.
++		#var collisions: = get_collisions(cell)
++		#
++		## If there is an interaction underneath the cursor the player's gamepiece should flag the
++		## target and move to an adjacent cell.
++		#if not collisions.is_empty():
++			#for collision: Dictionary in collisions:
++				#if collision.collider.owner is Interaction:
++					#_target = collision.collider.owner
++					#break
++		#
++		## The following method will move to an empty cell OR adjacent to a blocked cell that has
++		## an interaction located on it.
++		#travel_to_cell(cell, _target != null)
++		#if not _waypoints.is_empty():
++			#FieldEvents.player_path_set.emit(_gamepiece, _waypoints.back())
++		#
++		## There is no path but there is a target, which means that the player is standing right next
++		## to the target interaction.
++		#elif _target:
++			#_on_gamepiece_arrived()
+diff --git a/src/field/gamepieces/gamepiece.gd b/src/field/gamepieces/gamepiece.gd
+index 2cfef1b..aa296e8 100644
+--- a/src/field/gamepieces/gamepiece.gd
++++ b/src/field/gamepieces/gamepiece.gd
+@@ -52,6 +52,8 @@ signal direction_changed(new_direction: Vector2)
+ 			_follower.add_child(animation)
+ 
+ ## The gamepiece will traverse a movement path at [code]move_speed[/code] pixels per second.
++##[/br][/br]Note that extremely high speeds (finish a long path in a single frame) will produce
++## unexpected results.
+ @export var move_speed: = 64.0
+ 
+ ## The visual representation of the gamepiece, set automatically based on [member animation_scene].
+@@ -108,7 +110,7 @@ func _process(delta: float) -> void:
+ 	# The excess travel distance allows us to know how much to extend the path by. A VERY fast
+ 	# gamepiece may jump a few cells at a time.
+ 	var excess_travel_distance: =  _follower.progress + move_distance - curve.get_baked_length()
+-	if excess_travel_distance >= 0:
++	if excess_travel_distance >= 0.0:
+ 		arriving.emit(excess_travel_distance)
+ 	
+ 	# The path may have been extended, so the gamepiece can move along the path now.
+@@ -144,7 +146,6 @@ func move_to(target_point: Vector2) -> void:
+ 	# position doesn't update until the Gamepiece reaches its final destination, otherwise the path
+ 	# would move along with the gamepiece.
+ 	curve.add_point(destination-position)
+-	#curve.add_point((destination-position)/global_scale)
+ 
+ 
+ ## Stop the gamepiece from travelling and update its position.
+diff --git a/src/field/gamepieces/gamepiece_registry.gd b/src/field/gamepieces/gamepiece_registry.gd
+index bbb2c91..30cdad8 100644
+--- a/src/field/gamepieces/gamepiece_registry.gd
++++ b/src/field/gamepieces/gamepiece_registry.gd
+@@ -47,10 +47,8 @@ func move_gamepiece(gp: Gamepiece, new_cell: Vector2i) -> bool:
+ 	
+ 	var old_cell: = get_cell(gp)
+ 	if old_cell == new_cell:
+-		print("Cells are the same, cnnot move gp")
+ 		return false
+ 	
+-	print("Moved %s to %s" % [gp.name, str(new_cell)])
+ 	_gamepieces.erase(old_cell)
+ 	_gamepieces[new_cell] = gp
+ 	
+diff --git a/src/field/gamepieces/player_controller.gd b/src/field/gamepieces/player_controller.gd
+index c38b384..f02064c 100644
+--- a/src/field/gamepieces/player_controller.gd
++++ b/src/field/gamepieces/player_controller.gd
+@@ -20,6 +20,45 @@ func _ready() -> void:
+ 		FieldEvents.cell_selected.connect(_on_cell_selected)
+ 
+ 
++func _process(_delta: float) -> void:
++	if _gamepiece.is_moving():
++		return
++	
++	var input_direction: = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
++	if input_direction:
++		if not _gamepiece.is_moving():
++			var source_cell: = GamepieceRegistry.get_cell(_gamepiece)
++			var target_cell: = Vector2i.ZERO
++			
++			# Unless using 8-direction movement, one movement axis must be preferred. 
++			#	Default to the x-axis.
++			if not is_zero_approx(input_direction.x):
++				input_direction = Vector2(input_direction.x, 0)
++			else:
++				input_direction = Vector2(0, input_direction.y)
++			target_cell = Gameboard.pixel_to_cell(_gamepiece.position) + Vector2i(input_direction)
++			
++			# Try to get a path to destination (will fail if cell is occupied)
++			var new_move_path: = Gameboard.pathfinder.get_path_to_cell(source_cell, target_cell)
++			
++			# Path is invalid. Bump animation?
++			if new_move_path.size() <= 1:
++				pass
++			
++			else:
++				GamepieceRegistry.move_gamepiece(_gamepiece, target_cell)
++				_gamepiece.move_to(Gameboard.cell_to_pixel(target_cell))
++
++			#print(Gameboard.pathfinder.get_path_to_cell())
++			# If path is valid, move.
++
++
++func _unhandled_input(event: InputEvent) -> void:
++	if event.is_action_released("select"):
++		if move_path:
++			move_path.clear()
++
++
+ func _on_cell_selected(cell: Vector2i) -> void:
+ 	if is_active and not _gamepiece.is_moving():
+ 		var source_cell: = Gameboard.pixel_to_cell(_gamepiece.position)
+diff --git a/src/field/ui/debug/debug_gameboard.gd b/src/field/ui/debug/debug_gameboard.gd
+index f10ade5..1bbfb51 100644
+--- a/src/field/ui/debug/debug_gameboard.gd
++++ b/src/field/ui/debug/debug_gameboard.gd
+@@ -18,7 +18,6 @@ func _ready() -> void:
+ 	
+ 	GamepieceRegistry.gamepiece_moved.connect(
+ 		func _on_gp_moved(_gp: Gamepiece, new_cell: Vector2i, old_cell: Vector2i) -> void:
+-			print("Moved ", _gp.name, " from %s to %s." % [old_cell, new_cell])
+ 			_occupancy.set_cell(old_cell)
+ 			_occupancy.set_cell(new_cell, 0, Vector2i(1, 0), 0)
+ 	)
+diff --git a/src/main.tscn b/src/main.tscn
+index 05bafd9..e27f120 100644
+--- a/src/main.tscn
++++ b/src/main.tscn
+@@ -424,10 +424,8 @@ emote = 1
+ script = ExtResource("14_b3y71")
+ timeline = ExtResource("16_ybo02")
+ 
+-[node name="LoopAI" type="Node2D" parent="Field/Terrain/Gamepieces/Town/Runner" node_paths=PackedStringArray("move_path")]
++[node name="LoopAI" type="Node2D" parent="Field/Terrain/Gamepieces/Town/Runner"]
+ script = ExtResource("12_glwd5")
+-gamepiece_mask = 2
+-move_path = NodePath("MovePath")
+ 
+ [node name="WaitTimer" type="Timer" parent="Field/Terrain/Gamepieces/Town/Runner/LoopAI"]
+ wait_time = 1.5
+diff --git a/src/main_2.gd b/src/main_2.gd
+index 3fd09f9..0566d52 100644
+--- a/src/main_2.gd
++++ b/src/main_2.gd
+@@ -6,7 +6,7 @@ var pathfinder: Pathfinder
+ 
+ 
+ func _ready() -> void:
+-	Gameboard.properties = $Map/DebugMoveGrid/DebugBoundaries.gameboard_properties
++	#Gameboard.properties = $Map/DebugMoveGrid/DebugBoundaries.gameboard_properties
+ 	assert(Gameboard.properties != null, "The Gameboard autoload must have a GameboardProperties" +
+ 		"resource set before its _ready function is called!")
+ 	
+@@ -19,7 +19,7 @@ func _ready() -> void:
+ 		if GamepieceRegistry.register(gp, cell) == false:
+ 			gp.queue_free()
+ 	
+-	print("Create tilemap here")
++	#print("Create tilemap here")
+ 	
+ 	for tilemap in collision_tilemaps:
+ 		tilemap.add_to_group(Gameboard.COLLISION_TILEMAPLAYER_GROUP)
+@@ -28,7 +28,7 @@ func _ready() -> void:
+ 	await get_tree().process_frame
+ 	await get_tree().process_frame
+ 	
+-	print(Gameboard.pathfinder)
++	#print(Gameboard.pathfinder)
+ 
+ 
+ func _unhandled_input(event: InputEvent) -> void:
+diff --git a/src/map.gd b/src/map.gd
+new file mode 100644
+index 0000000..969b6d6
+--- /dev/null
++++ b/src/map.gd
+@@ -0,0 +1,17 @@
++@tool
++extends Node2D
++
++@export var gameboard_properties: GameboardProperties:
++	set(value):
++		gameboard_properties = value
++		
++		if not is_inside_tree():
++			await ready
++		
++		_debug_boundaries.gameboard_properties = gameboard_properties
++
++
++@onready var _debug_boundaries: DebugGameboardBoundaries = $DebugBoundaries
++
++func _ready() -> void:
++	Gameboard.properties = gameboard_properties
+diff --git a/src/map.gd.uid b/src/map.gd.uid
+new file mode 100644
+index 0000000..1659ab6
+--- /dev/null
++++ b/src/map.gd.uid
+@@ -0,0 +1 @@
++uid://drugj534rnwxw

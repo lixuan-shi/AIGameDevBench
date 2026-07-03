@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-11-21_bec6dd9_048"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "8f177e1778bee1fd3d4a3b5729f53d2ece6bcbee"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scripts/components/playerrespawncomponent/PlayerRespawnComponent.gd, scripts/components/statssynchronizercomponent/StatsSynchronizerComponent.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-11-21_bec6dd9_048"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

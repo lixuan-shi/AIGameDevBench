@@ -1,0 +1,23 @@
+diff --git a/scenes/levels/sokoban/level/SokobanLevel.gd b/scenes/levels/sokoban/level/SokobanLevel.gd
+index e7cd557..1c3f16c 100644
+--- a/scenes/levels/sokoban/level/SokobanLevel.gd
++++ b/scenes/levels/sokoban/level/SokobanLevel.gd
+@@ -32,6 +32,10 @@ var current_move := {
+ }
+ 
+ 
++func _ready():
++	EventBus.emit_signal("bgm_changed", {"playing": false})
++
++
+ func _process(delta):
+ 	if Input.is_action_just_pressed("undo"):
+ 		undo()
+@@ -115,6 +119,7 @@ func _commit_current_move() -> void:
+ 
+ 
+ func close_level():
++	EventBus.emit_signal("bgm_changed", "reset")
+ 	EventBus.emit_signal("level_changed", level_select_menu)
+ 
+ 

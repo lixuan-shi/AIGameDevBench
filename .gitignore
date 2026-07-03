@@ -21,3 +21,19 @@ retry_scenarios.json
 retry_scenarios_codex.json
 inspect_*.json
 bench-workspaces/
+bench_runs/
+survey_bad_cases.json
+
+# Scratch / working files at repo root (not part of the deliverable)
+err.log
+tt_cases.txt
+.filtered_*.txt
+.manual_cases.txt
+.survey_meta.tsv
+.audit_batches.json
+.audit_case_list.txt
+
+# Godot import artifacts inside testcase baselines (regenerated on --import)
+testcases/**/.godot/
+testcases_filtered/**/.godot/
+**/*.gd.uid

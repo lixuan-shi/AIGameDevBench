@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-09-16_e438354_005"
+category = "intent_translation"
+source_kind = "git"
+baseline_ref = "e39bfa4cd57fffe51f96ba3c419bad3d18fa7cc2"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Levels/RomVerifier.tscn, Scenes/Levels/SMB1/CoinHeavens/1.tscn, Scenes/Levels/SMBLL/World1/1-2.tscn, Scenes/Levels/SMBLL/World11/11-3.tscn, Scenes/Levels/SMBLL/World5/5-1.tscn, Scenes/Levels/SMBS/CoinHeavens/1.tscn, Scenes/Levels/SMBS/CoinHeavens/2.tscn, Scenes/Prefabs/LevelObjects/BulletBillGenerator.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-09-16_e438354_005"
+bad_case_type = "B3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

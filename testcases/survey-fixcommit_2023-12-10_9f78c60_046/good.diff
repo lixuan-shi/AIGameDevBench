@@ -1,0 +1,14 @@
+diff --git a/source/match/Navigation.gd b/source/match/Navigation.gd
+index ded740b..69a64a6 100644
+--- a/source/match/Navigation.gd
++++ b/source/match/Navigation.gd
+@@ -1,9 +1,5 @@
+ extends Node3D
+ 
+-var _dummy_agent_rids = {
+-	Constants.Match.Navigation.Domain.AIR: null,
+-	Constants.Match.Navigation.Domain.TERRAIN: null,
+-}
+ var _static_obstacles = []
+ 
+ @onready var air = find_child("Air")

@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-history_2026-04-28_8112fdd_015"
+category = "intent_translation"
+source_kind = "git"
+baseline_ref = "b70df690ad410e60eb61c43f0ded482cc9559641"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: README.md, overworld/maps/tilesets/kenney_terrain.tres, src/field/gameboard/debug/debug_map_boundaries.gd, src/field/gameboard/debug/tileset_debug_pathfinder_map.tres, src/field/gamepieces/controllers/cursor/tileset_cursor.tres, src/main.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "history_2026-04-28_8112fdd_015"
+bad_case_type = "B3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

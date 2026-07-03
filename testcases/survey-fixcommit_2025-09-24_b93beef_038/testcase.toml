@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-09-24_b93beef_038"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "eff31021a58b55ae5b9992fd8c8d8b4390bb08db"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scripts/Classes/Entities/Items/Fireball.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-09-24_b93beef_038"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

@@ -5,6 +5,7 @@ from pathlib import Path
 
 from aigamedevbench.webreport import (
     load_reports, build_summary, report_detail, load_testcase_catalog,
+    load_testcase_detail,
 )
 
 
@@ -278,6 +279,42 @@ def test_load_testcase_catalog_lists_files(tmp_path):
     assert "baseline/scripts/player.gd" in files
 
 
+def test_load_testcase_catalog_omits_full_file_contents(tmp_path):
+    _write_testcase(tmp_path, "tc-a", extra_files={"fix.diff": "diff body"})
+
+    catalog = load_testcase_catalog(tmp_path)
+
+    assert "file_contents" not in catalog[0]
+    assert catalog[0]["files"] == ["fix.diff", "testcase.toml"]
+
+
+def test_load_testcase_detail_includes_full_text_file_contents(tmp_path):
+    _write_testcase(tmp_path, "tc-a", extra_files={
+        "fix.diff": "diff body",
+        "baseline/scripts/player.gd": "extends Node\n",
+    })
+
+    detail = load_testcase_detail(tmp_path, "tc-a")
+    by_path = {f["path"]: f for f in detail["file_contents"]}
+    script_path = tmp_path / "tc-a" / "baseline" / "scripts" / "player.gd"
+
+    assert by_path["fix.diff"]["is_text"] is True
+    assert by_path["fix.diff"]["content"] == "diff body"
+    assert by_path["baseline/scripts/player.gd"]["content"] == script_path.read_bytes().decode("utf-8")
+    assert detail["files"] == [f["path"] for f in detail["file_contents"]]
+
+
+def test_load_testcase_detail_marks_binary_files_without_content(tmp_path):
+    tc_dir = _write_testcase(tmp_path, "tc-a")
+    (tc_dir / "sprite.bin").write_bytes(b"abc\x00def")
+
+    detail = load_testcase_detail(tmp_path, "tc-a")
+    by_path = {f["path"]: f for f in detail["file_contents"]}
+
+    assert by_path["sprite.bin"]["is_text"] is False
+    assert by_path["sprite.bin"]["content"] is None
+    assert by_path["sprite.bin"]["size"] == 7
+
 def test_load_testcase_catalog_skips_non_testcase_dirs(tmp_path):
     _write_testcase(tmp_path, "tc-a")
     (tmp_path / "not_a_testcase").mkdir()
@@ -302,3 +339,9 @@ def test_load_testcase_catalog_tolerates_bad_manifest(tmp_path):
 
 def test_load_testcase_catalog_missing_dir_returns_empty(tmp_path):
     assert load_testcase_catalog(tmp_path / "nope") == []
+
+
+def test_load_testcase_detail_missing_testcase_returns_none(tmp_path):
+    _write_testcase(tmp_path, "tc-a")
+
+    assert load_testcase_detail(tmp_path, "missing") is None

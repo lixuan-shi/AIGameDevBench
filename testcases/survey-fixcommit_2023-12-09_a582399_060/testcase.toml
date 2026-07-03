@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-12-09_a582399_060"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "3219690ae7e47640f7932efb319f242c32598624"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scripts/components/charclasscomponent/CharClassSelection.gd, scripts/components/charclasscomponent/CharClassSelection.tscn, scripts/components/charclasscomponent/CharacterClassResource.gd, scripts/components/charclasscomponent/characterclasscomponent.gd, scripts/network/rpcs/gameserver/sync.gd, scripts/singletons/jdungeon.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-12-09_a582399_060"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

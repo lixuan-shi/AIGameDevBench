@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-08-02_614d650_039"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "52450617a302b2520e57d8f2722af3eaf6215ba7"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\a-little-game-called-mario"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/levels/Flappy/Characters/Obstacles/Pipes.tscn, scenes/levels/Flappy/Characters/Player/PlayerFlying.tscn, scenes/levels/Flappy/Flappy01.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-08-02_614d650_039"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

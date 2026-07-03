@@ -5,7 +5,7 @@ var actor: Node
 
 
 func _init(new_actor: Node) -> void:
-	# TODO: Store the actor reference
+	# TODO: implement
 	pass
 
 

@@ -1,0 +1,12 @@
+diff --git a/scripts/components/charclasscomponent/characterclasscomponent.gd b/scripts/components/charclasscomponent/characterclasscomponent.gd
+index 9d34665..6693f11 100644
+--- a/scripts/components/charclasscomponent/characterclasscomponent.gd
++++ b/scripts/components/charclasscomponent/characterclasscomponent.gd
+@@ -189,7 +189,6 @@ func replace_classes(newClasses: Array[String]):
+ 			add_class(charclass)
+ 
+ 
+-
+ ## Applies bonuses and multipliers to the character's StatsSynchronizerComponent
+ func apply_stats():
+ 	#If the stats are not ready, wait another frame.

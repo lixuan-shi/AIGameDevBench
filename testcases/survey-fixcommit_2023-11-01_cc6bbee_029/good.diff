@@ -1,0 +1,12 @@
+diff --git a/scenes/root/Root.gd b/scenes/root/Root.gd
+index 37742b1..3aadd33 100644
+--- a/scenes/root/Root.gd
++++ b/scenes/root/Root.gd
+@@ -44,6 +44,7 @@ func register_npcs():
+ 	J.register_npc_scene("MilkLady", "res://scenes/npcs/milklady/Milklady.tscn")
+ 	J.register_npc_scene("Turtur", "res://scenes/npcs/turtur/Turtur.tscn")
+ 
++
+ func register_items():
+ 	J.register_item_scene("Gold", "res://scenes/items/varia/gold/Gold.tscn")
+ 

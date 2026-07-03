@@ -1,0 +1,46 @@
+diff --git a/game/Scripts/Game/3D/Hand.gd b/game/Scripts/Game/3D/Hand.gd
+index 6e0efc0..6fbb754 100644
+--- a/game/Scripts/Game/3D/Hand.gd
++++ b/game/Scripts/Game/3D/Hand.gd
+@@ -78,7 +78,7 @@ func srv_add_card(card: Card) -> bool:
+ 		_srv_set_card_positions()
+ 		
+ 		card.connect("client_set_hover_position", self, "_on_client_set_card_position")
+-		card.connect("piece_exiting_tree", self, "_on_card_exiting_tree")
++		card.connect("card_exiting_tree", self, "_on_card_exiting_tree")
+ 		
+ 		card.rpc("set_collisions_on", false)
+ 		
+@@ -100,7 +100,7 @@ func srv_remove_card(card: Card) -> void:
+ 	_srv_set_card_positions()
+ 	
+ 	card.disconnect("client_set_hover_position", self, "_on_client_set_card_position")
+-	card.disconnect("piece_exiting_tree", self, "_on_card_exiting_tree")
++	card.disconnect("card_exiting_tree", self, "_on_card_exiting_tree")
+ 	
+ 	# The card may be removed because the game is exiting!
+ 	if get_tree().has_network_peer():
+diff --git a/game/Scripts/Game/Pieces/Card.gd b/game/Scripts/Game/Pieces/Card.gd
+index 08f5141..d36e700 100644
+--- a/game/Scripts/Game/Pieces/Card.gd
++++ b/game/Scripts/Game/Pieces/Card.gd
+@@ -24,6 +24,9 @@ extends StackablePiece
+ 
+ class_name Card
+ 
++# Used by hands so they know to release the card.
++signal card_exiting_tree(card)
++
+ var over_hand: int = 0
+ 
+ # Check if the card will collide with other pieces.
+@@ -41,3 +44,9 @@ remotesync func set_collisions_on(on: bool) -> void:
+ 	if on:
+ 		mask = 1
+ 	collision_mask = mask
++
++func _ready():
++	connect("tree_exiting", self, "_on_tree_exiting")
++
++func _on_tree_exiting():
++	emit_signal("card_exiting_tree", self)

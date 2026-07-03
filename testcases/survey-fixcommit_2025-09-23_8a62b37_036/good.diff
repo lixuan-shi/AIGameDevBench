@@ -1,0 +1,87 @@
+diff --git a/Scripts/Classes/Entities/ShellClass.gd b/Scripts/Classes/Entities/ShellClass.gd
+index a4f950a..4406e19 100644
+--- a/Scripts/Classes/Entities/ShellClass.gd
++++ b/Scripts/Classes/Entities/ShellClass.gd
+@@ -15,7 +15,7 @@ var can_kick := false
+ 
+ var player: Player = null
+ 
+-const COMBO_VALS := [500, 800, 1000, 2000, 4000, 5000, 8000, null]
++const COMBO_VALS := [100, 200, 400, 500, 800, 1000, 2000, 4000, 5000, 8000, null]
+ 
+ var wake_meter := 0.0 ## SMB1R IS WOKE
+ 
+@@ -40,7 +40,7 @@ func on_player_stomped_on(stomped_player: Player) -> void:
+ 		return
+ 	if not moving:
+ 		direction = sign(global_position.x - stomped_player.global_position.x)
+-		kick()
++		kick(stomped_player)
+ 	else:
+ 		DiscoLevel.combo_meter += 10
+ 		moving = false
+@@ -59,18 +59,41 @@ func on_player_hit(hit_player: Player) -> void:
+ 		return 
+ 	if not moving:
+ 		direction = sign(global_position.x - hit_player.global_position.x )
+-		kick()
++		kick(hit_player)
+ 	else:
+ 		hit_player.damage()
+-
+-func kick() -> void:
++		
++func award_score(award_level: int) -> void:
++	if award_level >= 10:
++		if Global.current_game_mode == Global.GameMode.CHALLENGE or Settings.file.difficulty.inf_lives:
++			$ScoreNoteSpawner.spawn_note(10000)
++		else:
++			AudioManager.play_global_sfx("1_up")
++			Global.lives += 1
++			$ScoreNoteSpawner.spawn_one_up_note()
++	else:
++		$ScoreNoteSpawner.spawn_note(COMBO_VALS[award_level])
++		
++func get_kick_award(hit_player: Player) -> int:
++	var award_level = hit_player.stomp_combo + 2
++	if wake_meter > 6.96:
++		award_level = 9
++	elif wake_meter > 6.75:
++		award_level = 5
++	elif wake_meter > 6.25:
++		award_level = 3
++	if award_level > 10:
++		award_level = 10
++	return award_level
++
++func kick(hit_player: Player) -> void:
+ 	update_hitbox()
+ 	DiscoLevel.combo_meter += 25
+ 	moving = true
+ 	if can_air_kick:
+ 		$ScoreNoteSpawner.spawn_note(8000)
+ 	else:
+-		$ScoreNoteSpawner.spawn_note(400)
++		award_score(get_kick_award(hit_player))
+ 	AudioManager.play_sfx("kick", global_position)
+ 
+ func _physics_process(delta: float) -> void:
+@@ -105,16 +128,8 @@ func handle_block_collision() -> void:
+ 			i.shell_block_hit.emit(self)
+ 
+ func add_combo() -> void:
+-	if combo >= 7:
+-		if Global.current_game_mode == Global.GameMode.CHALLENGE or Settings.file.difficulty.inf_lives:
+-			Global.score += 10000
+-			$ScoreNoteSpawner.spawn_note(10000)
+-		else:
+-			AudioManager.play_global_sfx("1_up")
+-			Global.lives += 1
+-			$ScoreNoteSpawner.spawn_one_up_note()
+-	else:
+-		$ScoreNoteSpawner.spawn_note(COMBO_VALS[combo])
++	award_score(combo + 3)
++	if combo < 7:
+ 		combo += 1
+ 
+ func update_hitbox() -> void:

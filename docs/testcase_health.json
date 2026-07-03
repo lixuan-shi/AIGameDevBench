@@ -1,0 +1,251 @@
+{
+  "schema": "aigdbench/health/1",
+  "total": 17,
+  "healthy": 5,
+  "testcases": [
+    {
+      "id": "gdb-task_0002",
+      "category": "behavior_logic",
+      "verifier": "godot_scene_assert",
+      "source_kind": "folder",
+      "source_repo": "GameDevBench:task_0002",
+      "flags": [],
+      "noop_score": 0.0,
+      "noop_status": "fail",
+      "patch_score": 1.0,
+      "healthy": true
+    },
+    {
+      "id": "gdb-task_0007",
+      "category": "behavior_logic",
+      "verifier": "godot_scene_assert",
+      "source_kind": "folder",
+      "source_repo": "GameDevBench:task_0007",
+      "flags": [
+        "leaky_baseline(noop=0.09)"
+      ],
+      "noop_score": 0.09090909090909091,
+      "noop_status": "partial",
+      "patch_score": 1.0,
+      "healthy": false
+    },
+    {
+      "id": "gdb-task_0012",
+      "category": "behavior_logic",
+      "verifier": "godot_scene_assert",
+      "source_kind": "folder",
+      "source_repo": "GameDevBench:task_0012",
+      "flags": [],
+      "noop_score": 0.0,
+      "noop_status": "fail",
+      "noop_error": "L0/L1 gate failed: scenes\\entities\\tank\\weapon\\bullet.tscn: signal 'area_entered' connected to method '_on_area_entered' which is not defined; scenes\\entities\\tank\\weapon\\bullet.tscn: signal 'body_entered' connected to method '_on_body_entered' which is not defined",
+      "patch_score": 1.0,
+      "healthy": true
+    },
+    {
+      "id": "gdb-task_0013",
+      "category": "behavior_logic",
+      "verifier": "godot_scene_assert",
+      "source_kind": "folder",
+      "source_repo": "GameDevBench:task_0013",
+      "flags": [],
+      "noop_score": 0.0,
+      "noop_status": "fail",
+      "patch_score": 1.0,
+      "healthy": true
+    },
+    {
+      "id": "gdb-task_0025",
+      "category": "behavior_logic",
+      "verifier": "godot_scene_assert",
+      "source_kind": "folder",
+      "source_repo": "GameDevBench:task_0025",
+      "flags": [],
+      "noop_score": 0.0,
+      "noop_status": "fail",
+      "patch_score": 1.0,
+      "healthy": true
+    },
+    {
+      "id": "gdb-task_0027",
+      "category": "behavior_logic",
+      "verifier": "godot_scene_assert",
+      "source_kind": "folder",
+      "source_repo": "GameDevBench:task_0027",
+      "flags": [
+        "leaky_baseline(noop=0.10)"
+      ],
+      "noop_score": 0.1,
+      "noop_status": "partial",
+      "patch_score": 1.0,
+      "healthy": false
+    },
+    {
+      "id": "gdb-task_0051",
+      "category": "behavior_logic",
+      "verifier": "godot_scene_assert",
+      "source_kind": "folder",
+      "source_repo": "GameDevBench:task_0051",
+      "flags": [
+        "leaky_baseline(noop=0.20)"
+      ],
+      "noop_score": 0.2,
+      "noop_status": "partial",
+      "patch_score": 1.0,
+      "healthy": false
+    },
+    {
+      "id": "gdb-task_0052",
+      "category": "behavior_logic",
+      "verifier": "godot_scene_assert",
+      "source_kind": "folder",
+      "source_repo": "GameDevBench:task_0052",
+      "flags": [
+        "leaky_baseline(noop=0.23)"
+      ],
+      "noop_score": 0.23076923076923078,
+      "noop_status": "partial",
+      "patch_score": 1.0,
+      "healthy": false
+    },
+    {
+      "id": "gdb-task_0103",
+      "category": "behavior_logic",
+      "verifier": "godot_scene_assert",
+      "source_kind": "folder",
+      "source_repo": "GameDevBench:task_0103",
+      "flags": [
+        "leaky_baseline(noop=0.21)"
+      ],
+      "noop_score": 0.21428571428571427,
+      "noop_status": "partial",
+      "patch_score": 1.0,
+      "healthy": false
+    },
+    {
+      "id": "gdb-task_0281",
+      "category": "behavior_logic",
+      "verifier": "godot_scene_assert",
+      "source_kind": "folder",
+      "source_repo": "GameDevBench:task_0281",
+      "flags": [
+        "leaky_baseline(noop=0.21)"
+      ],
+      "noop_score": 0.21052631578947367,
+      "noop_status": "partial",
+      "patch_score": 1.0,
+      "healthy": false
+    },
+    {
+      "id": "pathfinding-npc-bridge-astar",
+      "category": "behavior_logic",
+      "verifier": "godot_scene_assert",
+      "source_kind": "folder",
+      "source_repo": "GameDevFeatsShowcase:NPCAI/Pathfinding",
+      "flags": [],
+      "noop_score": 0.0,
+      "noop_status": "fail",
+      "patch_score": 1.0,
+      "healthy": true
+    },
+    {
+      "id": "survey-codex_2026-06-25_019efd92-e56c-7503-8449-a83184624e21",
+      "category": "precise_edit",
+      "verifier": "survey_bad_case",
+      "source_kind": "git",
+      "source_repo": "C:\\Users\\WinterZhao\\Codes\\godot_demo",
+      "flags": [
+        "nonportable_abs_path"
+      ],
+      "repo_present": true,
+      "noop_score": 0.0,
+      "noop_status": "fail",
+      "oracle_breadth": 10,
+      "patch_score": null,
+      "healthy": false
+    },
+    {
+      "id": "survey-history_2026-06-10_2f271c6_000",
+      "category": "behavior_logic",
+      "verifier": "survey_bad_case",
+      "source_kind": "git",
+      "source_repo": "C:\\Users\\WinterZhao\\Documents\\test",
+      "flags": [
+        "nonportable_abs_path",
+        "overbroad_oracle(94)"
+      ],
+      "repo_present": true,
+      "noop_score": 0.0,
+      "noop_status": "fail",
+      "oracle_breadth": 94,
+      "patch_score": null,
+      "healthy": false
+    },
+    {
+      "id": "survey-history_2026-06-12_445a385_005",
+      "category": "behavior_logic",
+      "verifier": "survey_bad_case",
+      "source_kind": "git",
+      "source_repo": "C:\\Users\\WinterZhao\\Documents\\test",
+      "flags": [
+        "nonportable_abs_path",
+        "overbroad_oracle(93)"
+      ],
+      "repo_present": true,
+      "noop_score": 0.0,
+      "noop_status": "fail",
+      "oracle_breadth": 93,
+      "patch_score": null,
+      "healthy": false
+    },
+    {
+      "id": "survey-history_2026-06-15_1781fe0_010",
+      "category": "behavior_logic",
+      "verifier": "survey_bad_case",
+      "source_kind": "git",
+      "source_repo": "C:\\Users\\WinterZhao\\Documents\\test",
+      "flags": [
+        "nonportable_abs_path",
+        "overbroad_oracle(2711)"
+      ],
+      "repo_present": true,
+      "noop_score": 0.0,
+      "noop_status": "fail",
+      "oracle_breadth": 2711,
+      "patch_score": null,
+      "healthy": false
+    },
+    {
+      "id": "survey-two-step-signal-oracle",
+      "category": "architecture",
+      "verifier": "survey_bad_case",
+      "source_kind": "git",
+      "source_repo": "C:\\tmp\\godot_demo_survey_badcase",
+      "flags": [
+        "nonportable_abs_path"
+      ],
+      "repo_present": true,
+      "noop_score": 0.0,
+      "noop_status": "fail",
+      "oracle_breadth": 3,
+      "patch_score": null,
+      "healthy": false
+    },
+    {
+      "id": "survey-unknown_2026-06-25_000",
+      "category": "intent_translation",
+      "verifier": "survey_bad_case",
+      "source_kind": "git",
+      "source_repo": "C:\\Users\\WinterZhao\\Codes\\godot_demo",
+      "flags": [
+        "nonportable_abs_path"
+      ],
+      "repo_present": true,
+      "noop_score": 0.0,
+      "noop_status": "fail",
+      "oracle_breadth": 3,
+      "patch_score": null,
+      "healthy": false
+    }
+  ]
+}

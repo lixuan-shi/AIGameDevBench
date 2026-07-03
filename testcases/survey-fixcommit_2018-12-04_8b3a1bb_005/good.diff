@@ -1,0 +1,318 @@
+diff --git a/godot/dialogue/Dialogue.gd b/godot/dialogue/Dialogue.gd
+index 790b561..db4a68a 100644
+--- a/godot/dialogue/Dialogue.gd
++++ b/godot/dialogue/Dialogue.gd
+@@ -4,15 +4,12 @@ export (String, FILE, "*.json") var file_path : String
+ 
+ func load() -> Dictionary:
+ 	"""
+-	Parse a JSON file and returns it or an empty dictionary if the
+-	file doesn't exist.
++	Parses a JSON file and returns it as a dictionary
+ 	"""
+-	
+ 	var file = File.new()
+-	
+-	if file.file_exists(file_path):
+-		file.open(file_path, file.READ)
+-		var dialogue = parse_json(file.get_as_text())
+-		return dialogue
+-	
+-	return {}
++	assert file.file_exists(file_path)
++
++	file.open(file_path, file.READ)
++	var dialogue = parse_json(file.get_as_text())
++	assert dialogue.size() > 0
++	return dialogue
+diff --git a/godot/dialogue/Dialogue.tscn b/godot/dialogue/Dialogue.tscn
+index 800aac8..6ec0738 100644
+--- a/godot/dialogue/Dialogue.tscn
++++ b/godot/dialogue/Dialogue.tscn
+@@ -2,9 +2,7 @@
+ 
+ [ext_resource path="res://dialogue/Dialogue.gd" type="Script" id=1]
+ 
+-
+-
+ [node name="Dialogue" type="Node"]
+ script = ExtResource( 1 )
+-dialogue_file = ""
++file_path = null
+ 
+diff --git a/godot/dialogue/DialoguePlayer.gd b/godot/dialogue/DialoguePlayer.gd
+index 0a05101..7f6cf5e 100644
+--- a/godot/dialogue/DialoguePlayer.gd
++++ b/godot/dialogue/DialoguePlayer.gd
+@@ -2,40 +2,32 @@ extends Node
+ 
+ class_name DialoguePlayer
+ 
+-var dialogue_keys : Array = []
+-var dialogue_name : String = ""
+-var index : int = 0
+-var dialogue_text : String = ""
+-
+ signal started
+ signal finished
+ 
+-func start(dialogue):
++var title : String = ""
++var text : String = ""
++
++var _conversation : Array
++var _index_current : int = 0
++
++func start(dialogue_dict):
++	"""
++	Takes a dictionary of conversation data returned by Dialogue.load()
++	and stores it in an array
++	"""
+ 	emit_signal("started")
+-	index = 0
+-	to_index(dialogue)
+-	
+-	dialogue_text = dialogue_keys[index].text
+-	dialogue_name = dialogue_keys[index].name
+-	
+-	if is_finished():
+-		emit_signal("finished")
++	_conversation = dialogue_dict.values()
++	_index_current = 0
++	_update()
+ 
+ func next():
+-	index += 1
+-	
+-	if is_finished():
+-		emit_signal("finished")
+-		return
+-	
+-	dialogue_text = dialogue_keys[index].text
+-	dialogue_name = dialogue_keys[index].name
+-
+-func to_index(dialogue):
+-	dialogue_keys.clear()
+-	
+-	for key in dialogue:
+-		dialogue_keys.append(dialogue[key])
++	_index_current += 1
++	assert _index_current <= _conversation.size()
++	_update()
+ 
+-func is_finished() -> bool:
+-	return index >= dialogue_keys.size() -1
++func _update():
++	text = _conversation[_index_current].text
++	title = _conversation[_index_current].name
++	if _index_current == _conversation.size() - 1:
++		emit_signal("finished")
+diff --git a/godot/dialogue/data/test_conversation.json b/godot/dialogue/data/test_conversation.json
+new file mode 100644
+index 0000000..b26d47c
+--- /dev/null
++++ b/godot/dialogue/data/test_conversation.json
+@@ -0,0 +1,4 @@
++{
++    "001" : {"name":"", "text":"You found something." },
++    "002" : {"name":"", "text":"I don't know what that is, but at least it's something!" }
++}
+diff --git a/godot/local_map/DialogueBox.gd b/godot/local_map/DialogueBox.gd
+index 10b33ec..3dd0874 100644
+--- a/godot/local_map/DialogueBox.gd
++++ b/godot/local_map/DialogueBox.gd
+@@ -1,34 +1,32 @@
+ extends Control
+ 
+ onready var dialogue_player : DialoguePlayer = get_node("DialoguePlayer")
++
+ onready var name_label : Label = get_node("Panel/Colums/Name")
+ onready var text_label : Label = get_node("Panel/Colums/Text")
+-onready var next_button : Button = get_node("Panel/Colums/Next")
+ 
+-func _ready():
+-	next_button.connect("button_down", self, "_on_next_button_down")
+-	dialogue_player.connect("finished", self, "_on_dialogue_player_finished")
+-	
++onready var button_next : Button = get_node("Panel/Colums/ButtonNext")
++onready var button_finished : Button = get_node("Panel/Colums/ButtonFinished")
++
+ func initialize(dialogue):
+-	next_button.grab_focus()
+-	next_button.text = "Next"
+-	
++	button_next.grab_focus()
++	button_next.text = "Next"
+ 	dialogue_player.start(dialogue)
+-	
+ 	update_content()
+ 	show()
+ 
+-func _on_dialogue_player_finished():
+-	next_button.text = "Finished"
+-	
+-	yield(next_button, "button_down")
+-	
+-	hide()
+-
+-func _on_next_button_down():
++func _on_ButtonNext_pressed() -> void:
+ 	dialogue_player.next()
+ 	update_content()
+-	
++
++func _on_DialoguePlayer_finished() -> void:
++	button_next.hide()
++	button_finished.grab_focus()
++	button_finished.show()
++
++func _on_ButtonFinished_pressed() -> void:
++	hide()
++
+ func update_content() -> void:
+-	name_label.text = dialogue_player.dialogue_name
+-	text_label.text = dialogue_player.dialogue_text
++	name_label.text = dialogue_player.title
++	text_label.text = dialogue_player.text
+diff --git a/godot/local_map/LocalMap.tscn b/godot/local_map/LocalMap.tscn
+index f60cb99..b6ec265 100644
+--- a/godot/local_map/LocalMap.tscn
++++ b/godot/local_map/LocalMap.tscn
+@@ -15,7 +15,6 @@
+ [ext_resource path="res://local_map/DialogueBox.gd" type="Script" id=13]
+ [ext_resource path="res://dialogue/DialoguePlayer.tscn" type="PackedScene" id=14]
+ 
+-
+ [node name="LocalMap" type="Node2D"]
+ script = ExtResource( 1 )
+ 
+@@ -72,7 +71,7 @@ sort_enabled = true
+ script = ExtResource( 5 )
+ 
+ [node name="Leader" parent="Grid/Pawns" instance=ExtResource( 6 )]
+-position = Vector2( 480, 420 )
++position = Vector2( 670, 290 )
+ 
+ [node name="Follower" parent="Grid/Pawns" instance=ExtResource( 7 )]
+ position = Vector2( 356, 290 )
+@@ -83,7 +82,6 @@ position = Vector2( 293, 290 )
+ [node name="Actor2" type="Node2D" parent="Grid/Pawns" groups=[
+ "enemy",
+ ]]
+-editor/display_folded = true
+ position = Vector2( 480, 480 )
+ z_index = 1
+ script = ExtResource( 8 )
+@@ -94,7 +92,6 @@ formation = ExtResource( 9 )
+ texture = ExtResource( 10 )
+ 
+ [node name="Object" type="Node2D" parent="Grid/Pawns"]
+-editor/display_folded = true
+ position = Vector2( 544, 288 )
+ script = ExtResource( 8 )
+ type = 2
+@@ -104,18 +101,17 @@ formation = ExtResource( 9 )
+ texture = ExtResource( 11 )
+ 
+ [node name="Dialogue" parent="Grid/Pawns/Object" instance=ExtResource( 12 )]
+-file_path = "res://dialogue/dialogue_data/object.json"
++file_path = "res://dialogue/data/test_conversation.json"
+ 
+ [node name="MapInterface" type="CanvasLayer" parent="."]
+ pause_mode = 2
+-editor/display_folded = true
+ layer = 1
+ offset = Vector2( 0, 0 )
+ rotation = 0.0
+ scale = Vector2( 1, 1 )
+ transform = Transform2D( 1, 0, 0, 1, 0, 0 )
+ 
+-[node name="Dialogue" type="Control" parent="MapInterface"]
++[node name="DialogueBox" type="Control" parent="MapInterface"]
+ visible = false
+ anchor_left = 0.0
+ anchor_top = 0.0
+@@ -129,7 +125,7 @@ size_flags_horizontal = 1
+ size_flags_vertical = 1
+ script = ExtResource( 13 )
+ 
+-[node name="Panel" type="Panel" parent="MapInterface/Dialogue"]
++[node name="Panel" type="Panel" parent="MapInterface/DialogueBox"]
+ anchor_left = 0.0
+ anchor_top = 1.0
+ anchor_right = 1.0
+@@ -142,7 +138,7 @@ mouse_default_cursor_shape = 0
+ size_flags_horizontal = 1
+ size_flags_vertical = 1
+ 
+-[node name="Colums" type="HBoxContainer" parent="MapInterface/Dialogue/Panel"]
++[node name="Colums" type="HBoxContainer" parent="MapInterface/DialogueBox/Panel"]
+ anchor_left = 0.0
+ anchor_top = 0.0
+ anchor_right = 0.0
+@@ -159,7 +155,7 @@ size_flags_horizontal = 3
+ size_flags_vertical = 3
+ alignment = 0
+ 
+-[node name="Name" type="Label" parent="MapInterface/Dialogue/Panel/Colums"]
++[node name="Name" type="Label" parent="MapInterface/DialogueBox/Panel/Colums"]
+ anchor_left = 0.0
+ anchor_top = 0.0
+ anchor_right = 0.0
+@@ -177,7 +173,7 @@ percent_visible = 1.0
+ lines_skipped = 0
+ max_lines_visible = -1
+ 
+-[node name="Text" type="Label" parent="MapInterface/Dialogue/Panel/Colums"]
++[node name="Text" type="Label" parent="MapInterface/DialogueBox/Panel/Colums"]
+ anchor_left = 0.0
+ anchor_top = 0.0
+ anchor_right = 0.0
+@@ -198,7 +194,7 @@ percent_visible = 1.0
+ lines_skipped = 0
+ max_lines_visible = -1
+ 
+-[node name="Next" type="Button" parent="MapInterface/Dialogue/Panel/Colums"]
++[node name="ButtonNext" type="Button" parent="MapInterface/DialogueBox/Panel/Colums"]
+ anchor_left = 0.0
+ anchor_top = 0.0
+ anchor_right = 0.0
+@@ -222,8 +218,37 @@ text = "Next"
+ flat = false
+ align = 1
+ 
+-[node name="DialoguePlayer" parent="MapInterface/Dialogue" instance=ExtResource( 14 )]
++[node name="ButtonFinished" type="Button" parent="MapInterface/DialogueBox/Panel/Colums"]
++visible = false
++anchor_left = 0.0
++anchor_top = 0.0
++anchor_right = 0.0
++anchor_bottom = 0.0
++margin_left = 1700.0
++margin_right = 1880.0
++margin_bottom = 80.0
++rect_min_size = Vector2( 180, 80 )
++rect_pivot_offset = Vector2( 0, 0 )
++rect_clip_content = false
++focus_mode = 2
++mouse_filter = 0
++mouse_default_cursor_shape = 0
++size_flags_horizontal = 1
++size_flags_vertical = 0
++toggle_mode = false
++enabled_focus_mode = 2
++shortcut = null
++group = null
++text = "Done"
++flat = false
++align = 1
++
++[node name="DialoguePlayer" parent="MapInterface/DialogueBox" instance=ExtResource( 14 )]
+ 
++[connection signal="dialogue" from="." to="MapInterface/DialogueBox" method="initialize"]
+ [connection signal="enemies_encountered" from="Grid" to="." method="_on_Grid_enemies_encountered"]
+ [connection signal="moved" from="Grid/Pawns/Leader" to="Grid/Pawns/Follower" method="_on_target_Pawn_moved"]
+ [connection signal="moved" from="Grid/Pawns/Follower" to="Grid/Pawns/Follower2" method="_on_target_Pawn_moved"]
++[connection signal="pressed" from="MapInterface/DialogueBox/Panel/Colums/ButtonNext" to="MapInterface/DialogueBox" method="_on_ButtonNext_pressed"]
++[connection signal="pressed" from="MapInterface/DialogueBox/Panel/Colums/ButtonFinished" to="MapInterface/DialogueBox" method="_on_ButtonFinished_pressed"]
++[connection signal="finished" from="MapInterface/DialogueBox/DialoguePlayer" to="MapInterface/DialogueBox" method="_on_DialoguePlayer_finished"]

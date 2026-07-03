@@ -1,0 +1,16 @@
+diff --git a/scenes/main.tscn b/scenes/main.tscn
+index 5736087..ce4e8a9 100644
+--- a/scenes/main.tscn
++++ b/scenes/main.tscn
+@@ -1,8 +1,9 @@
+ [gd_scene load_steps=2 format=3 uid="uid://b0missing0resource0import"]
+ 
+-[ext_resource type="Texture2D" path="res://assets/player.svg" id="1_player"]
++[sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_1"]
++size = Vector2(64, 64)
+ 
+ [node name="Main" type="Node2D"]
+ 
+ [node name="Player" type="Sprite2D" parent="."]
+-texture = ExtResource("1_player")
++texture = SubResource("PlaceholderTexture2D_1")

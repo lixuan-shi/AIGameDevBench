@@ -1,0 +1,5 @@
+{
+  "move_speed": 300,
+  "gravity": 1000,
+  "jump_velocity": 600
+}

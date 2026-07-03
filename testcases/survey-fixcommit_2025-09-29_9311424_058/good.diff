@@ -1,0 +1,26 @@
+diff --git a/Scenes/Prefabs/Entities/Explosion.tscn b/Scenes/Prefabs/Entities/Explosion.tscn
+index 7b2332d..e0da069 100644
+--- a/Scenes/Prefabs/Entities/Explosion.tscn
++++ b/Scenes/Prefabs/Entities/Explosion.tscn
+@@ -258,7 +258,7 @@ metadata/_custom_type_script = "uid://caq1qiwmy0mox"
+ 
+ [node name="ResourceSetterNew" type="Node" parent="Sprite" node_paths=PackedStringArray("node_to_affect")]
+ script = ExtResource("4_dvv3e")
+-node_to_affect = NodePath("")
++node_to_affect = NodePath("..")
+ property_name = "sprite_frames"
+ resource_json = ExtResource("5_hjivi")
+ metadata/_custom_type_script = "uid://cbal8ms2oe1ik"
+diff --git a/Scripts/Classes/Entities/Player.gd b/Scripts/Classes/Entities/Player.gd
+index 356feb7..86d77f4 100644
+--- a/Scripts/Classes/Entities/Player.gd
++++ b/Scripts/Classes/Entities/Player.gd
+@@ -684,7 +684,7 @@ func power_up_animation(new_power_state := "") -> void:
+ 		if Settings.file.visuals.transform_style == 0:
+ 			sprite.speed_scale = 3
+ 			sprite.play("Grow")
+-			var rainbow = new_power_state != "Big"
++			var rainbow = new_power_state != "Big" and (power_state.state_name != "Big" and new_power_state != "Small")
+ 			if rainbow:
+ 				transforming = true
+ 				sprite.material.set_shader_parameter("enabled", true)

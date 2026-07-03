@@ -1,0 +1,73 @@
+diff --git a/source/match/Navigation.gd b/source/match/Navigation.gd
+index 3d557d1..15ff450 100644
+--- a/source/match/Navigation.gd
++++ b/source/match/Navigation.gd
+@@ -53,29 +53,22 @@ func _setup_static_obstacles():
+ 	for domain in [
+ 		Constants.Match.Navigation.Domain.AIR, Constants.Match.Navigation.Domain.TERRAIN
+ 	]:
+-		for edge in [
+-			[Vector2(0, 0), Vector2(1, 0)],
+-			[Vector2(1, 0), Vector2(1, 1)],
+-			[Vector2(1, 1), Vector2(0, 1)],
+-			[Vector2(0, 1), Vector2(0, 0)],
+-		]:
+-			var actual_edge = [edge[0] * _match.map.size, edge[1] * _match.map.size]
+-			var obstacle = NavigationServer3D.obstacle_create()
+-			NavigationServer3D.obstacle_set_map(obstacle, get_navigation_map_rid_by_domain(domain))
+-			(
+-				NavigationServer3D
+-				. obstacle_set_vertices(
+-					obstacle,
+-					[
+-						Vector3(actual_edge[0].x, -99, actual_edge[0].y),
+-						Vector3(actual_edge[0].x, 99, actual_edge[0].y),
+-						Vector3(actual_edge[1].x, 99, actual_edge[1].y),
+-						Vector3(actual_edge[1].x, -99, actual_edge[1].y),
+-					]
+-				)
+-			)
+-			NavigationServer3D.obstacle_set_avoidance_enabled(obstacle, true)
+-			_static_obstacles.append(obstacle)
++		var obstacle = NavigationServer3D.obstacle_create()
++		NavigationServer3D.obstacle_set_map(obstacle, get_navigation_map_rid_by_domain(domain))
++		var obstacle_y = {
++			Constants.Match.Navigation.Domain.AIR: Constants.Match.Air.Y,
++			Constants.Match.Navigation.Domain.TERRAIN: 0,
++		}[domain]
++		NavigationServer3D.obstacle_set_position(obstacle, Vector3(0, obstacle_y, 0))
++		var obstacle_vertices = [
++			Vector3(0, 0, 0),
++			Vector3(0, 0, _match.map.size.y),
++			Vector3(_match.map.size.x, 0, _match.map.size.y),
++			Vector3(_match.map.size.x, 0, 0),
++		]
++		NavigationServer3D.obstacle_set_vertices(obstacle, obstacle_vertices)
++		NavigationServer3D.obstacle_set_avoidance_enabled(obstacle, true)
++		_static_obstacles.append(obstacle)
+ 
+ 
+ func _fix_navigation():
+diff --git a/tests/manual/TestOneUnit.tscn b/tests/manual/TestOneUnit.tscn
+index 53fc5a1..1c3f281 100644
+--- a/tests/manual/TestOneUnit.tscn
++++ b/tests/manual/TestOneUnit.tscn
+@@ -47,7 +47,7 @@ resource_local_to_scene = true
+ shader = ExtResource("8_fifyq")
+ shader_parameter/reference_texture = SubResource("ViewportTexture_ll23y")
+ 
+-[sub_resource type="ViewportTexture" id="ViewportTexture_hw1xu"]
++[sub_resource type="ViewportTexture" id="ViewportTexture_n2lq6"]
+ viewport_path = NodePath("HUD/MarginContainer/Minimap/MarginContainer/MinimapViewport")
+ 
+ [node name="Match" instance=ExtResource("1_fe2sx")]
+@@ -67,7 +67,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.263, 0, 12.637)
+ [node name="FogOfWarMask" parent="HUD/MarginContainer/Minimap/MarginContainer/MinimapViewport" index="3"]
+ material = SubResource("ShaderMaterial_kdlxq")
+ 
+-[node name="MinimapTextureRect" parent="HUD/MarginContainer/Minimap/MarginContainer/Control" index="0"]
+-texture = SubResource("ViewportTexture_hw1xu")
++[node name="MinimapTextureRect" parent="HUD/MarginContainer/Minimap/MarginContainer" index="1"]
++texture = SubResource("ViewportTexture_n2lq6")
+ 
+ [editable path="Map"]

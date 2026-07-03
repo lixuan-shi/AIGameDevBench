@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-09-30_d64facc_038"
+category = "precise_edit"
+source_kind = "git"
+baseline_ref = "d3ba9f661d7418e6ed25f1f5d3645088773d6310"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rts"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: source/match/hud/Minimap.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-09-30_d64facc_038"
+bad_case_type = "C3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

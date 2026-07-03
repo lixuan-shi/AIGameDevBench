@@ -1,0 +1,25 @@
+diff --git a/Scripts/Classes/Editor/LevelEditor.gd b/Scripts/Classes/Editor/LevelEditor.gd
+index 04b602c..ded6385 100644
+--- a/Scripts/Classes/Editor/LevelEditor.gd
++++ b/Scripts/Classes/Editor/LevelEditor.gd
+@@ -294,6 +294,8 @@ func return_to_editor() -> void:
+ 	return_editor_tiles()
+ 	%Camera.enabled = true
+ 	%Camera.make_current()
++	KeyItem.total_collected = 0
++	Door.unlocked_doors.clear()
+ 	editor_start.emit()
+ 	current_state = EditorState.IDLE
+ 	handle_hud()
+diff --git a/Scripts/Classes/Entities/Objects/Door.gd b/Scripts/Classes/Entities/Objects/Door.gd
+index 7ebc6cd..4a34d22 100644
+--- a/Scripts/Classes/Entities/Objects/Door.gd
++++ b/Scripts/Classes/Entities/Objects/Door.gd
+@@ -87,6 +87,7 @@ func player_exit(player: Player) -> void:
+ 	exiting_door_id = -1
+ 	can_enter = false
+ 	LevelEditor.play_door_transition = false
++	if same_scene_exiting_door != null: same_scene_exiting_door.get_node("Sprite").play("Idle")
+ 	same_scene_exiting_door = null
+ 	player.global_position = global_position
+ 	player.recenter_camera()

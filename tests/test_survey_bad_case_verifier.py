@@ -145,3 +145,54 @@ def test_survey_bad_case_verifier_fails_when_bad_diff_is_reproduced(tmp_path: Pa
     diff_check = next(c for c in result.checks if c.name == "does_not_reproduce_original_bad_diff")
     assert not diff_check.passed
     assert result.status == "fail"
+
+
+def test_survey_bad_case_verifier_flags_weak_oracle_as_non_scoreable(tmp_path: Path):
+    """A case with empty bad.diff, no runtime regression flags, and no process
+    context has a non-discriminating oracle and must be reported as fail."""
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "scripts").mkdir()
+    (workspace / "scripts" / "board.gd").write_text("extends Node\n", encoding="utf-8")
+    git_run(["init"], cwd=workspace)
+    git_run(["config", "user.email", "bench@test.local"], cwd=workspace)
+    git_run(["config", "user.name", "Bench"], cwd=workspace)
+    git_run(["add", "-A"], cwd=workspace)
+    git_run(["commit", "-m", "baseline"], cwd=workspace)
+    # A plausible-but-superficial edit to the relevant file.
+    (workspace / "scripts" / "board.gd").write_text("extends Node\n\n# tweak\n", encoding="utf-8")
+
+    tc_dir = tmp_path / "tc"
+    tc_dir.mkdir()
+    # No bad.diff written; l0/l1 pass flags null; no process signal.
+    (tc_dir / "survey_bad_case.json").write_text(json.dumps({
+        "expected": {
+            "bad_case_type": "A1",
+            "original_l0_pass": None,
+            "original_l1_pass": None,
+            "original_human_intervention_ratio": 0.0,
+            "original_rounds_to_resolution": 2,
+            "must_change_one_of": ["scripts/board.gd"],
+            "minimum_changed_files": 1,
+        },
+        "bench_record": {
+            "ai_agent_context": {"turns": []},
+            "survey_session": {"bad_case_type": "A1", "notes": "weak"},
+        },
+    }), encoding="utf-8")
+    testcase = Testcase(
+        id="survey-weak",
+        category="behavior_logic",
+        baseline_ref="HEAD",
+        task="fix",
+        verifier_type="survey_bad_case",
+        verifier_entry="survey_bad_case.json",
+        scoring_mode="checkpoints",
+        dir=tc_dir,
+    )
+
+    result = SurveyBadCaseVerifier().verify(testcase, workspace)
+
+    oracle_check = next(c for c in result.checks if c.name == "oracle_is_discriminating")
+    assert not oracle_check.passed
+    assert result.status == "fail"

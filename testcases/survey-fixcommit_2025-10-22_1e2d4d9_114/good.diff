@@ -1,0 +1,76 @@
+diff --git a/Scenes/Levels/SMB1/World6/6-2.tscn b/Scenes/Levels/SMB1/World6/6-2.tscn
+index 09985ae..1b7b4f6 100644
+--- a/Scenes/Levels/SMB1/World6/6-2.tscn
++++ b/Scenes/Levels/SMB1/World6/6-2.tscn
+@@ -253,13 +253,8 @@ position = Vector2(2624, -32)
+ pipe_id = 3
+ exit_only = true
+ 
+-[node name="Checkpoint2" parent="." instance=ExtResource("10_q2h2g")]
+-position = Vector2(1296, 0)
+-optional = true
+-
+ [node name="CheckpointFlag" parent="." instance=ExtResource("24_v8ufo")]
+ position = Vector2(1296, 0)
+-optional = true
+ 
+ [connection signal="block_destroyed" from="Tiles/BrickBlock" to="Tiles/BrickBlock/LevelPersistance" method="set_as_active_2"]
+ [connection signal="block_emptied" from="Tiles/BrickBlock" to="Tiles/BrickBlock/LevelPersistance" method="set_as_active"]
+diff --git a/Scenes/Levels/SMBLL/World3/3-2.tscn b/Scenes/Levels/SMBLL/World3/3-2.tscn
+index bf43233..b949396 100644
+--- a/Scenes/Levels/SMBLL/World3/3-2.tscn
++++ b/Scenes/Levels/SMBLL/World3/3-2.tscn
+@@ -204,6 +204,7 @@ position = Vector2(2200, -136)
+ [node name="CheckpointFlag" parent="." node_paths=PackedStringArray("nodes_to_delete") instance=ExtResource("22_686wu")]
+ position = Vector2(1328, 0)
+ nodes_to_delete = [NodePath("../Enemies/Blooper6")]
++optional = true
+ 
+ [node name="EntityGenerator" parent="." instance=ExtResource("22_lnx6r")]
+ position = Vector2(-72, -176)
+diff --git a/Scenes/Levels/SMBS/World2/2-1.tscn b/Scenes/Levels/SMBS/World2/2-1.tscn
+index f0d0c83..e720e3d 100644
+--- a/Scenes/Levels/SMBS/World2/2-1.tscn
++++ b/Scenes/Levels/SMBS/World2/2-1.tscn
+@@ -236,6 +236,7 @@ position = Vector2(3432, -120)
+ 
+ [node name="CheckpointFlag" parent="." instance=ExtResource("24_osugw")]
+ position = Vector2(2056, -64)
++optional = true
+ 
+ [node name="BrickBlock" parent="." instance=ExtResource("21_u54v8")]
+ position = Vector2(2040, -120)
+diff --git a/Scripts/Classes/Entities/Objects/CheckpointFlag.gd b/Scripts/Classes/Entities/Objects/CheckpointFlag.gd
+index f151663..7976d6e 100644
+--- a/Scripts/Classes/Entities/Objects/CheckpointFlag.gd
++++ b/Scripts/Classes/Entities/Objects/CheckpointFlag.gd
+@@ -6,9 +6,6 @@ static var character_save := "Mario"
+ 
+ func _ready() -> void:
+ 	activated.get_node("ResourceSetterNew").resource_json = load(get_character_sprite_path(0))
+-	if Settings.file.difficulty.checkpoint_style == 0 and (Global.current_game_mode != Global.GameMode.LEVEL_EDITOR and Global.current_game_mode != Global.GameMode.CUSTOM_LEVEL) or Global.current_campaign == "SMBANN":
+-		owner.queue_free()
+-		return
+ 	owner.show()
+ 	if owner.passed:
+ 		sprite.hide()
+diff --git a/Scripts/Parts/Checkpoint.gd b/Scripts/Parts/Checkpoint.gd
+index 589d247..2a6d854 100644
+--- a/Scripts/Parts/Checkpoint.gd
++++ b/Scripts/Parts/Checkpoint.gd
+@@ -27,7 +27,7 @@ func _enter_tree() -> void:
+ 		LevelPersistance.active_nodes = old_state.duplicate(true)
+ 
+ func _ready() -> void:
+-	if [Global.GameMode.CHALLENGE, Global.GameMode.MARATHON_PRACTICE].has(Global.current_game_mode) or Global.current_campaign == "SMBANN":
++	if [Global.GameMode.CHALLENGE, Global.GameMode.MARATHON_PRACTICE].has(Global.current_game_mode) or Global.current_campaign == "SMBANN" or (Settings.file.difficulty.extra_checkpoints == 0 and optional):
+ 		queue_free()
+ 		return
+ 	if has_meta("is_flag") == false:
+@@ -71,6 +71,3 @@ func get_id() -> String:
+ 		return str(Global.level_editor.sub_level_id) + "," + str(Vector2i(global_position)) + "," + get_parent().name
+ 	else:
+ 		return Global.current_level.scene_file_path + "," + str(Vector2i(global_position)) + "," + get_parent().name
+-
+-func on_tree_exiting() -> void:
+-	pass # Replace with function body.

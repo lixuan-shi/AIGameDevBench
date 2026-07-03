@@ -1,0 +1,43 @@
+diff --git a/Scripts/Classes/Entities/Player.gd b/Scripts/Classes/Entities/Player.gd
+index ed53f42..58e0e4d 100644
+--- a/Scripts/Classes/Entities/Player.gd
++++ b/Scripts/Classes/Entities/Player.gd
+@@ -240,11 +240,7 @@ func _physics_process(delta: float) -> void:
+ 		stomp_combo = 0
+ 	elif velocity.y > 15:
+ 		can_bump_sfx = true
+-	var old_water = in_water
+-	if $Hitbox.monitoring:
+-		in_water = $Hitbox.get_overlapping_areas().any(func(area: Area2D): return area is WaterArea) or $WaterDetect.get_overlapping_bodies().is_empty() == false
+-	if old_water != in_water and in_water == false and flight_meter <= 0:
+-		water_exited()
++	handle_water_detection()
+ 	if $SkidSFX.playing:
+ 		if (is_actually_on_floor() and skidding) == false:
+ 			$SkidSFX.stop()
+@@ -253,6 +249,13 @@ func _physics_process(delta: float) -> void:
+ 
+ const BUBBLE_PARTICLE = preload("uid://bwjae1h1airtr")
+ 
++func handle_water_detection() -> void:
++	var old_water = in_water
++	if $Hitbox.monitoring:
++		in_water = $Hitbox.get_overlapping_areas().any(func(area: Area2D): return area is WaterArea) or $WaterDetect.get_overlapping_bodies().is_empty() == false
++	if old_water != in_water and in_water == false and flight_meter <= 0:
++		water_exited()
++
+ func summon_bubble() -> void:
+ 	var bubble = BUBBLE_PARTICLE.instantiate()
+ 	bubble.global_position = global_position + Vector2(0, -16 if power_state.hitbox_size == "Small" else -32)
+diff --git a/Scripts/Classes/States/Player/Normal.gd b/Scripts/Classes/States/Player/Normal.gd
+index fb56307..b1581d9 100644
+--- a/Scripts/Classes/States/Player/Normal.gd
++++ b/Scripts/Classes/States/Player/Normal.gd
+@@ -54,6 +54,7 @@ func grounded(delta: float) -> void:
+ 	if player.velocity.y >= 0:
+ 		player.has_jumped = false
+ 	if Global.player_action_just_pressed("jump", player.player_id):
++		player.handle_water_detection()
+ 		if player.in_water or player.flight_meter > 0:
+ 			swim_up()
+ 			return

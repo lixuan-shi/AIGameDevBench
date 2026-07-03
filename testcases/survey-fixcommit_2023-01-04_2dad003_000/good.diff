@@ -1,0 +1,19 @@
+diff --git a/BUGS_TO_REPORT.org b/BUGS_TO_REPORT.org
+new file mode 100644
+index 0000000..9c25c3c
+--- /dev/null
++++ b/BUGS_TO_REPORT.org
+@@ -0,0 +1,2 @@
++* Panel with "Show Behind Parent" consumes input of elements above it
++I think it was working fine in 3.x
+diff --git a/source/main-menu/Main.tscn b/source/main-menu/Main.tscn
+index 5ccb1aa..0d5cb05 100644
+--- a/source/main-menu/Main.tscn
++++ b/source/main-menu/Main.tscn
+@@ -62,5 +62,6 @@ text = "Quit"
+ [node name="Panel" type="Panel" parent="MarginContainer"]
+ show_behind_parent = true
+ layout_mode = 2
++mouse_filter = 2
+ 
+ [connection signal="pressed" from="MarginContainer/MarginContainer/VBoxContainer/Button4" to="." method="_on_quit_button_pressed"]

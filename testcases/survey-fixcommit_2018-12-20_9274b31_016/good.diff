@@ -1,0 +1,26 @@
+diff --git a/godot/combat/Rewards.gd b/godot/combat/Rewards.gd
+index 37ed31c..aac6eb5 100644
+--- a/godot/combat/Rewards.gd
++++ b/godot/combat/Rewards.gd
+@@ -64,7 +64,7 @@ func on_battle_completed():
+ 	$Panel/Label.text = "EXP Earned %d" % experience_earned
+ 	yield(get_tree().create_timer(2.0), "timeout")
+ 	for battler in leveled_up:
+-		$Panel/Label.text = "%s Leveled Up to %d" % [battler.name, battler.stats.level + 1]
++		$Panel/Label.text = "%s Leveled Up to %d" % [battler.name, battler.stats.level]
+ 		yield(get_tree().create_timer(2.0), "timeout")
+ 	for drop in drops:
+ 		$Panel/Label.text = "Found %s %s(s)" % [drop.amount, drop.item.name]
+diff --git a/godot/combat/battlers/skills/Skills.tscn b/godot/combat/battlers/skills/Skills.tscn
+index 4717b9d..386f42b 100644
+--- a/godot/combat/battlers/skills/Skills.tscn
++++ b/godot/combat/battlers/skills/Skills.tscn
+@@ -19,7 +19,7 @@ func get_children():
+ 	var learned = []
+ 	for i in range(len(all_skills)):
+ 		var skill = all_skills[i] as LearnedSkill
+-		if skill.level < stats.level:
++		if skill.level <= stats.level:
+ 			learned.append(skill.skill)
+ 	return learned
+ "

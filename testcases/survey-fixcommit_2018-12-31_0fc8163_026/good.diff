@@ -1,0 +1,10 @@
+diff --git a/godot/core/save/GameSaver.gd b/godot/core/save/GameSaver.gd
+index 760c66c..2b06602 100644
+--- a/godot/core/save/GameSaver.gd
++++ b/godot/core/save/GameSaver.gd
+@@ -42,4 +42,4 @@ func load(id : int):
+ 
+ 	var save_game : Resource = load(save_file_path)
+ 	for node in get_tree().get_nodes_in_group('save'):
+-		node.load(save_game.data)
++		node.load(save_game)

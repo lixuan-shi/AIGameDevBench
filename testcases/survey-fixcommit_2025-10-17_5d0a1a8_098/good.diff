@@ -1,0 +1,131 @@
+diff --git a/Scenes/Prefabs/Entities/Items/KeyItem.tscn b/Scenes/Prefabs/Entities/Items/KeyItem.tscn
+index 6d4e166..59e2873 100644
+--- a/Scenes/Prefabs/Entities/Items/KeyItem.tscn
++++ b/Scenes/Prefabs/Entities/Items/KeyItem.tscn
+@@ -165,5 +165,3 @@ amount = 1
+ texture = ExtResource("7_2yl70")
+ randomness = 0.12
+ process_material = SubResource("ParticleProcessMaterial_rls2x")
+-
+-[connection signal="player_entered" from="Hitbox" to="." method="collected" unbinds=1]
+diff --git a/Scripts/Classes/Entities/PipeArea.gd b/Scripts/Classes/Entities/PipeArea.gd
+index d1bad68..bcac720 100644
+--- a/Scripts/Classes/Entities/PipeArea.gd
++++ b/Scripts/Classes/Entities/PipeArea.gd
+@@ -67,7 +67,8 @@ func exit_pipe() -> void:
+ 	can_enter = false
+ 	pipe_exited.emit()
+ 	for i in get_tree().get_nodes_in_group("Players"):
+-		await i.ready
++		if i.is_node_ready() == false:
++			await i.ready
+ 		i.go_to_exit_pipe(self)
+ 	for i in get_tree().get_nodes_in_group("Players"):
+ 		await get_tree().create_timer(0.5, false).timeout
+diff --git a/Scripts/Classes/Entities/Player.gd b/Scripts/Classes/Entities/Player.gd
+index 5ef16ff..97d1f30 100644
+--- a/Scripts/Classes/Entities/Player.gd
++++ b/Scripts/Classes/Entities/Player.gd
+@@ -159,7 +159,7 @@ const ANIMATION_FALLBACKS := {
+ 	"WingCrouch": "WaterCrouch",
+ 	"CrouchFall": "Crouch", 
+ 	"CrouchJump": "Crouch", 
+-	"CrouchBump": "Bump",
++	"CrouchBump": "Crouch",
+ 	"CrouchMove": "Crouch", 
+ 	"IdleAttack": "MoveAttack", 
+ 	"CrouchAttack": "IdleAttack", 
+@@ -354,6 +354,7 @@ func camera_make_current() -> void:
+ func play_animation(animation_name := "") -> void:
+ 	if sprite.sprite_frames == null: return
+ 	animation_name = get_fallback_animation(animation_name)
++	print(animation_name)
+ 	if sprite.animation != animation_name:
+ 		sprite.play(animation_name)
+ 
+@@ -685,10 +686,6 @@ func set_power_state_frame() -> void:
+ 		$ResourceSetterNew.update_resource()
+ 	if %Sprite.sprite_frames != null:
+ 		can_pose = %Sprite.sprite_frames.has_animation("PoseDoor")
+-		can_bump_jump = %Sprite.sprite_frames.has_animation("JumpBump")
+-		can_bump_crouch = %Sprite.sprite_frames.has_animation("CrouchBump")
+-		can_bump_swim = %Sprite.sprite_frames.has_animation("SwimBump")
+-		can_bump_fly = %Sprite.sprite_frames.has_animation("FlyBump")
+ 		can_kick_anim = %Sprite.sprite_frames.has_animation("Kick")
+ 
+ func get_power_up(power_name := "") -> void:
+diff --git a/Scripts/Classes/States/Player/Normal.gd b/Scripts/Classes/States/Player/Normal.gd
+index 9117504..b09c905 100644
+--- a/Scripts/Classes/States/Player/Normal.gd
++++ b/Scripts/Classes/States/Player/Normal.gd
+@@ -212,7 +212,7 @@ func get_animation_name() -> String:
+ 	if player.kicking and player.can_kick_anim:
+ 		return "Kick"
+ 	if player.crouching and not wall_pushing:
+-		if player.bumping and player.can_bump_crouch:
++		if player.bumping:
+ 			return "CrouchBump"
+ 		elif player.is_on_floor() == false:
+ 			if player.velocity.y > 0:
+diff --git a/Scripts/Parts/ResourcePackTemplateCreator.gd b/Scripts/Parts/ResourcePackTemplateCreator.gd
+index 722cd2e..e568e42 100644
+--- a/Scripts/Parts/ResourcePackTemplateCreator.gd
++++ b/Scripts/Parts/ResourcePackTemplateCreator.gd
+@@ -20,19 +20,14 @@ func create_template() -> void:
+ 		else:
+ 			destination = i.replace(Global.config_path.path_join("resource_packs/BaseAssets"), Global.config_path.path_join("resource_packs/new_pack"))
+ 		print("Copying '" + i + "' to: '" + destination)
+-		if i.contains(".bgm") or i.contains(".json") or i.contains(Global.config_path):
+-			DirAccess.copy_absolute(i, destination)
+-		else:
+-			var resource = load(i)
+-			if resource is Texture:
+-				resource.get_image().save_png(destination)
+-			elif resource is AudioStreamWAV:
+-				resource.save_to_wav(destination)
+-			elif resource is AudioStream:
+-				var file = FileAccess.open(destination, FileAccess.WRITE)
+-				file.store_buffer(resource.data)
+-				file.close()
++		var old_file = FileAccess.open(i, FileAccess.READ)
++		if old_file != null:
++			var new_file = FileAccess.open(destination, FileAccess.WRITE)
++			new_file.store_buffer(old_file.get_buffer(old_file.get_length()))
++			old_file.close()
++			new_file.close()
+ 			
++	
+ 	var pack_info_path = Global.config_path.path_join("resource_packs/new_pack/pack_info.json")
+ 	DirAccess.make_dir_recursive_absolute(pack_info_path.get_base_dir())
+ 	var file = FileAccess.open(pack_info_path, FileAccess.WRITE)
+diff --git a/Scripts/UI/CharacterSelect.gd b/Scripts/UI/CharacterSelect.gd
+index 08238cc..1e7b6c2 100644
+--- a/Scripts/UI/CharacterSelect.gd
++++ b/Scripts/UI/CharacterSelect.gd
+@@ -50,14 +50,26 @@ func get_custom_characters() -> void:
+ 			var json = JSON.parse_string(FileAccess.open(char_path.path_join("CharacterInfo.json"), FileAccess.READ).get_as_text())
+ 			Player.CHARACTERS.append(i)
+ 			Player.CHARACTER_NAMES.append(json.name)
++			
+ 			if FileAccess.file_exists(char_path.path_join("CharacterColour.json")):
+ 				Player.CHARACTER_COLOURS.append(load(char_path.path_join("CharacterColour.json")))
++			else:
++				Player.CHARACTER_COLOURS.append(null)
++			
+ 			if FileAccess.file_exists(char_path.path_join("LifeIcon.json")):
+ 				GameHUD.character_icons.append(load(char_path.path_join("LifeIcon.json")))
++			else:
++				GameHUD.character_icons.append(null)
++				
+ 			if FileAccess.file_exists(char_path.path_join("ColourPalette.json")):
+ 				Player.CHARACTER_PALETTES.append(load(char_path.path_join("ColourPalette.json")))
++			else:
++				Player.CHARACTER_PALETTES.append(null)
++			
+ 			if FileAccess.file_exists(char_path.path_join("SFX.json")):
+ 				AudioManager.character_sfx_map[i] = JSON.parse_string(FileAccess.open(char_path.path_join("SFX.json"), FileAccess.READ).get_as_text())
++			else:
++				AudioManager.character_sfx_map[i] = {}
+ 
+ func open() -> void:
+ 	get_custom_characters()

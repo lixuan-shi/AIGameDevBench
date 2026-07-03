@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2018-12-01_be4d86d_004"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "b01f2d24755497ab0a499367684b3b411aef4f0b"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: godot/assets/fonts/default_theme/montserrat_eb_22.tres, godot/assets/fonts/default_theme/source_code_pro_26.tres."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2018-12-01_be4d86d_004"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

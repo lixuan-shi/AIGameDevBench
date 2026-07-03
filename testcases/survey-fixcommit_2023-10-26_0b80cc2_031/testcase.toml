@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-10-26_0b80cc2_031"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "29b59e3eb6a0a8098d151a93376c0f6c18bb9d61"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/enemies/MoldedDruvar/MoldedDruvar.tscn, scenes/enemies/Sheep/Sheep.tscn, scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn, scenes/enemies/common/ai/conditionals/is_in_combat/IsInCombat.gd, scenes/enemies/common/ai/selectors/aggressive_mob/AggressiveMob.gd, scenes/enemies/common/ai/selectors/aggressive_mob/AggressiveMob.tscn, scenes/enemies/common/ai/selectors/passive_critter/PassiveCritter.tscn, scenes/enemies/common/ai/sequences/flee_sequence/FleeSequence.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-10-26_0b80cc2_031"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

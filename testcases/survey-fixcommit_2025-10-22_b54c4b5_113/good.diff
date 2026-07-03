@@ -1,0 +1,37 @@
+diff --git a/Assets/Sprites/Backgrounds/Hills/Hill.json b/Assets/Sprites/Backgrounds/Hills/Hill.json
+index 5edbcd8..ca699e1 100644
+--- a/Assets/Sprites/Backgrounds/Hills/Hill.json
++++ b/Assets/Sprites/Backgrounds/Hills/Hill.json
+@@ -334,4 +334,4 @@
+ 			}
+ 		}
+ 	}
+-}
++}
+\ No newline at end of file
+diff --git a/Scenes/Prefabs/Entities/Objects/TrackPiece.tscn b/Scenes/Prefabs/Entities/Objects/TrackPiece.tscn
+index f7354e9..3f09082 100644
+--- a/Scenes/Prefabs/Entities/Objects/TrackPiece.tscn
++++ b/Scenes/Prefabs/Entities/Objects/TrackPiece.tscn
+@@ -43,6 +43,7 @@ region_rect = Rect2(0, 16, 32, 16)
+ shape = SubResource("RectangleShape2D_4k6gi")
+ 
+ [node name="PlacePreview" type="Node2D" parent="."]
++visible = false
+ z_index = 1
+ 
+ [node name="NW" type="Sprite2D" parent="PlacePreview"]
+diff --git a/Scripts/Classes/Entities/Player.gd b/Scripts/Classes/Entities/Player.gd
+index e03396e..24524a7 100644
+--- a/Scripts/Classes/Entities/Player.gd
++++ b/Scripts/Classes/Entities/Player.gd
+@@ -891,7 +891,8 @@ func do_smoke_effect() -> void:
+ func on_timeout() -> void:
+ 	AudioManager.stop_music_override(AudioManager.MUSIC_OVERRIDES.STAR)
+ 	await get_tree().create_timer(1, false).timeout
+-	is_invincible = false
++	if $StarTimer.is_stopped():
++		is_invincible = false
+ 
+ 
+ func on_area_entered(area: Area2D) -> void:

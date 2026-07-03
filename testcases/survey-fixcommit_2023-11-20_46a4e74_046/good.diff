@@ -1,0 +1,49 @@
+diff --git a/scenes/root/clientfsm.gd b/scenes/root/clientfsm.gd
+index 6cbdc3f..ef76d58 100644
+--- a/scenes/root/clientfsm.gd
++++ b/scenes/root/clientfsm.gd
+@@ -55,6 +55,7 @@ func fsm():
+ 
+ 
+ func _handle_init():
++	login_panel.play_login_background_audio()
+ 	login_panel.show()
+ 	state = STATES.LOGIN
+ 	fsm.call_deferred()
+@@ -230,7 +231,7 @@ func _handle_create_account():
+ 
+ func _handle_state_running():
+ 	logged_in.emit()
+-
++	login_panel.stop_login_background_audio()
+ 	login_panel.hide()
+ 
+ 
+diff --git a/scenes/ui/loginpanel/LoginPanel.gd b/scenes/ui/loginpanel/LoginPanel.gd
+index 627474f..78a4d97 100644
+--- a/scenes/ui/loginpanel/LoginPanel.gd
++++ b/scenes/ui/loginpanel/LoginPanel.gd
+@@ -31,8 +31,8 @@ var create_account_button := $Panel/CreateAccountContainer/MarginContainer3/VBox
+ var goto_login_button := $Panel/CreateAccountContainer/MarginContainer3/VBoxContainer/BackToLoginButton
+ 
+ #AudioStreamers
+-@onready var click_audio_stream_player := $ClickAudioStreamPlayer
+-@onready var background_audio_stream_player := $BackgroundAudioStreamPlayer
++@onready var click_audio_stream_player: AudioStreamPlayer = $ClickAudioStreamPlayer
++@onready var background_audio_stream_player: AudioStreamPlayer = $BackgroundAudioStreamPlayer
+ 
+ @onready var _anim_player := $AnimationPlayer
+ 
+@@ -118,5 +118,11 @@ func _on_button_pressed():
+ 	click_audio_stream_player.play()
+ 
+ 
++func play_login_background_audio():
++	if not background_audio_stream_player.playing:
++		background_audio_stream_player.play()
++
++
+ func stop_login_background_audio():
+-	background_audio_stream_player.stop()
++	if background_audio_stream_player.playing:
++		background_audio_stream_player.stop()

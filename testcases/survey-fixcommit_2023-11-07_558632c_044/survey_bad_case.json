@@ -1,0 +1,167 @@
+{
+  "schema": "survey.bad_case.testcase.v1",
+  "testcase_id": "survey-fixcommit_2023-11-07_558632c_044",
+  "source_repo": "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon",
+  "baseline_ref": "91da6e49ef3c457dbb16b5eb128e1924f842b26f",
+  "repro_ref": "91da6e49ef3c457dbb16b5eb128e1924f842b26f",
+  "bad_ref": "91da6e49ef3c457dbb16b5eb128e1924f842b26f",
+  "good_ref": "558632c8dce16b35c4266d943a3582763dea6572",
+  "baseline_resolution_error": null,
+  "expected": {
+    "bad_case_type": "C2",
+    "notes": "fix commit 558632c: Revert \"Merge pull request #145 from etan311/worldMap\"",
+    "original_l0_pass": null,
+    "original_l1_pass": null,
+    "original_l0_details": [],
+    "original_l1_details": [],
+    "original_human_intervention_ratio": 0.0,
+    "original_rounds_to_resolution": 2,
+    "must_change_one_of": [
+      "data/tileset/atlas.tres",
+      "scenes/enemies/Thumpster/thumpster.tscn",
+      "scenes/terrain/areas/basecamp/BaseCamp.tscn",
+      "scenes/terrain/areas/harbor/harbor.tscn",
+      "scenes/terrain/areas/wakingforest/WakingForest.tscn",
+      "scenes/world/World.tscn",
+      "scenes/world/WorldMap.tscn"
+    ],
+    "minimum_changed_files": 1
+  },
+  "hidden_oracle": {
+    "good_ref": "558632c8dce16b35c4266d943a3582763dea6572",
+    "good_diff_file": "good.diff",
+    "good_changed_files": [
+      "assets/images/tileset/rocks-snow.png",
+      "assets/images/tileset/rocks-snow.png.import",
+      "assets/images/tileset/rocks.png",
+      "assets/images/tileset/rocks.png.import",
+      "assets/images/tileset/terrain_atlas_edited.png",
+      "data/tileset/atlas.tres",
+      "scenes/enemies/Thumpster/thumpster.tscn",
+      "scenes/terrain/areas/basecamp/BaseCamp.tscn",
+      "scenes/terrain/areas/harbor/harbor.tscn",
+      "scenes/terrain/areas/wakingforest/WakingForest.tscn",
+      "scenes/world/World.tscn",
+      "scenes/world/WorldMap.tscn"
+    ],
+    "history_mining_strategy": "fix_commit_parent"
+  },
+  "bench_record": {
+    "testcase_id": "fixcommit_2023-11-07_558632c_044",
+    "harness": "git-history",
+    "category": "survey:A1",
+    "l0_l1_pass": true,
+    "score": 0.0,
+    "verifier_result": {
+      "score": 0.0,
+      "status": "fail",
+      "category": "survey:A1",
+      "error": "fix commit 558632c: Revert \"Merge pull request #145 from etan311/worldMap\"",
+      "checks": [
+        {
+          "name": "bad_case_detected",
+          "passed": false,
+          "detail": "fix commit 558632c: Revert \"Merge pull request #145 from etan311/worldMap\"",
+          "expected": "none",
+          "actual": "A1"
+        },
+        {
+          "name": "human_intervention_ratio",
+          "passed": true,
+          "detail": "",
+          "expected": "<= 0.40",
+          "actual": 0.0
+        },
+        {
+          "name": "rounds_to_resolution",
+          "passed": true,
+          "detail": "",
+          "expected": "<= 4",
+          "actual": 2
+        }
+      ]
+    },
+    "diff": "",
+    "artifacts_path": null,
+    "ai_agent_context": {
+      "harness": "git-history",
+      "transcript_session_id": null,
+      "transcript_match_confidence": null,
+      "transcript_path": null,
+      "codex_session_id": null,
+      "total_tokens": null,
+      "filtered_to_commits": [
+        "558632c"
+      ],
+      "filtered_turns": null,
+      "turns": []
+    },
+    "survey_session": {
+      "session_id": "fixcommit_2023-11-07_558632c_044",
+      "harness": "git-history",
+      "config": {},
+      "bad_case_type": "A1",
+      "auto_detected": true,
+      "confidence": "low",
+      "notes": "fix commit 558632c: Revert \"Merge pull request #145 from etan311/worldMap\"",
+      "prompts": [],
+      "system_context": {
+        "source": "git-history-fix",
+        "baseline_ref": "91da6e49ef3c457dbb16b5eb128e1924f842b26f",
+        "bad_ref": "91da6e49ef3c457dbb16b5eb128e1924f842b26f",
+        "good_ref": "558632c8dce16b35c4266d943a3582763dea6572",
+        "good_commit_timestamp": "2023-11-07T08:55:21+01:00",
+        "good_changed_files": [
+          "assets/images/tileset/rocks-snow.png",
+          "assets/images/tileset/rocks-snow.png.import",
+          "assets/images/tileset/rocks.png",
+          "assets/images/tileset/rocks.png.import",
+          "assets/images/tileset/terrain_atlas_edited.png",
+          "data/tileset/atlas.tres",
+          "scenes/enemies/Thumpster/thumpster.tscn",
+          "scenes/terrain/areas/basecamp/BaseCamp.tscn",
+          "scenes/terrain/areas/harbor/harbor.tscn",
+          "scenes/terrain/areas/wakingforest/WakingForest.tscn",
+          "scenes/world/World.tscn",
+          "scenes/world/WorldMap.tscn"
+        ],
+        "fix_commit_subject": "Revert \"Merge pull request #145 from etan311/worldMap\"",
+        "oracle_level": "diff_only",
+        "history_mining_strategy": "fix_commit_parent",
+        "failure_mode": "revert prior change"
+      },
+      "changed_files": [
+        "data/tileset/atlas.tres",
+        "scenes/enemies/Thumpster/thumpster.tscn",
+        "scenes/terrain/areas/basecamp/BaseCamp.tscn",
+        "scenes/terrain/areas/harbor/harbor.tscn",
+        "scenes/terrain/areas/wakingforest/WakingForest.tscn",
+        "scenes/world/World.tscn",
+        "scenes/world/WorldMap.tscn"
+      ],
+      "commits": [
+        "558632c"
+      ],
+      "timestamps": {
+        "started": "2023-11-07T08:55:21+01:00",
+        "ended": "2023-11-07T08:55:21+01:00"
+      },
+      "verification": null,
+      "outcome": {
+        "first_pass_success": false,
+        "rounds_to_resolution": 2,
+        "ai_lines_changed": 0,
+        "human_lines_changed": 0,
+        "human_intervention_ratio": 0.0,
+        "token_cost": 0,
+        "session_duration_minutes": 0.0
+      },
+      "tag": {
+        "bad_case_type": "C2",
+        "suggested_type": "C2",
+        "confidence": "high",
+        "root_cause": "A revert commit that restores a deleted tileset asset/scene state broken by a prior change."
+      }
+    }
+  }
+}

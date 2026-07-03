@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-19_f77e151_108"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "6011e6f63bdb6d8ef586772b11b71a88fb6ce7ee"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Prefabs/UI/SettingsMenu.tscn, Scripts/Classes/Entities/Objects/Bumper.gd, Scripts/Parts/ResourcePackTemplateCreator.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-19_f77e151_108"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

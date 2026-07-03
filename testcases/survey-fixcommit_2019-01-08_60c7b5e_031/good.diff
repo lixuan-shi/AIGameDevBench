@@ -1,0 +1,28 @@
+diff --git a/godot/party/PartyMember.gd b/godot/party/PartyMember.gd
+index 0c028c9..2fb2588 100644
+--- a/godot/party/PartyMember.gd
++++ b/godot/party/PartyMember.gd
+@@ -29,8 +29,8 @@ func update_stats(stats : CharacterStats):
+ 	Update this character's stats to match select changes
+ 	that occurred during combat or through menu actions
+ 	"""
+-	var before_level = growth.get_level(battler.stats.experience)
+-	var after_level = growth.get_level(stats.experience)
++	var before_level = stats.level
++	var after_level = growth.get_level(experience)
+ 	if before_level != after_level:
+ 		stats.reset()
+ 		emit_signal("level_changed", after_level, before_level)
+diff --git a/godot/quest_system/QuestSystem.gd b/godot/quest_system/QuestSystem.gd
+index 7a1d325..3ad1273 100644
+--- a/godot/quest_system/QuestSystem.gd
++++ b/godot/quest_system/QuestSystem.gd
+@@ -54,7 +54,7 @@ func deliver(quest : Quest):
+ 	# should level up the character and update the stats automatically
+ 	# so that all the code stays in PartyMember.gd
+ 	for party_member in party.get_active_members():
+-		party_member.battler.stats.experience += rewards['experience']
++		party_member.experience += rewards['experience']
+ 		party_member.update_stats(party_member.battler.stats)
+ 
+ 	assert quest.get_parent() == completed_quests

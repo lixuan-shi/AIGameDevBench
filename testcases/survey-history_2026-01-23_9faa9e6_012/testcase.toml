@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-history_2026-01-23_9faa9e6_012"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "2e118e030c883f86ed163201231c1576a95502b7"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: src/combat/actors/combat_turn_queue.gd, src/combat/actors/combat_turn_queue.gd.uid, src/combat/actors/icon_turn_queue.png, src/combat/actors/icon_turn_queue.png.import, src/combat/battlers/battler.gd, src/combat/battlers/battler_anim.gd, src/combat/battlers/battler_roster.gd, src/combat/battlers/battler_roster.gd.uid."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "history_2026-01-23_9faa9e6_012"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

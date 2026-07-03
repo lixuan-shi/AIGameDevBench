@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-11-22_1354908_138"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "6364496ee5677e54f2296f67246499947564b776"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Prefabs/Entities/Objects/BuzzyBeetleShell.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-11-22_1354908_138"
+bad_case_type = "A2"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

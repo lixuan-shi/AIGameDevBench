@@ -1,0 +1,103 @@
+diff --git a/godot/local_map/pawns/PawnInteractive.gd b/godot/local_map/pawns/PawnInteractive.gd
+index 54d4a3e..0fac2e6 100644
+--- a/godot/local_map/pawns/PawnInteractive.gd
++++ b/godot/local_map/pawns/PawnInteractive.gd
+@@ -15,6 +15,8 @@ onready var dialogue_balloon : Sprite = $DialogueBalloon
+ onready var collision_shape : CollisionShape2D = $CollisionShape2D
+ onready var actions : Node = $Actions
+ 
++onready var quest_bubble : Node = $QuestBubble
++
+ export var vanish_on_interaction : = false
+ export var AUTO_START_INTERACTION : = false
+ export var sight_distance = 50
+@@ -45,16 +47,15 @@ func _ready():
+ 		set_physics_process(false)
+ 
+ 	# Quests
+-	# Connects to quest-related actions
+-	var quest : Quest
++	# Send quest-related MapActions, if any, to the QuestBubble
++	var quest_actions : Array = []
+ 	for action in actions.get_children():
+-		if not action is GiveQuestAction or action is CompleteQuestAction:
++		if not (action is GiveQuestAction or action is CompleteQuestAction):
+ 			continue
+-		quest = action.quest
+-		break
+-	if not quest:
++		quest_actions.append(action)
++	if quest_actions.size() == 0:
+ 		return
+-	$QuestBubble.initialize(quest)
++	quest_bubble.initialize(quest_actions)
+ 
+ func _unhandled_input(event: InputEvent) -> void:
+ 	# Use the area to detect if the user is clicking on the NPCs' interaction zone
+diff --git a/godot/local_map/pawns/TestQuestGiver.tscn b/godot/local_map/pawns/TestQuestGiver.tscn
+index f21110a..4eac9c7 100644
+--- a/godot/local_map/pawns/TestQuestGiver.tscn
++++ b/godot/local_map/pawns/TestQuestGiver.tscn
+@@ -4,7 +4,7 @@
+ [ext_resource path="res://local_map/pawns/actions/GiveQuestAction.tscn" type="PackedScene" id=2]
+ [ext_resource path="res://quest_system/quests/TestQuest.tscn" type="PackedScene" id=3]
+ 
+-[node name="TestQuestGiver" instance=ExtResource( 1 )]
++[node name="TestQuestGiver" index="0" instance=ExtResource( 1 )]
+ 
+ [node name="GiveQuestAction" parent="Actions" index="0" instance=ExtResource( 2 )]
+ quest_reference = ExtResource( 3 )
+diff --git a/godot/local_map/pawns/TestQuestReceiver.tscn b/godot/local_map/pawns/TestQuestReceiver.tscn
+index 598fd20..213be51 100644
+--- a/godot/local_map/pawns/TestQuestReceiver.tscn
++++ b/godot/local_map/pawns/TestQuestReceiver.tscn
+@@ -4,7 +4,7 @@
+ [ext_resource path="res://local_map/pawns/actions/CompleteQuestAction.tscn" type="PackedScene" id=2]
+ [ext_resource path="res://quest_system/quests/TestQuest.tscn" type="PackedScene" id=3]
+ 
+-[node name="TestQuestGiver" index="0" instance=ExtResource( 1 )]
++[node name="TestQuestReceiver" instance=ExtResource( 1 )]
+ 
+ [node name="CompleteQuestAction" parent="Actions" index="0" instance=ExtResource( 2 )]
+ quest_reference = ExtResource( 3 )
+diff --git a/godot/quest_system/QuestBubble.gd b/godot/quest_system/QuestBubble.gd
+index 767a473..cbb4d99 100644
+--- a/godot/quest_system/QuestBubble.gd
++++ b/godot/quest_system/QuestBubble.gd
+@@ -11,16 +11,31 @@ func _ready() -> void:
+ 	hide()
+ 	animation_player.play("wobble")
+ 
+-func initialize(quest : Quest):
+-	quest.connect("started", self, "_on_Quest_started")
+-	quest.connect("completed", self, "_on_Quest_completed")
+-	quest.connect("delivered", self, "_on_Quest_delivered")
+-	show()
++func initialize(quest_actions : Array):
++	var quest = quest_actions[0].quest
++	var name = get_parent().name
++	var action_give : GiveQuestAction
++	var action_complete : CompleteQuestAction
++	for action in quest_actions:
++		if action is GiveQuestAction:
++			action_give = action
++		if action is CompleteQuestAction:
++			action_complete = action
++
++	if action_give:
++		quest.connect("started", self, "_on_Quest_started")
++		if not action_complete:
++			quest.connect("completed", self, "hide")
++		show()
++	if action_complete:
++		quest.connect("completed", self, "_on_Quest_completed")
++		quest.connect("delivered", self, "_on_Quest_delivered")
+ 
+ func _on_Quest_started():
+ 	animated_sprite.animation = "quest_active"
+ 
+ func _on_Quest_completed():
++	show()
+ 	animated_sprite.animation = "quest_complete"
+ 
+ func _on_Quest_delivered():

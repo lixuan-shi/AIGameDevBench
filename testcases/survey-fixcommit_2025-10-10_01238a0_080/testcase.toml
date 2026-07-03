@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-10_01238a0_080"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "57a659ba34e2d10b36b56380d35d6a99183b24d2"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Levels/Credits.tscn, Scenes/Prefabs/UI/DiscoResults.tscn, Scripts/Parts/LostLevelsEnding.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-10_01238a0_080"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

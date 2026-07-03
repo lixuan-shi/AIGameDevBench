@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2018-12-28_4396fd9_023"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "ff5c14bb8d6cecccf955c6c8b0d811e17a926fe7"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: godot/local_map/pawns/actions/GiveQuestAction.gd, godot/quest_system/QuestSystem.gd, godot/quest_system/quests/Quest.gd, godot/quest_system/quests/QuestInteractObjective.gd, godot/quest_system/quests/QuestSlayObjective.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2018-12-28_4396fd9_023"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

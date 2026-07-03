@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-23_22a1af8_117"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "974c001d080eba88c4bbf78c7fa67c4c6877d9d7"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Prefabs/Particles/LakituCloudBurst.tscn, Scripts/Classes/Singletons/Global.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-23_22a1af8_117"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

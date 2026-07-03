@@ -1,0 +1,13 @@
+diff --git a/godot/local_map/DialogueBox.gd b/godot/local_map/DialogueBox.gd
+index a40d0cf..88cbd4c 100644
+--- a/godot/local_map/DialogueBox.gd
++++ b/godot/local_map/DialogueBox.gd
+@@ -11,6 +11,8 @@ onready var button_finished : = get_node("Panel/Colums/ButtonFinished") as Butto
+ onready var portrait : = $Portrait as TextureRect
+ 
+ func initialize(dialogue):
++	button_finished.hide()
++	button_next.show()
+ 	button_next.grab_focus()
+ 	button_next.text = "Next"
+ 	dialogue_player.start(dialogue)

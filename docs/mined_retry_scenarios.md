@@ -132,6 +132,46 @@ python scripts/mine_retry_sessions.py --codex --min-score 6 --json ./retry_scena
 > 注: codex 会话同样含真实游戏项目(Documents/test 的 Godot NPC 面板系统、godot_demo
 > 等), 预计能挖到与 survey-* 同源的 Godot 重试场景。
 
+### Codex 挖掘结果(2026-06-30, 23 个会话 retry_score≥6)
+
+跑通后实际结果(`--codex`)。注意两点偏差:
+- codex 用 `apply_patch` 改文件, 我的 `*** Update File` 正则没匹配上其真实 patch 格式,
+  所以 `file_thrash` 普遍为 0(待修: 解析 codex apply_patch 的实际 diff 头)。
+- 高分会话多为**环境/工具链问题**(找不到 git/node/scons、编译 godot 源码、装 CLI),
+  不是游戏逻辑反复写错 —— 这类不可重制成 gameplay testcase。
+
+真正可重制的游戏开发陷阱(按 godot_crash 信号筛):
+
+| score | 项目 | gc | 任务 | 真实陷阱 |
+|---|---|---|---|---|
+| 106 | GameDevFeatsShowcase | 4 | 新建 2D Godot 项目(PlayerOnly/NPC) | **场景引用 res://assets/player.svg 但缺 .import → headless 加载报 `No loader found for resource (expected Texture2D)` + main.tscn Parse Error**, codex 反复栽(player.svg 错误刷屏) |
+| 86 | Documents/test | 5 | 编排多 agent 写进 skill | 偏 agent 编排, 非 gameplay |
+| 13 | Documents/test | 1 | 接入 godot mcp | 环境接入 |
+
+### 待造 C: `missing-resource-import`(behavior_logic / precise_edit, godot_scene_assert)
+- **来源**: Codex GameDevFeatsShowcase 会话(score 106)。
+- **真实陷阱**: 场景 `.tscn` 用 `[ext_resource type="Texture2D" path="res://assets/x.svg"]`
+  引用了一张图, 但该图**没有对应的 `.import` 元文件 / 未被导入**, headless 启动时
+  `No loader found for resource: res://assets/x.svg (expected type: Texture2D)`, 场景
+  Parse Error 加载失败。这是真实高频陷阱, 且与 bench 的 L0 gate 天然契合。
+- **重制思路**: baseline 场景引用一张缺 .import 的图(或路径错的资源)→ L0 加载崩溃 →
+  noop=0。golden 修法是把引用改成内置可加载资源(如用 PlaceholderTexture2D / 程序生成的
+  ColorRect / 修正路径), 使场景能 headless 加载并通过断言。
+- ⚠️ 实现注意: bench 的 runner 在验证前会跑 `godot --import` 重建缓存。要让这个 case 成立,
+  baseline 的"缺资源"必须是 import 也救不回来的(例如 ext_resource 指向**根本不存在**的
+  路径, 或 type 与实际文件不符), 这样 L0 才真的失败。造之前先实测 noop 是否真的 L0 崩溃。
+
+## 三个待造 testcase 汇总(供新会话重制)
+
+| id | category | verifier | 来源 | 陷阱 |
+|---|---|---|---|---|
+| ui-window-stretch-config | intent_translation | py_config | Claude/ui-login | stretch 缺基准分辨率 |
+| gdscript-cannot-infer-type | behavior_logic | godot_scene_assert | Claude/test | `:=` 类型推断失败 |
+| missing-resource-import | precise_edit | godot_scene_assert | Codex/GameDevFeats | 场景引用缺失资源致加载崩溃 |
+
+三个都要走标准流程: scaffold → baseline 复现陷阱 → verifier 围绕根因 → 真实 git 生成
+fix.diff → `aigdbench smoke` 审计绿(noop=0 / golden=1)→ 提交 → 更新 README。
+
 ## 复用价值
 
 挖掘脚本 + 这套四信号评分(Claude + Codex 两种格式)可周期性重跑, 随对话历史增长持续

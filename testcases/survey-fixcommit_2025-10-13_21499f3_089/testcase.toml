@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-13_21499f3_089"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "14c193fb2752455246c7ffa408271186a8777449"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Levels/ChallengeModeResults.tscn, Scripts/UI/StoryPause.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-13_21499f3_089"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

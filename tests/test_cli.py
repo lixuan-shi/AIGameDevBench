@@ -208,6 +208,108 @@ def test_run_honors_workspace_root(tmp_path, monkeypatch):
     assert str(wsroot) in where, where
 
 
+
+def test_audit_cli_writes_health_json(tmp_path, monkeypatch):
+    repo, tcs = _repo_and_testcases(tmp_path)
+    monkeypatch.chdir(repo)
+    health = tmp_path / "health.json"
+    runner = CliRunner()
+    result = runner.invoke(main, [
+        "audit", "--testcases-dir", str(tcs), "--json", str(health),
+    ])
+    # The sample testcase intentionally has no fix.diff, so audit should fail
+    # while still producing the health snapshot and readable table.
+    assert result.exit_code == 1
+    assert "bench-0001" in result.output
+    assert "no_fix_diff" in result.output
+    data = json.loads(health.read_text(encoding="utf-8"))
+    assert data["schema"] == "aigdbench/health/1"
+    assert data["total"] == 1
+    assert data["testcases"][0]["id"] == "bench-0001"
+
+
+def test_smoke_cli_passes_for_folder_case_with_fix_diff(tmp_path):
+    tcs = tmp_path / "testcases"
+    tc = tcs / "folder-0001"; tc.mkdir(parents=True)
+    (tc / "testcase.toml").write_text("""
+[testcase]
+id = "folder-0001"
+category = "intent_translation"
+source_kind = "folder"
+task = "set attack"
+
+[verifier]
+type = "py_config"
+entry = "expected.json"
+
+[scoring]
+mode = "fields"
+""", encoding="utf-8")
+    (tc / "expected.json").write_text(json.dumps({"fields": [
+        {"name": "attack", "aliases": ["attack"], "files_glob": "**/*.json",
+         "expected": 60, "tol": 1e-6, "base": 50, "must_differ_from_base": True},
+    ]}), encoding="utf-8")
+    baseline = tc / "baseline"; (baseline / "data").mkdir(parents=True)
+    (baseline / "data" / "char.json").write_text(json.dumps({"attack": 50}) + "\n", encoding="utf-8")
+    (tc / "fix.diff").write_text(
+        "diff --git a/data/char.json b/data/char.json\n"
+        "--- a/data/char.json\n"
+        "+++ b/data/char.json\n"
+        "@@ -1 +1 @@\n"
+        '-{"attack": 50}\n'
+        '+{"attack": 60}\n',
+        encoding="utf-8",
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(main, [
+        "smoke", "--testcases-dir", str(tcs), "--testcase", "folder-0001",
+    ])
+    assert result.exit_code == 0, result.output
+    assert "folder-0001" in result.output
+    assert "OK" in result.output
+
+
+def test_scaffold_cli_creates_folder_testcase(tmp_path):
+    tcs = tmp_path / "testcases"
+    runner = CliRunner()
+    result = runner.invoke(main, [
+        "scaffold", "--testcases-dir", str(tcs), "--id", "new-path-case",
+        "--category", "behavior_logic", "--task", "Make the NPC follow a path",
+    ])
+    assert result.exit_code == 0, result.output
+    tc = tcs / "new-path-case"
+    assert (tc / "testcase.toml").exists()
+    assert (tc / "baseline" / ".gitkeep").exists()
+    assert (tc / "verifier_scene.tscn").exists()
+    assert (tc / "verifier.gd").exists()
+    manifest = (tc / "testcase.toml").read_text(encoding="utf-8")
+    assert 'source_kind = "folder"' in manifest
+    assert "Make the NPC follow a path" in manifest
+
+
+def test_scaffold_cli_copies_source_project_without_godot_cache(tmp_path):
+    source = tmp_path / "project"
+    (source / ".git").mkdir(parents=True)
+    (source / ".godot").mkdir()
+    (source / "scenes").mkdir()
+    (source / "project.godot").write_text("config_version=5\n", encoding="utf-8")
+    (source / "scenes" / "main.tscn").write_text("[gd_scene format=3]\n", encoding="utf-8")
+
+    tcs = tmp_path / "testcases"
+    runner = CliRunner()
+    result = runner.invoke(main, [
+        "scaffold", "--testcases-dir", str(tcs), "--id", "copied-case",
+        "--source-project", str(source),
+    ])
+    assert result.exit_code == 0, result.output
+    baseline = tcs / "copied-case" / "baseline"
+    assert (baseline / "project.godot").exists()
+    assert (baseline / "scenes" / "main.tscn").exists()
+    assert not (baseline / ".git").exists()
+    assert not (baseline / ".godot").exists()
+
+
 def test_run_command_driver_requires_cmd(tmp_path, monkeypatch):
     repo, tcs = _repo_and_testcases(tmp_path)
     monkeypatch.chdir(repo)

@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-10-20_d56b484_022"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "47d91a10e5b00203ab41137ab454eb67ce81e16c"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.gd, scenes/enemies/common/ai/sequences/attack_sequence/ShouldAttack.gd, scenes/enemies/common/ai/sequences/pursuit_sequence/ShouldPursue.gd, scenes/player/Player.gd, scenes/world/World.tscn, scripts/classes/JBody2D.gd, scripts/classes/JEnemyBody2D.gd, scripts/classes/JEquipment.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-10-20_d56b484_022"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

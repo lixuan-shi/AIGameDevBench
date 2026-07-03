@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-12-13_7234cb6_066"
+category = "intent_translation"
+source_kind = "git"
+baseline_ref = "c96c355c5429eec67e57b30783a379b4e88a43f0"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/npcs/milklady/Milklady.gd, scenes/player/Player.gd, scenes/ui/dialogue/DialogueResource.gd, scenes/ui/dialogue/DialogueSynchronizerComponent.tscn, scenes/ui/dialogue/DialogueSystem.gd, scenes/ui/dialogue/Dialogues/MilkLady.tres, scripts/components/dialoguesynhcronizercomponent/DialogueSynchronizerComponent.gd, scripts/network/rpcs/gameserver/sync.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-12-13_7234cb6_066"
+bad_case_type = "B2"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

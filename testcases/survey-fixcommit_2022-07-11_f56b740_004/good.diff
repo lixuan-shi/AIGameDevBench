@@ -1,0 +1,308 @@
+diff --git a/game/Scenes/Game/UI/Previews/ObjectPreview.tscn b/game/Scenes/Game/UI/Previews/ObjectPreview.tscn
+index 4eafcdc..7d5a554 100644
+--- a/game/Scenes/Game/UI/Previews/ObjectPreview.tscn
++++ b/game/Scenes/Game/UI/Previews/ObjectPreview.tscn
+@@ -37,6 +37,8 @@ own_world = true
+ world = SubResource( 2 )
+ transparent_bg = true
+ handle_input_locally = false
++disable_3d = true
++usage = 3
+ render_target_update_mode = 3
+ gui_disable_input = true
+ 
+diff --git a/game/Scripts/FallingWorld.gd b/game/Scripts/FallingWorld.gd
+index 017f826..783b741 100644
+--- a/game/Scripts/FallingWorld.gd
++++ b/game/Scripts/FallingWorld.gd
+@@ -39,7 +39,6 @@ var _build_thread = Thread.new()
+ 
+ var _next_piece_entry: Dictionary = {}
+ var _piece_to_spawn: Piece = null
+-var _pieces_to_free: Array = []
+ 
+ var _piece_mutex = Mutex.new()
+ 
+@@ -167,13 +166,6 @@ func _build_next_piece(_userdata) -> void:
+ 		_piece_mutex.lock()
+ 		_piece_to_spawn = piece
+ 		_piece_mutex.unlock()
+-	
+-	# If there are any pieces to free, free them now.
+-	_piece_mutex.lock()
+-	for piece in _pieces_to_free:
+-		piece.free()
+-	_pieces_to_free = []
+-	_piece_mutex.unlock()
+ 
+ func _decide_next_piece() -> void:
+ 	if not _asset_chances.empty():
+@@ -241,7 +233,7 @@ func _on_SpawnTimer_timeout():
+ 	for piece in _pieces.get_children():
+ 		if piece.translation.y < DESPAWN_PLANE:
+ 			_pieces.remove_child(piece)
+-			_pieces_to_free.append(piece)
++			PieceBuilder.queue_free_object(piece)
+ 	
+ 	_piece_mutex.unlock()
+ 
+diff --git a/game/Scripts/Game/3D/Room.gd b/game/Scripts/Game/3D/Room.gd
+index aef2cb8..f639299 100644
+--- a/game/Scripts/Game/3D/Room.gd
++++ b/game/Scripts/Game/3D/Room.gd
+@@ -742,7 +742,7 @@ remotesync func remove_pieces(piece_names: Array) -> void:
+ 				_srv_undo_state_events["remove_piece"] = UNDO_STATE_EVENT_TIMERS["remove_piece"]
+ 			
+ 			_pieces.remove_child(piece)
+-			piece.queue_free()
++			PieceBuilder.queue_free_object(piece)
+ 		else:
+ 			# Clients put the piece in "limbo", until a certain amount of time
+ 			# has passed since the last RPC call.
+@@ -1596,7 +1596,7 @@ func set_state(state: Dictionary) -> void:
+ 	# same name as ones currently in the tree.
+ 	for child in _pieces.get_children():
+ 		_pieces.remove_child(child)
+-		child.queue_free()
++		PieceBuilder.queue_free_object(child)
+ 
+ 	_extract_piece_states(state, _pieces)
+ 
+@@ -1662,7 +1662,7 @@ remotesync func set_table(table_entry_path: String) -> void:
+ 		if _table_body.is_a_parent_of(_paint_plane):
+ 			_table_body.remove_child(_paint_plane)
+ 		_table.remove_child(_table_body)
+-		_table_body.queue_free()
++		PieceBuilder.queue_free_object(_table_body)
+ 		_table_body = null
+ 
+ 	for hand_pos in _hand_positions.get_children():
+@@ -2191,7 +2191,7 @@ func _limbo_clean_pieces(force: bool) -> void:
+ 		if piece is Piece:
+ 			if force or piece.get_time_since_update() > LIMBO_DURATION:
+ 				_pieces.remove_child(piece)
+-				piece.queue_free()
++				PieceBuilder.queue_free_object(piece)
+ 
+ # Modify piece states such that the pieces have new names, and their positions
+ # are offset by a given amount.
+diff --git a/game/Scripts/Game/Pieces/StackLasagne.gd b/game/Scripts/Game/Pieces/StackLasagne.gd
+index bc40340..a7016f5 100644
+--- a/game/Scripts/Game/Pieces/StackLasagne.gd
++++ b/game/Scripts/Game/Pieces/StackLasagne.gd
+@@ -153,7 +153,7 @@ func _remove_piece_at_pos(pos: int) -> Dictionary:
+ 		"transform": piece.transform
+ 	}
+ 	
+-	piece.queue_free()
++	PieceBuilder.queue_free_object(piece)
+ 	return out
+ 
+ # Set the y-position of the pieces in the stack.
+diff --git a/game/Scripts/Game/UI/Previews/ObjectPreview.gd b/game/Scripts/Game/UI/Previews/ObjectPreview.gd
+index b7fde05..7185744 100644
+--- a/game/Scripts/Game/UI/Previews/ObjectPreview.gd
++++ b/game/Scripts/Game/UI/Previews/ObjectPreview.gd
+@@ -34,6 +34,7 @@ const X_ROTATION = PI / 4
+ var _piece: Piece = null
+ 
+ var _reject_factory_output = false
++var _wait_for_render_pass = false
+ 
+ # Get the name of the piece node this preview is displaying.
+ # Returns: The name of the piece node, an empty string if displaying nothing.
+@@ -106,6 +107,10 @@ func set_piece_display(piece: Piece) -> void:
+ 	if _reject_factory_output:
+ 		return
+ 	
++	if _wait_for_render_pass:
++		push_error("Cannot set piece display, waiting for render pass!")
++		return
++	
+ 	# Make sure that if we are already displaying a piece, we free it before
+ 	# we lose it!
+ 	_clear_gui(false)
+@@ -143,12 +148,20 @@ func set_piece_display(piece: Piece) -> void:
+ 	var theta = deg2rad(_camera.fov)
+ 	var dist = 1 + display_radius + (display_height / (2 * tan(theta / 2)))
+ 	_camera.translation.z = dist
++	
++	_viewport.disable_3d = false
+ 
+ func _ready():
+ 	# We connect the signal here because we don't want the editor to connect
+ 	# the signal when this is inside an ObjectPreviewGrid (which is an editor
+ 	# script).
+ 	connect("tree_exiting", self, "_on_tree_exiting")
++	
++	# When we're about to remove the piece from the preview, we want to wait
++	# for the render pass to end, so that we can guarantee that the viewport
++	# has been disabled before we remove the piece.
++	# TODO: Only connect if we need to wait?
++	VisualServer.connect("frame_post_draw", self, "_on_frame_post_draw")
+ 
+ func _process(delta):
+ 	if _piece:
+@@ -158,6 +171,8 @@ func _process(delta):
+ # Called when the preview is cleared.
+ # details: Should the details (like the name) be cleared too?
+ func _clear_gui(details: bool = true) -> void:
++	_viewport.disable_3d = true
++	
+ 	if details:
+ 		hint_tooltip = ""
+ 		_label.text = ""
+@@ -168,15 +183,22 @@ func _clear_gui(details: bool = true) -> void:
+ 		# door.
+ 		_reject_factory_output = true
+ 	
++	# We've set the viewport to disable 3D, but it won't actually take effect
++	# until the end of the next render pass.
+ 	if _piece:
+-		_viewport.remove_child(_piece)
+-		
+-		# Ask the ObjectPreviewFactory to free the piece, as it could have come
+-		# from there. If it didn't, that doesn't matter, it does the same thing
+-		# anyway.
+-		ObjectPreviewFactory.free_piece(_piece)
+-		
+-		_piece = null
++		_wait_for_render_pass = true
++
++# Remove the piece from the scene tree.
++func _remove_piece() -> void:
++	# There should only ever be at most one child piece, but since we only
++	# use a reference to one piece, _piece, remove all child pieces just in
++	# case one escapes the _piece reference.
++	for child in _viewport.get_children():
++		if child is RigidBody:
++			_viewport.remove_child(child)
++			PieceBuilder.queue_free_object(child)
++	
++	_piece = null
+ 
+ # Called when the preview entry is changed.
+ # piece_entry: The new entry to display. It is guaranteed to not be empty.
+@@ -193,6 +215,11 @@ func _set_entry_gui(piece_entry: Dictionary) -> void:
+ func _set_selected_gui(selected: bool) -> void:
+ 	_viewport.transparent_bg = not selected
+ 
++func _on_frame_post_draw():
++	if _wait_for_render_pass:
++		_remove_piece()
++		_wait_for_render_pass = false
++
+ func _on_tree_exiting():
+ 	# Wait for the ObjectPreviewFactory's build thread to finish in the event
+ 	# it is still building a piece for us.
+diff --git a/game/Scripts/Game/UI/Previews/ObjectPreviewFactory.gd b/game/Scripts/Game/UI/Previews/ObjectPreviewFactory.gd
+index 4a1845f..4ffb973 100644
+--- a/game/Scripts/Game/UI/Previews/ObjectPreviewFactory.gd
++++ b/game/Scripts/Game/UI/Previews/ObjectPreviewFactory.gd
+@@ -30,9 +30,6 @@ var _entry_list_mutex = Mutex.new()
+ var _finished_pieces = {}
+ var _finished_pieces_mutex = Mutex.new()
+ 
+-var _free_pieces = []
+-var _free_pieces_mutex = Mutex.new()
+-
+ # Add a request to build a piece with the given entry, and place the result in
+ # the given object preview.
+ # preview: The preview to place the built piece into.
+@@ -51,17 +48,6 @@ func flush_queue() -> void:
+ 	if _build_thread.is_active():
+ 		_build_thread.wait_to_finish()
+ 
+-# Free a piece while in the build thread. This should be used if the piece was
+-# built via this factory.
+-# piece: The piece to free.
+-func free_piece(piece: Piece) -> void:
+-	_free_pieces_mutex.lock()
+-	_free_pieces.append(piece)
+-	_free_pieces_mutex.unlock()
+-	
+-	if not _build_thread.is_active():
+-		_build_thread.start(self, "_build")
+-
+ func _ready():
+ 	connect("tree_exiting", self, "_on_tree_exiting")
+ 
+@@ -79,7 +65,7 @@ func _process(_delta):
+ 				# likely because the preview was cleared earlier while we were
+ 				# still building the piece for the preview.
+ 				if not piece.is_inside_tree():
+-					free_piece(piece)
++					PieceBuilder.queue_free_object(piece)
+ 	
+ 	_finished_pieces.clear()
+ 	_finished_pieces_mutex.unlock()
+@@ -124,12 +110,6 @@ func _build(_userdata) -> void:
+ 			_entry_list.erase(preview)
+ 		_entry_list_mutex.unlock()
+ 	
+-	_free_pieces_mutex.lock()
+-	while not _free_pieces.empty():
+-		var piece = _free_pieces.pop_back()
+-		piece.free()
+-	_free_pieces_mutex.unlock()
+-	
+ 	# When threads reach the end of their function, Godot still flags them as
+ 	# "active" until they are joined back into the main thread. This line
+ 	# ensures the thread is properly de-allocated when there are no more pieces
+@@ -137,10 +117,5 @@ func _build(_userdata) -> void:
+ 	_build_thread.call_deferred("wait_to_finish")
+ 
+ func _on_tree_exiting():
+-	# Start the build thread so it can free the remaining pieces in the free
+-	# queue.
+-	if not _build_thread.is_active():
+-		_build_thread.start(self, "_build")
+-	
+ 	if _build_thread.is_active():
+ 		_build_thread.wait_to_finish()
+diff --git a/game/Scripts/PieceBuilder.gd b/game/Scripts/PieceBuilder.gd
+index 3719333..1b6c4f4 100644
+--- a/game/Scripts/PieceBuilder.gd
++++ b/game/Scripts/PieceBuilder.gd
+@@ -26,6 +26,9 @@ extends Node
+ # so make sure we load resources one at a time with a mutex.
+ var _res_mutex = Mutex.new()
+ 
++# Prevent two objects from being registered to be freed at the same time.
++var _free_mutex = Mutex.new()
++
+ # Build a piece using an entry from the AssetDB.
+ # Returns: The piece corresponding to the given entry.
+ # piece_entry: The entry to create the piece with.
+@@ -205,6 +208,15 @@ func get_piece_meshes(piece: Piece) -> Array:
+ 	
+ 	return out
+ 
++# Queue an object built with the piece builder to be freed in a thread-safe
++# manner. Use this if an object is being freed before the scene is exiting
++# the scene tree.
++# object: The object to be freed.
++func queue_free_object(object: RigidBody) -> void:
++	_free_mutex.lock()
++	call_deferred("_free_object", object)
++	_free_mutex.unlock()
++
+ # Scale a piece by changing the scale of its children collision shapes.
+ # piece: The piece to scale.
+ # scale: How much to scale the piece by.
+@@ -307,6 +319,15 @@ func _extract_and_shape_mesh_instances(add_to: Node, from: Node,
+ 		collision_shape.add_child(from)
+ 		add_to.add_child(collision_shape)
+ 
++# Free an object in a thread-safe manner.
++# object: The object to free.
++func _free_object(object: RigidBody) -> void:
++	# Lock the resource mutex here, just in case a resource used by the object
++	# is being created as it is being freed here.
++	_res_mutex.lock()
++	object.free()
++	_res_mutex.unlock()
++
+ # Load the resource at the given path. This function will block if another
+ # thread is loading a resource at the same time.
+ # Returns: The resource at the given path.

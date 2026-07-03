@@ -1,0 +1,5 @@
+{
+  "difficulty": "hard",
+  "spawn_interval": 4.0,
+  "max_concurrent": 6
+}

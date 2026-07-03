@@ -1,0 +1,31 @@
+diff --git a/makefile b/makefile
+index da3d280..0d2663f 100644
+--- a/makefile
++++ b/makefile
+@@ -1,5 +1,5 @@
+ all: lint format-check shaders-format-check
+-version = "0.8.0-a2"
++version = "0.8.0-a1"
+ 
+ format-check:
+ 	find source/ -name '*.gd' | xargs gdformat --check
+@@ -24,3 +24,5 @@ release-macos:
+ 
+ release-windows:
+ 	godot4 --export-release "Windows Desktop" "build/Open_RTS_$(version)_windows64.exe"
++
++release: release-linux release-macos release-windows
+diff --git a/source/match/units/actions/Constructing.gd b/source/match/units/actions/Constructing.gd
+index 6af3cca..a386c7a 100644
+--- a/source/match/units/actions/Constructing.gd
++++ b/source/match/units/actions/Constructing.gd
+@@ -46,7 +46,8 @@ func _on_sub_action_finished():
+ 		queue_free()
+ 		return
+ 	_sub_action = null
+-	assert(_try_constructing_structure())
++	var structure_constructed = _try_constructing_structure()
++	assert(structure_constructed)
+ 
+ 
+ func _on_target_unit_constructed():

@@ -1,0 +1,7 @@
+{
+  "drop_weights": {
+    "common": 0.80,
+    "rare": 0.18,
+    "legendary": 0.02
+  }
+}

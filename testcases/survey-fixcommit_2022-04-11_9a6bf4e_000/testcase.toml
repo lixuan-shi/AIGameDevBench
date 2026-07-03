@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-04-11_9a6bf4e_000"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "580978fa692d2635f741d0748929482458a614cd"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\a-little-game-called-mario"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scripts/levels/Hub.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-04-11_9a6bf4e_000"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

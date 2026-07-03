@@ -1,0 +1,137 @@
+{
+  "schema": "survey.bad_case.testcase.v1",
+  "testcase_id": "survey-fixcommit_2022-07-09_3c8fb49_003",
+  "source_repo": "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\tabletop-club",
+  "baseline_ref": "dcb72e8d4440ca9b26b35575319776a1c81d3424",
+  "repro_ref": "dcb72e8d4440ca9b26b35575319776a1c81d3424",
+  "bad_ref": "dcb72e8d4440ca9b26b35575319776a1c81d3424",
+  "good_ref": "3c8fb49bd9850805d847c6ce29d752dcf386d39c",
+  "baseline_resolution_error": null,
+  "expected": {
+    "bad_case_type": "A3",
+    "notes": "fix commit 3c8fb49: Fixed a crash when exiting to the main menu with an empty AssetDB.",
+    "original_l0_pass": null,
+    "original_l1_pass": null,
+    "original_l0_details": [],
+    "original_l1_details": [],
+    "original_human_intervention_ratio": 0.0,
+    "original_rounds_to_resolution": 2,
+    "must_change_one_of": [
+      "game/Scenes/Game/UI/GameUI.tscn",
+      "game/Scripts/Game/UI/GameUI.gd"
+    ],
+    "minimum_changed_files": 1
+  },
+  "hidden_oracle": {
+    "good_ref": "3c8fb49bd9850805d847c6ce29d752dcf386d39c",
+    "good_diff_file": "good.diff",
+    "good_changed_files": [
+      "game/Scenes/Game/UI/GameUI.tscn",
+      "game/Scripts/Game/UI/GameUI.gd"
+    ],
+    "history_mining_strategy": "fix_commit_parent"
+  },
+  "bench_record": {
+    "testcase_id": "fixcommit_2022-07-09_3c8fb49_003",
+    "harness": "git-history",
+    "category": "survey:A1",
+    "l0_l1_pass": true,
+    "score": 0.0,
+    "verifier_result": {
+      "score": 0.0,
+      "status": "fail",
+      "category": "survey:A1",
+      "error": "fix commit 3c8fb49: Fixed a crash when exiting to the main menu with an empty AssetDB.",
+      "checks": [
+        {
+          "name": "bad_case_detected",
+          "passed": false,
+          "detail": "fix commit 3c8fb49: Fixed a crash when exiting to the main menu with an empty AssetDB.",
+          "expected": "none",
+          "actual": "A1"
+        },
+        {
+          "name": "human_intervention_ratio",
+          "passed": true,
+          "detail": "",
+          "expected": "<= 0.40",
+          "actual": 0.0
+        },
+        {
+          "name": "rounds_to_resolution",
+          "passed": true,
+          "detail": "",
+          "expected": "<= 4",
+          "actual": 2
+        }
+      ]
+    },
+    "diff": "",
+    "artifacts_path": null,
+    "ai_agent_context": {
+      "harness": "git-history",
+      "transcript_session_id": null,
+      "transcript_match_confidence": null,
+      "transcript_path": null,
+      "codex_session_id": null,
+      "total_tokens": null,
+      "filtered_to_commits": [
+        "3c8fb49"
+      ],
+      "filtered_turns": null,
+      "turns": []
+    },
+    "survey_session": {
+      "session_id": "fixcommit_2022-07-09_3c8fb49_003",
+      "harness": "git-history",
+      "config": {},
+      "bad_case_type": "A1",
+      "auto_detected": true,
+      "confidence": "low",
+      "notes": "fix commit 3c8fb49: Fixed a crash when exiting to the main menu with an empty AssetDB.",
+      "prompts": [],
+      "system_context": {
+        "source": "git-history-fix",
+        "baseline_ref": "dcb72e8d4440ca9b26b35575319776a1c81d3424",
+        "bad_ref": "dcb72e8d4440ca9b26b35575319776a1c81d3424",
+        "good_ref": "3c8fb49bd9850805d847c6ce29d752dcf386d39c",
+        "good_commit_timestamp": "2022-07-09T06:37:36+01:00",
+        "good_changed_files": [
+          "game/Scenes/Game/UI/GameUI.tscn",
+          "game/Scripts/Game/UI/GameUI.gd"
+        ],
+        "fix_commit_subject": "Fixed a crash when exiting to the main menu with an empty AssetDB.",
+        "oracle_level": "diff_only",
+        "history_mining_strategy": "fix_commit_parent",
+        "failure_mode": "teardown lifecycle crash"
+      },
+      "changed_files": [
+        "game/Scenes/Game/UI/GameUI.tscn",
+        "game/Scripts/Game/UI/GameUI.gd"
+      ],
+      "commits": [
+        "3c8fb49"
+      ],
+      "timestamps": {
+        "started": "2022-07-09T06:37:36+01:00",
+        "ended": "2022-07-09T06:37:36+01:00"
+      },
+      "verification": null,
+      "outcome": {
+        "first_pass_success": false,
+        "rounds_to_resolution": 2,
+        "ai_lines_changed": 0,
+        "human_lines_changed": 0,
+        "human_intervention_ratio": 0.0,
+        "token_cost": 0,
+        "session_duration_minutes": 0.0
+      },
+      "tag": {
+        "bad_case_type": "A3",
+        "suggested_type": "A3",
+        "confidence": "medium",
+        "root_cause": "The ErrorReporter was not freed before the UI left the scene tree, crashing on exit when the AssetDB was empty."
+      }
+    }
+  }
+}

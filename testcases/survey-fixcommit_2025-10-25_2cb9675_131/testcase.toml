@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-25_2cb9675_131"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "bb3ece8922f38dfe68221a8c168748dab8cf6533"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Prefabs/Entities/Items/RedCoin.tscn, Scripts/Classes/Entities/Items/RedCoin.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-25_2cb9675_131"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

@@ -1,0 +1,141 @@
+diff --git a/game/Scenes/Game/UI/GameUI.tscn b/game/Scenes/Game/UI/GameUI.tscn
+index 47e2a6a..c96d186 100644
+--- a/game/Scenes/Game/UI/GameUI.tscn
++++ b/game/Scenes/Game/UI/GameUI.tscn
+@@ -171,7 +171,13 @@ rect_min_size = Vector2( 300, 100 )
+ dialog_text = "Are you sure you want to clear all objects from the table?"
+ dialog_autowrap = true
+ 
+-[node name="GameMenuBackground" type="ColorRect" parent="."]
++[node name="CanvasLayer" type="CanvasLayer" parent="."]
++layer = 2
++__meta__ = {
++"_editor_description_": "Used to make sure the children controls are rendered above the CameraController UI elements."
++}
++
++[node name="GameMenuBackground" type="ColorRect" parent="CanvasLayer"]
+ visible = false
+ anchor_right = 1.0
+ anchor_bottom = 1.0
+@@ -180,61 +186,61 @@ __meta__ = {
+ "_edit_use_anchors_": false
+ }
+ 
+-[node name="CenterContainer" type="CenterContainer" parent="GameMenuBackground"]
++[node name="CenterContainer" type="CenterContainer" parent="CanvasLayer/GameMenuBackground"]
+ anchor_right = 1.0
+ anchor_bottom = 1.0
+ __meta__ = {
+ "_edit_use_anchors_": false
+ }
+ 
+-[node name="VBoxContainer" type="VBoxContainer" parent="GameMenuBackground/CenterContainer"]
++[node name="VBoxContainer" type="VBoxContainer" parent="CanvasLayer/GameMenuBackground/CenterContainer"]
+ margin_left = 440.0
+ margin_top = 212.0
+ margin_right = 583.0
+ margin_bottom = 388.0
+ 
+-[node name="BackToGameButton" type="Button" parent="GameMenuBackground/CenterContainer/VBoxContainer"]
++[node name="BackToGameButton" type="Button" parent="CanvasLayer/GameMenuBackground/CenterContainer/VBoxContainer"]
+ margin_right = 143.0
+ margin_bottom = 26.0
+ text = "Back to game"
+ 
+-[node name="SaveGameButton" type="Button" parent="GameMenuBackground/CenterContainer/VBoxContainer"]
++[node name="SaveGameButton" type="Button" parent="CanvasLayer/GameMenuBackground/CenterContainer/VBoxContainer"]
+ margin_top = 30.0
+ margin_right = 143.0
+ margin_bottom = 56.0
+ text = "Save game"
+ 
+-[node name="LoadGameButton" type="Button" parent="GameMenuBackground/CenterContainer/VBoxContainer"]
++[node name="LoadGameButton" type="Button" parent="CanvasLayer/GameMenuBackground/CenterContainer/VBoxContainer"]
+ margin_top = 60.0
+ margin_right = 143.0
+ margin_bottom = 86.0
+ text = "Load game"
+ 
+-[node name="OptionsButton" type="Button" parent="GameMenuBackground/CenterContainer/VBoxContainer"]
++[node name="OptionsButton" type="Button" parent="CanvasLayer/GameMenuBackground/CenterContainer/VBoxContainer"]
+ margin_top = 90.0
+ margin_right = 143.0
+ margin_bottom = 116.0
+ text = "Options"
+ 
+-[node name="MainMenuButton" type="Button" parent="GameMenuBackground/CenterContainer/VBoxContainer"]
++[node name="MainMenuButton" type="Button" parent="CanvasLayer/GameMenuBackground/CenterContainer/VBoxContainer"]
+ margin_top = 120.0
+ margin_right = 143.0
+ margin_bottom = 146.0
+ text = "Quit to main menu"
+ 
+-[node name="DesktopButton" type="Button" parent="GameMenuBackground/CenterContainer/VBoxContainer"]
++[node name="DesktopButton" type="Button" parent="CanvasLayer/GameMenuBackground/CenterContainer/VBoxContainer"]
+ margin_top = 150.0
+ margin_right = 143.0
+ margin_bottom = 176.0
+ text = "Quit to desktop"
+ 
+-[node name="SaveDialog" type="WindowDialog" parent="GameMenuBackground"]
++[node name="SaveDialog" type="WindowDialog" parent="CanvasLayer/GameMenuBackground"]
+ margin_right = 400.0
+ margin_bottom = 450.0
+ window_title = "Load a file"
+ script = ExtResource( 5 )
+ 
+-[node name="OptionsMenu" parent="." instance=ExtResource( 3 )]
++[node name="OptionsMenu" parent="CanvasLayer" instance=ExtResource( 3 )]
+ visible = false
+ 
+ [connection signal="tree_exiting" from="." to="." method="_on_GameUI_tree_exiting"]
+@@ -255,13 +261,13 @@ visible = false
+ [connection signal="setting_skybox" from="RoomDialog" to="." method="_on_RoomDialog_setting_skybox"]
+ [connection signal="setting_table" from="RoomDialog" to="." method="_on_RoomDialog_setting_table"]
+ [connection signal="confirmed" from="ClearTableConfirmDialog" to="." method="_on_ClearTableConfirmDialog_confirmed"]
+-[connection signal="pressed" from="GameMenuBackground/CenterContainer/VBoxContainer/BackToGameButton" to="." method="_on_BackToGameButton_pressed"]
+-[connection signal="pressed" from="GameMenuBackground/CenterContainer/VBoxContainer/SaveGameButton" to="." method="_on_SaveGameButton_pressed"]
+-[connection signal="pressed" from="GameMenuBackground/CenterContainer/VBoxContainer/LoadGameButton" to="." method="_on_LoadGameButton_pressed"]
+-[connection signal="pressed" from="GameMenuBackground/CenterContainer/VBoxContainer/OptionsButton" to="." method="_on_OptionsButton_pressed"]
+-[connection signal="pressed" from="GameMenuBackground/CenterContainer/VBoxContainer/MainMenuButton" to="." method="_on_MainMenuButton_pressed"]
+-[connection signal="pressed" from="GameMenuBackground/CenterContainer/VBoxContainer/DesktopButton" to="." method="_on_DesktopButton_pressed"]
+-[connection signal="load_file" from="GameMenuBackground/SaveDialog" to="." method="_on_SaveDialog_load_file"]
+-[connection signal="popup_hide" from="GameMenuBackground/SaveDialog" to="." method="_on_SaveDialog_popup_hide"]
+-[connection signal="save_file" from="GameMenuBackground/SaveDialog" to="." method="_on_SaveDialog_save_file"]
+-[connection signal="applying_options" from="OptionsMenu" to="." method="_on_OptionsMenu_applying_options"]
++[connection signal="pressed" from="CanvasLayer/GameMenuBackground/CenterContainer/VBoxContainer/BackToGameButton" to="." method="_on_BackToGameButton_pressed"]
++[connection signal="pressed" from="CanvasLayer/GameMenuBackground/CenterContainer/VBoxContainer/SaveGameButton" to="." method="_on_SaveGameButton_pressed"]
++[connection signal="pressed" from="CanvasLayer/GameMenuBackground/CenterContainer/VBoxContainer/LoadGameButton" to="." method="_on_LoadGameButton_pressed"]
++[connection signal="pressed" from="CanvasLayer/GameMenuBackground/CenterContainer/VBoxContainer/OptionsButton" to="." method="_on_OptionsButton_pressed"]
++[connection signal="pressed" from="CanvasLayer/GameMenuBackground/CenterContainer/VBoxContainer/MainMenuButton" to="." method="_on_MainMenuButton_pressed"]
++[connection signal="pressed" from="CanvasLayer/GameMenuBackground/CenterContainer/VBoxContainer/DesktopButton" to="." method="_on_DesktopButton_pressed"]
++[connection signal="load_file" from="CanvasLayer/GameMenuBackground/SaveDialog" to="." method="_on_SaveDialog_load_file"]
++[connection signal="popup_hide" from="CanvasLayer/GameMenuBackground/SaveDialog" to="." method="_on_SaveDialog_popup_hide"]
++[connection signal="save_file" from="CanvasLayer/GameMenuBackground/SaveDialog" to="." method="_on_SaveDialog_save_file"]
++[connection signal="applying_options" from="CanvasLayer/OptionsMenu" to="." method="_on_OptionsMenu_applying_options"]
+diff --git a/game/Scripts/Game/UI/GameUI.gd b/game/Scripts/Game/UI/GameUI.gd
+index e18bd15..5fe4aea 100644
+--- a/game/Scripts/Game/UI/GameUI.gd
++++ b/game/Scripts/Game/UI/GameUI.gd
+@@ -43,18 +43,18 @@ onready var _chat_box = $HideableUI/ChatBox
+ onready var _clear_table_button = $HideableUI/TopPanel/ClearTableButton
+ onready var _clear_table_dialog = $ClearTableConfirmDialog
+ onready var _flip_table_button = $HideableUI/TopPanel/FlipTableButton
+-onready var _game_menu_background = $GameMenuBackground
++onready var _game_menu_background = $CanvasLayer/GameMenuBackground
+ onready var _games_dialog = $GamesDialog
+ onready var _hideable_ui = $HideableUI
+ onready var _notebook_dialog = $NotebookDialog
+ onready var _objects_dialog = $ObjectsDialog
+-onready var _options_menu = $OptionsMenu
++onready var _options_menu = $CanvasLayer/OptionsMenu
+ onready var _player_list = $HideableUI/MultiplayerContainer/PlayerList
+ onready var _room_code_label = $HideableUI/MultiplayerContainer/RoomCodeLabel
+ onready var _room_code_toggle_button = $HideableUI/MultiplayerContainer/RoomCodeVisibleContainer/RoomCodeToggleButton
+ onready var _room_dialog = $RoomDialog
+ onready var _rotation_option = $HideableUI/TopPanel/RotationOption
+-onready var _save_dialog = $GameMenuBackground/SaveDialog
++onready var _save_dialog = $CanvasLayer/GameMenuBackground/SaveDialog
+ onready var _undo_button = $HideableUI/TopPanel/UndoButton
+ 
+ var spawn_point_container_name: String = ""

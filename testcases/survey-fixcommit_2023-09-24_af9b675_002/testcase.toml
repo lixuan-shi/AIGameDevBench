@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-09-24_af9b675_002"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "859c6296122a074bfb892b9d5f5d940694dc4d77"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: gmf/client/scripts/client.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-09-24_af9b675_002"
+bad_case_type = "A2"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

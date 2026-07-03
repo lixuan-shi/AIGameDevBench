@@ -1,0 +1,107 @@
+diff --git a/scenes/levels/marwing/1-0.tscn b/scenes/levels/marwing/1-0.tscn
+index bfd7508..809db84 100644
+--- a/scenes/levels/marwing/1-0.tscn
++++ b/scenes/levels/marwing/1-0.tscn
+@@ -46,3 +46,4 @@ curve = SubResource( 1 )
+ transform = Transform( -4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, -0.000298113, 0.000109732, -2.55853e-05 )
+ 
+ [node name="DialogueBox" parent="." instance=ExtResource( 7 )]
++visible = false
+diff --git a/scenes/levels/marwing/objects/DialogueBox.tscn b/scenes/levels/marwing/objects/DialogueBox.tscn
+index 14f5e7b..40aed5f 100644
+--- a/scenes/levels/marwing/objects/DialogueBox.tscn
++++ b/scenes/levels/marwing/objects/DialogueBox.tscn
+@@ -12,16 +12,12 @@
+ size = 24
+ font_data = ExtResource( 1 )
+ 
+-[node name="DialogueBox" type="Popup"]
++[node name="DialogueBox" type="Control"]
+ anchor_top = 0.733
+ anchor_right = 1.0
+ anchor_bottom = 1.0
+ margin_top = 0.199982
+-popup_exclusive = true
+ script = ExtResource( 6 )
+-__meta__ = {
+-"_edit_use_anchors_": false
+-}
+ 
+ [node name="SFXPlayer" type="AudioStreamPlayer" parent="."]
+ stream = ExtResource( 5 )
+diff --git a/scenes/ui/PauseMenu.gd b/scenes/ui/PauseMenu.gd
+index 39696f4..c625282 100644
+--- a/scenes/ui/PauseMenu.gd
++++ b/scenes/ui/PauseMenu.gd
+@@ -50,9 +50,6 @@ onready var labels = [
+ ]
+ 
+ 
+-var current_mouse_mode := Input.MOUSE_MODE_VISIBLE
+-
+-
+ ## Node ready override.
+ func _ready():
+ 	# connect this node to the game_paused signal
+@@ -167,8 +164,6 @@ func _process(_delta: float):
+ #  @save: whether or not this should save settings on un-pause
+ func pause_toggle(data: bool):
+ 	if data:
+-		self.current_mouse_mode = Input.get_mouse_mode()
+-		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+ 		# if pausing, show the pause menu and set up selection styling
+ 		$PauseMenu.show()
+ 		set_item_style()
+@@ -177,8 +172,6 @@ func pause_toggle(data: bool):
+ 		if Settings.settings_loaded:
+ 			prepare_labels()
+ 	else:
+-		Input.set_mouse_mode(self.current_mouse_mode)
+-		self.current_mouse_mode = Input.MOUSE_MODE_VISIBLE
+ 		# if un-pausing, reset the pause menu and hide it
+ 		selected = 0
+ 		current_menu = 0
+diff --git a/scripts/marwing/DialogueBox.gd b/scripts/marwing/DialogueBox.gd
+index ef36976..e942bc5 100644
+--- a/scripts/marwing/DialogueBox.gd
++++ b/scripts/marwing/DialogueBox.gd
+@@ -1,4 +1,4 @@
+-extends Popup
++extends Control
+ 
+ var current_line := 0
+ var convo = []
+diff --git a/scripts/marwing/Marwing.gd b/scripts/marwing/Marwing.gd
+index 995ec14..e729116 100644
+--- a/scripts/marwing/Marwing.gd
++++ b/scripts/marwing/Marwing.gd
+@@ -15,6 +15,16 @@ func _ready ():
+ 	initial_crosshair_pos = crosshair.translation
+ 	camera.set_current(true);
+ 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
++	EventBus.connect("game_paused", self, "_on_game_paused")	
++	EventBus.connect("notes_opened", Input, "set_mouse_mode", [Input.MOUSE_MODE_VISIBLE])
++	EventBus.connect("notes_closed", Input, "set_mouse_mode", [Input.MOUSE_MODE_CAPTURED])
++
++
++func _on_game_paused(paused: bool) -> void:
++	if paused:
++		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
++	else:
++		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+ 
+ 
+ func _input(event) -> void:
+diff --git a/scripts/marwing/levels/1-0.gd b/scripts/marwing/levels/1-0.gd
+index 0891a46..a81d304 100644
+--- a/scripts/marwing/levels/1-0.gd
++++ b/scripts/marwing/levels/1-0.gd
+@@ -40,7 +40,7 @@ func _ready ():
+ 		},
+ 	]
+ 	yield(get_tree().create_timer(0.5),"timeout")
+-	$DialogueBox.popup()
++	$DialogueBox.show()
+ 	$DialogueBox.start_line(0)
+ 
+ 	act_number = 1

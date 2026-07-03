@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-12-06_24abf6f_141"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "050b90e2338fcf1aa2ceedc2cbeeb3a1810a0f85"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Prefabs/UI/MarathonResults.tscn, Scripts/Classes/Singletons/SpeedrunHandler.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-12-06_24abf6f_141"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

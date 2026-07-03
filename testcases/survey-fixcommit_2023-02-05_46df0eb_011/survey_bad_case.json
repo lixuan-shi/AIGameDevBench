@@ -1,0 +1,133 @@
+{
+  "schema": "survey.bad_case.testcase.v1",
+  "testcase_id": "survey-fixcommit_2023-02-05_46df0eb_011",
+  "source_repo": "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rts",
+  "baseline_ref": "c7f96a267bc4df05670982354b9807b0ca97e3b5",
+  "repro_ref": "c7f96a267bc4df05670982354b9807b0ca97e3b5",
+  "bad_ref": "c7f96a267bc4df05670982354b9807b0ca97e3b5",
+  "good_ref": "46df0ebf2649b813393e2df2a26d7fa634f9a980",
+  "baseline_resolution_error": null,
+  "expected": {
+    "bad_case_type": "A1",
+    "notes": "fix commit 46df0eb: Fix 'CannonShell' particles transform",
+    "original_l0_pass": null,
+    "original_l1_pass": null,
+    "original_l0_details": [],
+    "original_l1_details": [],
+    "original_human_intervention_ratio": 0.0,
+    "original_rounds_to_resolution": 2,
+    "must_change_one_of": [
+      "source/match/units/projectiles/CannonShell.gd"
+    ],
+    "minimum_changed_files": 1
+  },
+  "hidden_oracle": {
+    "good_ref": "46df0ebf2649b813393e2df2a26d7fa634f9a980",
+    "good_diff_file": "good.diff",
+    "good_changed_files": [
+      "source/match/units/projectiles/CannonShell.gd"
+    ],
+    "history_mining_strategy": "fix_commit_parent"
+  },
+  "bench_record": {
+    "testcase_id": "fixcommit_2023-02-05_46df0eb_011",
+    "harness": "git-history",
+    "category": "survey:A1",
+    "l0_l1_pass": true,
+    "score": 0.0,
+    "verifier_result": {
+      "score": 0.0,
+      "status": "fail",
+      "category": "survey:A1",
+      "error": "fix commit 46df0eb: Fix 'CannonShell' particles transform",
+      "checks": [
+        {
+          "name": "bad_case_detected",
+          "passed": false,
+          "detail": "fix commit 46df0eb: Fix 'CannonShell' particles transform",
+          "expected": "none",
+          "actual": "A1"
+        },
+        {
+          "name": "human_intervention_ratio",
+          "passed": true,
+          "detail": "",
+          "expected": "<= 0.40",
+          "actual": 0.0
+        },
+        {
+          "name": "rounds_to_resolution",
+          "passed": true,
+          "detail": "",
+          "expected": "<= 4",
+          "actual": 2
+        }
+      ]
+    },
+    "diff": "",
+    "artifacts_path": null,
+    "ai_agent_context": {
+      "harness": "git-history",
+      "transcript_session_id": null,
+      "transcript_match_confidence": null,
+      "transcript_path": null,
+      "codex_session_id": null,
+      "total_tokens": null,
+      "filtered_to_commits": [
+        "46df0eb"
+      ],
+      "filtered_turns": null,
+      "turns": []
+    },
+    "survey_session": {
+      "session_id": "fixcommit_2023-02-05_46df0eb_011",
+      "harness": "git-history",
+      "config": {},
+      "bad_case_type": "A1",
+      "auto_detected": true,
+      "confidence": "low",
+      "notes": "fix commit 46df0eb: Fix 'CannonShell' particles transform",
+      "prompts": [],
+      "system_context": {
+        "source": "git-history-fix",
+        "baseline_ref": "c7f96a267bc4df05670982354b9807b0ca97e3b5",
+        "bad_ref": "c7f96a267bc4df05670982354b9807b0ca97e3b5",
+        "good_ref": "46df0ebf2649b813393e2df2a26d7fa634f9a980",
+        "good_commit_timestamp": "2023-02-05T14:27:43+01:00",
+        "good_changed_files": [
+          "source/match/units/projectiles/CannonShell.gd"
+        ],
+        "fix_commit_subject": "Fix 'CannonShell' particles transform",
+        "oracle_level": "diff_only",
+        "history_mining_strategy": "fix_commit_parent",
+        "failure_mode": "premature transform read"
+      },
+      "changed_files": [
+        "source/match/units/projectiles/CannonShell.gd"
+      ],
+      "commits": [
+        "46df0eb"
+      ],
+      "timestamps": {
+        "started": "2023-02-05T14:27:43+01:00",
+        "ended": "2023-02-05T14:27:43+01:00"
+      },
+      "verification": null,
+      "outcome": {
+        "first_pass_success": false,
+        "rounds_to_resolution": 2,
+        "ai_lines_changed": 0,
+        "human_lines_changed": 0,
+        "human_intervention_ratio": 0.0,
+        "token_cost": 0,
+        "session_duration_minutes": 0.0
+      },
+      "tag": {
+        "bad_case_type": "A1",
+        "suggested_type": "A1",
+        "confidence": "medium",
+        "root_cause": "Particles read the unit's global transform before the remote transform's rotation applied; awaiting a physics frame ensures the correct transform is used."
+      }
+    }
+  }
+}

@@ -1,0 +1,263 @@
+diff --git a/scenes/player/Player.gd b/scenes/player/Player.gd
+index b9107fa..5ce5c1a 100644
+--- a/scenes/player/Player.gd
++++ b/scenes/player/Player.gd
+@@ -212,7 +212,7 @@ func calculate_and_apply_boosts():
+ 	var boost: Boost = calculate_level_boost()
+ 	var equipment_boost: Boost = equipment.get_boost()
+ 	boost.identifier = "player_general"
+-	
++
+ 	boost.combine_boost(equipment_boost)
+ 	stats.apply_boost(boost)
+ 
+diff --git a/scripts/classes/Boost.gd b/scripts/classes/Boost.gd
+index 02735ce..fd89790 100644
+--- a/scripts/classes/Boost.gd
++++ b/scripts/classes/Boost.gd
+@@ -47,8 +47,11 @@ func combine_boost(boost: Boost):
+ 	if Global.debug_mode:
+ 		if boost.identifier != NO_IDENTIFIER and identifier != NO_IDENTIFIER:
+ 			GodotLogger.info(
+-				"Mixed 2 boosts with differing identifiers (Original '{0}' and incoming '{1}')".format([identifier, boost.identifier])
++				(
++					"Mixed 2 boosts with differing identifiers (Original '{0}' and incoming '{1}')"
++					. format([identifier, boost.identifier])
+ 				)
++			)
+ 	for stat: String in statBoostDict:
+ 		set_stat_boost(stat, boost.get_stat_boost(stat))
+ 
+@@ -63,18 +66,18 @@ func add_stat_boost(stat_name: String, value: int):
+ 
+ func get_stat_boost(statName: String, default: int = 0) -> int:
+ 	return statBoostDict.get(statName, default)
+-	
+-	
++
++
+ func set_stat_boost_modifier(stat_name: String, value: float):
+ 	statBoostModifierDict[stat_name] = value
+ 
+ 
+-func get_stat_boost_modifier(stat_name: String, default:float = 1) -> float:
++func get_stat_boost_modifier(stat_name: String, default: float = 1) -> float:
+ 	return statBoostModifierDict.get(stat_name, default)
+-	
++
++
+ func add_stat_boost_modifier(stat_name: String, value: float, additive: bool = false):
+ 	if additive:
+ 		set_stat_boost_modifier(stat_name, get_stat_boost_modifier(stat_name) + value)
+ 	else:
+ 		set_stat_boost_modifier(stat_name, get_stat_boost_modifier(stat_name) * value)
+-	
+diff --git a/scripts/components/networking/statssynchronizercomponent/StatsSynchronizerComponent.gd b/scripts/components/networking/statssynchronizercomponent/StatsSynchronizerComponent.gd
+index de518dd..8adfc98 100644
+--- a/scripts/components/networking/statssynchronizercomponent/StatsSynchronizerComponent.gd
++++ b/scripts/components/networking/statssynchronizercomponent/StatsSynchronizerComponent.gd
+@@ -160,13 +160,13 @@ var is_dead: bool = false
+ var server_buffer: Array[Dictionary] = []
+ var ready_done: bool = false
+ 
+-var _default_hp_max: int = hp_max
+-var _default_energy_max: int = energy_max
+-var _default_energy_regen: int = energy_regen
+-var _default_attack_power_min: int = attack_power_min
+-var _default_attack_power_max: int = attack_power_max
+-var _default_defense: int = defense
+-var _default_movement_speed: float = movement_speed
++var _default_hp_max: int = 100
++var _default_energy_max: int = 100
++var _default_energy_regen: int = 5
++var _default_attack_power_min: int = 0
++var _default_attack_power_max: int = 5
++var _default_defense: int = 0
++var _default_movement_speed: float = 300
+ 
+ var energy_regen_timer: Timer
+ 
+@@ -205,9 +205,9 @@ func _ready():
+ 			await tree_entered
+ 
+ 		G.sync_rpc.statssynchronizer_sync_stats.rpc_id(1, target_node.name)
+-	
++
+ 	boosts_changed.connect(reload_boosts)
+-	
++
+ 	# Make sure this line is called on server and client's side
+ 	ready_done = true
+ 
+@@ -388,43 +388,48 @@ func apply_boost(boost: Boost):
+ 		var existingBoost: Boost = get_boost_with_identifier(boost.identifier)
+ 		if existingBoost is Boost:
+ 			remove_boost(existingBoost)
+-	
++
+ 	#Validate boost
+ 	for statName in boost.statBoostDict.keys() + boost.statBoostModifierDict.keys():
+ 		if not statName in StatListAll:
+ 			GodotLogger.error("The property '{0}' is not a stat.".format([statName]))
+ 
+-		if typeof(boost.get_stat_boost(statName)) != typeof(get(statName)):
++		if (
++			typeof(boost.get_stat_boost(statName)) != TYPE_INT
++			and typeof(boost.get_stat_boost(statName)) != TYPE_FLOAT
++		):
+ 			(
+ 				GodotLogger
+ 				. warn(
+ 					(
+-						"The value type of the boost ({0}) is different from the stat it is meant to alter ({1}). This could cause unexpected behaviour."
++						"The value type of the boost ({0}) must be type 1 or 2. This could cause unexpected behaviour."
+ 						. format([typeof(boost.get_stat_boost(statName)), typeof(get(statName))])
+ 					)
+ 				)
+ 			)
+-	
++
+ 	#Add to list
+ 	active_boosts.append(boost)
+ 
+ 	var data: Dictionary = to_json(true)
+-	
++
+ 	if peer_id > 0:
+ 		G.sync_rpc.statssynchronizer_sync_response.rpc_id(peer_id, target_node.name, data)
+ 
+ 	for watcher in watcher_synchronizer.watchers:
+ 		G.sync_rpc.statssynchronizer_sync_response.rpc_id(watcher.peer_id, target_node.name, data)
+-	
++
+ 	#This signal calls reload_boosts()
+ 	boosts_changed.emit()
+ 
+ 
+ func remove_boost(boost: Boost):
+ 	if not active_boosts.has(boost):
+-		GodotLogger.error("This boost does not belong to this component.")
++		GodotLogger.warn("This boost does not belong to this component.")
+ 		return
+ 
++	active_boosts.erase(boost)
++
+ 	var data: Dictionary = to_json(true)
+ 
+ 	if peer_id > 0:
+@@ -432,34 +437,49 @@ func remove_boost(boost: Boost):
+ 
+ 	for watcher in watcher_synchronizer.watchers:
+ 		G.sync_rpc.statssynchronizer_sync_response.rpc_id(watcher.peer_id, target_node.name, data)
+-	
++
+ 	boosts_changed.emit()
+ 
+ 
+ func reload_boosts():
+ 	load_defaults()
+-	
++
+ 	var flatValues: Dictionary = {}
+ 	var modifierValues: Dictionary = {}
+-	
++
+ 	for stat: String in StatListPermanent:
+-		flatValues[stat] = 0
+-		modifierValues[stat] = 0
+-		
++		flatValues[stat] = get(stat)
++		modifierValues[stat] = 1
++
+ 		for boost: Boost in active_boosts:
+ 			flatValues[stat] += boost.get_stat_boost(stat)
+-			modifierValues[stat] += boost.get_stat_boost_modifier(stat)
+-			
++			modifierValues[stat] *= boost.get_stat_boost_modifier(stat)
++
+ 		set(stat, flatValues[stat] * modifierValues[stat])
+-	
+-		
++
++	if Global.debug_mode:
++		var debugLog: String = "Boosts applied with these results: \n"
++
++		for statName: String in StatListPermanent + StatListCounter:
++			debugLog += "{0}: {1} | Flat boost: {2} | Modifier boost: {3} \n".format(
++				[
++					statName,
++					get(statName),
++					flatValues.get(statName, 0 as int),
++					modifierValues.get(statName, 0.0 as float)
++				]
++			)
++		GodotLogger.info(debugLog)
+ 
+ 
+ func get_boost_with_identifier(identifier: String) -> Boost:
+ 	for boost: Boost in active_boosts:
+ 		if boost.identifier == identifier:
+ 			return boost
+-			
++
++	if Global.debug_mode:
++		GodotLogger.warn("Could not find boost with identifier '{0}'".format([identifier]))
++
+ 	return null
+ 
+ 
+diff --git a/scripts/components/player/charclasscomponent/CharClassSelection.gd b/scripts/components/player/charclasscomponent/CharClassSelection.gd
+index ca5f8b4..899d8e3 100644
+--- a/scripts/components/player/charclasscomponent/CharClassSelection.gd
++++ b/scripts/components/player/charclasscomponent/CharClassSelection.gd
+@@ -193,6 +193,7 @@ func _on_class_lock_changed():
+ func close():
+ 	if is_inside_tree():
+ 		get_parent().remove_child(self)
++		JUI.above_ui = false
+ 
+ 
+ func _on_change_skills_pressed():
+diff --git a/scripts/components/player/charclasscomponent/characterclasscomponent.gd b/scripts/components/player/charclasscomponent/characterclasscomponent.gd
+index 537575f..52720ba 100644
+--- a/scripts/components/player/charclasscomponent/characterclasscomponent.gd
++++ b/scripts/components/player/charclasscomponent/characterclasscomponent.gd
+@@ -203,15 +203,15 @@ func apply_stats():
+ 
+ 	var statBoost := Boost.new()
+ 	statBoost.identifier = "character_classes"
+-	
++
+ 	for charClass: CharacterClassResource in classes:
+-		for stat: String in StatsSynchronizerComponent.StatListWithDefaults:			
++		for stat: String in StatsSynchronizerComponent.StatListWithDefaults:
+ 			#Apply all multipliers and bonuses from classes for the given stat
+ 			statBoost.add_stat_boost(stat, charClass.get_bonus(stat))
+ 			statBoost.add_stat_boost_modifier(stat, charClass.get_multiplier(stat), false)
+-			
++
+ 	stats_component.apply_boost(statBoost)
+-	
++
+ 
+ func apply_skills():
+ 	if not G.is_server():
+diff --git a/scripts/components/player/equipmentsynchronizercomponent/EquipmentSynchronizerComponent.gd b/scripts/components/player/equipmentsynchronizercomponent/EquipmentSynchronizerComponent.gd
+index 05be5c4..028a65c 100644
+--- a/scripts/components/player/equipmentsynchronizercomponent/EquipmentSynchronizerComponent.gd
++++ b/scripts/components/player/equipmentsynchronizercomponent/EquipmentSynchronizerComponent.gd
+@@ -110,12 +110,12 @@ func get_item(item_uuid: String) -> Item:
+ func get_boost() -> Boost:
+ 	var boost: Boost = Boost.new()
+ 	boost.identifier = "equipment"
+-	
++
+ 	for equipment_slot in items:
+ 		var item: Item = items[equipment_slot]
+ 		if item != null:
+ 			boost.combine_boost(item.boost)
+-			
++
+ 	return boost
+ 
+ 

@@ -1,0 +1,126 @@
+diff --git a/scenes/enemies/Sheep/Sheep.tscn b/scenes/enemies/Sheep/Sheep.tscn
+index 4779bb5..3ebdf0b 100644
+--- a/scenes/enemies/Sheep/Sheep.tscn
++++ b/scenes/enemies/Sheep/Sheep.tscn
+@@ -114,8 +114,47 @@ tracks/2/keys = {
+ "values": [Vector2(0, -2.38419e-07), Vector2(1, 2), Vector2(2, -1), Vector2(-1, 2), Vector2(2, -2), Vector2(0, -2.38419e-07)]
+ }
+ 
+-[sub_resource type="Animation" id="Animation_8frmy"]
++[sub_resource type="Animation" id="Animation_uriyb"]
+ resource_name = "Idle"
++length = 0.5
++loop_mode = 1
++step = 0.01
++tracks/0/type = "value"
++tracks/0/imported = false
++tracks/0/enabled = true
++tracks/0/path = NodePath("Sprite2D:position")
++tracks/0/interp = 1
++tracks/0/loop_wrap = true
++tracks/0/keys = {
++"times": PackedFloat32Array(0.5),
++"transitions": PackedFloat32Array(1),
++"update": 0,
++"values": [Vector2(0, 0)]
++}
++tracks/1/type = "value"
++tracks/1/imported = false
++tracks/1/enabled = true
++tracks/1/path = NodePath("Sprite2D:modulate")
++tracks/1/interp = 1
++tracks/1/loop_wrap = true
++tracks/1/keys = {
++"times": PackedFloat32Array(0.5),
++"transitions": PackedFloat32Array(1),
++"update": 0,
++"values": [Color(1, 1, 1, 1)]
++}
++tracks/2/type = "value"
++tracks/2/imported = false
++tracks/2/enabled = true
++tracks/2/path = NodePath("Sprite2D:scale")
++tracks/2/interp = 1
++tracks/2/loop_wrap = true
++tracks/2/keys = {
++"times": PackedFloat32Array(0.5),
++"transitions": PackedFloat32Array(1),
++"update": 0,
++"values": [Vector2(0.1, 0.1)]
++}
+ 
+ [sub_resource type="Animation" id="Animation_m0sor"]
+ resource_name = "Move"
+@@ -188,7 +227,7 @@ tracks/3/keys = {
+ _data = {
+ "Die": SubResource("Animation_itymv"),
+ "Hurt": SubResource("Animation_7s7yl"),
+-"Idle": SubResource("Animation_8frmy"),
++"Idle": SubResource("Animation_uriyb"),
+ "Move": SubResource("Animation_m0sor"),
+ "RESET": SubResource("Animation_mj6pj")
+ }
+@@ -241,6 +280,7 @@ shape = SubResource("CapsuleShape2D_orhwg")
+ libraries = {
+ "": SubResource("AnimationLibrary_ynm2p")
+ }
++blend_times = [&"Move", &"Idle", 0.5]
+ 
+ [node name="AvoidanceRays" parent="." instance=ExtResource("11_nla65")]
+ 
+diff --git a/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn b/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn
+index b1fe190..f4e2160 100644
+--- a/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn
++++ b/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn
+@@ -24,7 +24,7 @@
+ 
+ [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_6b05c"]
+ radius = 24.0
+-height = 112.0
++height = 95.0
+ 
+ [sub_resource type="Animation" id="Animation_wkh27"]
+ resource_name = "Die"
+@@ -907,10 +907,12 @@ libraries = {
+ }
+ 
+ [node name="AvoidanceRays" parent="." instance=ExtResource("10_2fx0n")]
++position = Vector2(0, -45)
++ray_magnitude = 75
+ 
+ [node name="StuckTimer" type="Timer" parent="."]
+ process_callback = 0
+-wait_time = 0.25
++wait_time = 0.15
+ one_shot = true
+ 
+ [node name="AggroRadius" type="Area2D" parent="."]
+diff --git a/scenes/enemies/common/ai/sequences/wander_sequence/ShouldWander.gd b/scenes/enemies/common/ai/sequences/wander_sequence/ShouldWander.gd
+index 4a7f728..b1125a3 100644
+--- a/scenes/enemies/common/ai/sequences/wander_sequence/ShouldWander.gd
++++ b/scenes/enemies/common/ai/sequences/wander_sequence/ShouldWander.gd
+@@ -21,23 +21,11 @@ func tick(actor: Node, blackboard: Blackboard):
+ 				spawn_position.y * randf_range(0.85, 1.15)
+ 			)
+ 		else:
+-			wander_destination = _random_point_within_radius(actor, spawn_position, wander_radius)
++			wander_destination = _make_rand_vector(spawn_position, wander_radius)
+ 		blackboard.set_value("destination_global_position", wander_destination)
+ 	return SUCCESS
+ 
+ 
+-func _random_point_within_radius(actor: Node, origin: Vector2, distance: float) -> Vector2:
+-	var open_check := RayCast2D.new()
+-	actor.add_child(open_check)
+-	open_check.collision_mask = J.PHYSICS_LAYER_WORLD
+-	var dst: Vector2 = _make_rand_vector(origin, distance)
+-	open_check.target_position = dst
+-	while open_check.is_colliding():
+-		dst = _make_rand_vector(origin, distance)
+-	open_check.queue_free()
+-	return dst
+-
+-
+ func _make_rand_vector(origin: Vector2, distance: float) -> Vector2:
+ 	return Vector2(
+ 		float(randi_range(origin.x - distance, origin.x + distance)),

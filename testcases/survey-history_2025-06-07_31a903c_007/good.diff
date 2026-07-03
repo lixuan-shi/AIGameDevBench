@@ -1,0 +1,1287 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 3deba24..708edab 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,5 +1,15 @@
+ # Changelog
+ 
++## v0.3.3 Overworld Gameboard & Gamepiece Rework 🔧
++
++### Under-the-hood changes
++This update has aimed to greatly simplify the code responsible for moving Gamepieces around the Gameboard, while keeping the structure of the code roughly the same. Most scripts dealing with the overworld/field gamestate have been changed, but the main features are as follows:
++	- Collision on the Gameboard is no longer based on physics-based collisions. The physics implementation was great, but introduced a host of edge cases (e.g. two gamepieces moving onto the same cell on the same physics tick) that had to be accounted for.
++	- Rather, objects used to build the pathfinder use a registry pattern; GameboardLayers register themselves with the Gameboard, and Gamepieces register themselves with the GamepieceRegistry. The board and registry update automatically based on signals from their registered objects, and the user no longer needs to worry about emitting global signals such as "FieldEvents.terrain_changed". It all happens under the hood.
++	- The removal of circular dependency issues that were present in early Godot 4.X has made life much easier. The Gameboard singleton allows anything to figure out where coordinates occur on the gameboard and if those coordinates are moveable (thanks to the single Pathfinder), and the GamepieceRegistry allows objects (cutscenes!) to easily find where everything and everyone is placed on the board. Gameboard and GamepieceRegistry are autoloads that allow designers to easily observe the global overworld state without having to worry (too much) about messing things up.
++	- Many objects have had their responsibilities reduced, such as Gamepiece which now only deals with moving to a point (rather than also tracking cells, coordinates, movement paths, etc.), and GamepieceControllers which now are much more focused on helping a gamepiece follow a path in response to player and AI input (as opposed to previously, where they also dabbled in pathfinding, physics shenanigans, etc.)
++Overall, the code should now be simpler to understand at first glance, and much easier for newcomers to work through. Happy designing!
++
+ ## v0.3.2 Combat UI Demo 🖱️ - Battler Actions & User Interface
+ 
+ ### Guide the player through action selection
+diff --git a/overworld/maps/default_gameboard.tres b/overworld/maps/default_gameboard.tres
+deleted file mode 100644
+index 4396be5..0000000
+--- a/overworld/maps/default_gameboard.tres
++++ /dev/null
+@@ -1,8 +0,0 @@
+-[gd_resource type="Resource" script_class="Gameboard" load_steps=2 format=3 uid="uid://cbnicto2l2ur2"]
+-
+-[ext_resource type="Script" uid="uid://brfwvujo4oa4e" path="res://src/field/gameboard/gameboard.gd" id="1_jnxdl"]
+-
+-[resource]
+-script = ExtResource("1_jnxdl")
+-boundaries = Rect2i(0, 0, 60, 35)
+-cell_size = Vector2i(16, 16)
+diff --git a/overworld/maps/forest/game_end_trigger.gd b/overworld/maps/forest/game_end_trigger.gd
+index 721cdda..1bf36ce 100644
+--- a/overworld/maps/forest/game_end_trigger.gd
++++ b/overworld/maps/forest/game_end_trigger.gd
+@@ -10,7 +10,7 @@ var gamepiece: Gamepiece
+ 
+ 
+ func _execute() -> void:
+-	gamepiece.travel_to_cell(Vector2i(53, 30))
++	gamepiece.move_to(Gameboard.cell_to_pixel(Vector2i(53, 30)))
+ 	await gamepiece.arrived
+ 	
+ 	_timer.start()
+@@ -31,7 +31,6 @@ func _execute() -> void:
+ 
+ 
+ func _on_area_entered(area: Area2D) -> void:
+-	super._on_area_entered(area)
+-	
+ 	if not Engine.is_editor_hint():
+ 		gamepiece = area.owner as Gamepiece
++	super._on_area_entered(area)
+diff --git a/overworld/maps/house/wand_pedestal_interaction.gd b/overworld/maps/house/wand_pedestal_interaction.gd
+index 29fa44e..d069227 100644
+--- a/overworld/maps/house/wand_pedestal_interaction.gd
++++ b/overworld/maps/house/wand_pedestal_interaction.gd
+@@ -17,7 +17,7 @@ const VALID_ITEMS: = [
+ static var _correct_pedestals: = {}
+ 
+ ## Link the obstacle's animation player to this object for when the puzzle is solved.
+-@export var spikes_animation: AnimationPlayer
++@export var solved_animation: AnimationPlayer
+ 
+ ## Specify a timeline that should be run if an item is already placed on the pedestal.
+ @export var wand_placed_timeline: DialogicTimeline
+@@ -38,7 +38,7 @@ func _ready() -> void:
+ 	super._ready()
+ 	
+ 	if not Engine.is_editor_hint():
+-		assert(spikes_animation, "This interaction requires the obstacle's animation player!")
++		assert(solved_animation, "This interaction requires the obstacle's animation player!")
+ 		
+ 		# Setup the static variable to account for this pedestal.
+ 		_correct_pedestals[self] = false
+@@ -71,9 +71,9 @@ func _execute() -> void:
+ 		for pedestal in _correct_pedestals.keys():
+ 			pedestal.is_active = false
+ 		
+-		# The referenced animation player will visually resolve the puzzle.
+-		spikes_animation.play("clear")
+-		await spikes_animation.animation_finished
++		# The referenced animation player will resolve the puzzle.
++		solved_animation.play("solve")
++		await solved_animation.animation_finished
+ 
+ 
+ # Check to see if ALL pedestals have the correct wand placed on them.
+diff --git a/src/Main2.tscn b/src/Main2.tscn
+deleted file mode 100644
+index 2166ce4..0000000
+--- a/src/Main2.tscn
++++ /dev/null
+@@ -1,84 +0,0 @@
+-[gd_scene load_steps=17 format=4 uid="uid://dve3nxx0ohm1g"]
+-
+-[ext_resource type="Script" uid="uid://ccm6jxmjt0frp" path="res://src/main_2.gd" id="1_d0xvx"]
+-[ext_resource type="Script" uid="uid://bt8owd5e0ns68" path="res://src/field/gameboard/gameboard_layer.gd" id="2_08ad2"]
+-[ext_resource type="Script" uid="uid://drugj534rnwxw" path="res://src/field/map.gd" id="2_dn3vx"]
+-[ext_resource type="Texture2D" uid="uid://d2qfi5sncf72b" path="res://overworld/maps/tilesets/town_tilemap.png" id="2_dsdwj"]
+-[ext_resource type="PackedScene" uid="uid://b626e0bngfvjj" path="res://src/field/gamepieces/gamepiece.tscn" id="2_nevdf"]
+-[ext_resource type="PackedScene" uid="uid://qxua6ekob7fa" path="res://overworld/characters/gobot_gfx.tscn" id="3_08ad2"]
+-[ext_resource type="Script" uid="uid://yukpiyvqb6m3" path="res://src/field/gameboard/debug/debug_pathfinder_map.gd" id="3_ppad8"]
+-[ext_resource type="TileSet" uid="uid://dhda7bse8tu6l" path="res://src/field/gameboard/debug/tileset_debug_pathfinder_map.tres" id="6_dn3vx"]
+-[ext_resource type="Script" uid="uid://27j187rqxg64" path="res://src/field/gameboard/debug/debug_map_boundaries.gd" id="6_ndalr"]
+-[ext_resource type="Resource" uid="uid://k63mv5dbd1uk" path="res://overworld/maps/gbprops.tres" id="7_7v0vs"]
+-[ext_resource type="TileSet" uid="uid://cnlvvllr0ici" path="res://src/field/gamepieces/controllers/cursor/tileset_cursor.tres" id="8_vw0ml"]
+-[ext_resource type="Script" uid="uid://dwq2jtul5j1rc" path="res://src/field/gamepieces/controllers/cursor/field_cursor.gd" id="9_xqwga"]
+-[ext_resource type="PackedScene" uid="uid://d2lj4blu56fte" path="res://src/field/gamepieces/controllers/player_controller.tscn" id="13_dn3vx"]
+-[ext_resource type="PackedScene" uid="uid://oot0x5n44b2r" path="res://src/field/cutscenes/Interaction.tscn" id="15_l5lio"]
+-
+-[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_u7xvm"]
+-texture = ExtResource("2_dsdwj")
+-separation = Vector2i(1, 1)
+-0:0/0 = 0
+-10:7/0 = 0
+-10:7/0/custom_data_0 = true
+-
+-[sub_resource type="TileSet" id="TileSet_08ad2"]
+-custom_data_layer_0/name = "IsCellBlocked"
+-custom_data_layer_0/type = 1
+-sources/0 = SubResource("TileSetAtlasSource_u7xvm")
+-
+-[node name="Main2" type="Node2D"]
+-scale = Vector2(5, 5)
+-script = ExtResource("1_d0xvx")
+-metadata/_edit_lock_ = true
+-
+-[node name="Map" type="Node2D" parent="."]
+-script = ExtResource("2_dn3vx")
+-gameboard_properties = ExtResource("7_7v0vs")
+-metadata/_edit_lock_ = true
+-
+-[node name="TileMapLayer" type="TileMapLayer" parent="Map"]
+-tile_map_data = PackedByteArray("AAACAAEAAAAAAAAAAAADAAEAAAAAAAAAAAADAAIAAAAKAAcAAAACAAIAAAAAAAAAAAAEAAIAAAAAAAAAAAAEAAEAAAAAAAAAAAA=")
+-tile_set = SubResource("TileSet_08ad2")
+-script = ExtResource("2_08ad2")
+-
+-[node name="TileMapLayer2" type="TileMapLayer" parent="Map"]
+-tile_map_data = PackedByteArray("AAAEAAIAAAAAAAAAAAAFAAIAAAAAAAAAAAAFAAMAAAAAAAAAAAAEAAMAAAAAAAAAAAAEAAQAAAAAAAAAAAADAAQAAAAAAAAAAAACAAQAAAAAAAAAAAACAAEAAAAKAAcAAAA=")
+-tile_set = SubResource("TileSet_08ad2")
+-script = ExtResource("2_08ad2")
+-
+-[node name="DebugMoveGrid" type="TileMapLayer" parent="Map"]
+-modulate = Color(1, 1, 1, 0.470588)
+-tile_set = ExtResource("6_dn3vx")
+-script = ExtResource("3_ppad8")
+-
+-[node name="OccupancyGrid" type="TileMapLayer" parent="Map/DebugMoveGrid"]
+-
+-[node name="Cursor" type="TileMapLayer" parent="Map"]
+-tile_set = ExtResource("8_vw0ml")
+-script = ExtResource("9_xqwga")
+-
+-[node name="DebugBoundaries" type="Node2D" parent="Map"]
+-script = ExtResource("6_ndalr")
+-gameboard_properties = ExtResource("7_7v0vs")
+-
+-[node name="Gamepieces" type="Node2D" parent="."]
+-
+-[node name="Gamepiece" parent="Gamepieces" instance=ExtResource("2_nevdf")]
+-position = Vector2(87.6, 55.8)
+-animation_scene = ExtResource("3_08ad2")
+-
+-[node name="Camera2D" type="Camera2D" parent="Gamepieces/Gamepiece"]
+-metadata/_edit_lock_ = true
+-
+-[node name="PlayerController" parent="Gamepieces/Gamepiece" instance=ExtResource("13_dn3vx")]
+-
+-[node name="Gamepiece2" parent="Gamepieces" instance=ExtResource("2_nevdf")]
+-position = Vector2(56, 69.8)
+-animation_scene = ExtResource("3_08ad2")
+-
+-[node name="Interaction" parent="." instance=ExtResource("15_l5lio")]
+-position = Vector2(88, 24)
+-
+-[node name="Interaction2" parent="." instance=ExtResource("15_l5lio")]
+-position = Vector2(40, 40)
+diff --git a/src/field/cutscenes/popups/interaction_popup.tscn b/src/field/cutscenes/popups/interaction_popup.tscn
+index bd3bc31..c6cdb2d 100644
+--- a/src/field/cutscenes/popups/interaction_popup.tscn
++++ b/src/field/cutscenes/popups/interaction_popup.tscn
+@@ -19,6 +19,7 @@ position = Vector2(0, -12)
+ show_behind_parent = true
+ collision_layer = 0
+ collision_mask = 4
++input_pickable = false
+ monitorable = false
+ 
+ [node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D" index="0"]
+diff --git a/src/field/cutscenes/templates/area_transitions/area_transition.tscn b/src/field/cutscenes/templates/area_transitions/area_transition.tscn
+index aa4c850..ceafb40 100644
+--- a/src/field/cutscenes/templates/area_transitions/area_transition.tscn
++++ b/src/field/cutscenes/templates/area_transitions/area_transition.tscn
+@@ -8,6 +8,7 @@
+ script = ExtResource("2_l3ptr")
+ arrival_coordinates = Vector2(0, 0)
+ new_music = null
++is_active = true
+ 
+ [node name="Destination" type="Sprite2D" parent="." index="1"]
+ texture = ExtResource("3_retee")
+diff --git a/src/field/cutscenes/templates/combat/roaming_combat_trigger.gd b/src/field/cutscenes/templates/combat/roaming_combat_trigger.gd
+index 1211481..0d41232 100644
+--- a/src/field/cutscenes/templates/combat/roaming_combat_trigger.gd
++++ b/src/field/cutscenes/templates/combat/roaming_combat_trigger.gd
+@@ -1,29 +1,12 @@
+ @tool
+ extends CombatTrigger
+ 
+-@onready var gamepiece: = get_parent() as Gamepiece
+ 
+-
+-func _get_configuration_warnings() -> PackedStringArray:
+-	var warnings: PackedStringArray = []
+-	if not gamepiece:
+-		warnings.append("This object must be a child of a gamepiece!")
+-	
+-	return warnings
+-
+-
+-func _notification(what: int) -> void:
+-	if what == NOTIFICATION_PARENTED:
+-		gamepiece = get_parent() as Gamepiece
+-		update_configuration_warnings()
+-
+-
+-# If the player has defeated this 'roaming encounter', remove the encounterable gamepiece.
++# If the player has defeated this 'roaming encounter', remove the encounter.
+ func _run_victory_cutscene() -> void:
+-	if gamepiece:
+-		gamepiece.queue_free()
++	queue_free()
+ 
+ 
+-# If the player has lost to this 'roaming encounter', incur the game-over screen.
++# If the player has lost to this 'roaming encounter', play the game-over screen.
+ func _run_loss_cutscene() -> void:
+ 	await get_tree().process_frame
+diff --git a/src/field/cutscenes/templates/doors/door.gd b/src/field/cutscenes/templates/doors/door.gd
+index 44317d3..caa14b9 100644
+--- a/src/field/cutscenes/templates/doors/door.gd
++++ b/src/field/cutscenes/templates/doors/door.gd
+@@ -1,19 +1,34 @@
+ @tool
+-
+ class_name Door extends AreaTransition
+ 
++# A locked door will block movement by placing a dummy gamepiece on the cell occupied by the door.
++const GP_SCENE: = preload("res://src/field/gamepieces/gamepiece.tscn")
++
+ @export var is_locked: = false:
+ 	set(value):
+-		is_locked = value
+-		
+-		if not Engine.is_editor_hint():
++		if value != is_locked:
++			is_locked = value
++			
+ 			if not is_inside_tree():
+ 				await ready
+ 			
+-			_blocking_area.get_node("CollisionShape2D").disabled = !is_locked
++			if is_locked:
++				if _dummy_gp == null:
++					_dummy_gp = GP_SCENE.instantiate()
++					_dummy_gp.name = "CellBlocker"
++					_closed_door.add_child(_dummy_gp)
++			
++			else:
++				open()
++				if _dummy_gp != null:
++					_dummy_gp.queue_free()
++					_dummy_gp = null
++
++# Keep a reference to the object used to block movement through a locked door.
++# Note that this gamepiece has no animation, movement, etc. It exists to occupy a board cell.
++var _dummy_gp: Gamepiece = null
+ 
+ @onready var _anim: = $AnimationPlayer as AnimationPlayer
+-@onready var _blocking_area: = $Area2D/ClosedDoor/BlockingArea as Area2D
+ @onready var _closed_door: = $Area2D/ClosedDoor as Sprite2D
+ 
+ 
+diff --git a/src/field/cutscenes/templates/doors/door.tscn b/src/field/cutscenes/templates/doors/door.tscn
+index 7f03cb9..642f533 100644
+--- a/src/field/cutscenes/templates/doors/door.tscn
++++ b/src/field/cutscenes/templates/doors/door.tscn
+@@ -1,4 +1,4 @@
+-[gd_scene load_steps=14 format=3 uid="uid://p0e4b0txynkd"]
++[gd_scene load_steps=13 format=3 uid="uid://p0e4b0txynkd"]
+ 
+ [ext_resource type="PackedScene" uid="uid://bd624fi8r2avm" path="res://src/field/cutscenes/templates/area_transitions/area_transition.tscn" id="1_0tk0k"]
+ [ext_resource type="Texture2D" uid="uid://d2qfi5sncf72b" path="res://overworld/maps/tilesets/town_tilemap.png" id="2_4mdkx"]
+@@ -8,9 +8,6 @@
+ [ext_resource type="AudioStream" uid="uid://bt1obi05x1xda" path="res://assets/sfx/impactWood_light_002.ogg" id="6_ui4yk"]
+ [ext_resource type="FontFile" uid="uid://cfhyd5hmym1s4" path="res://assets/gui/font/Kenney Pixel.ttf" id="7_er0br"]
+ 
+-[sub_resource type="RectangleShape2D" id="RectangleShape2D_xgpwx"]
+-size = Vector2(15, 15)
+-
+ [sub_resource type="Animation" id="Animation_8loys"]
+ length = 0.001
+ tracks/0/type = "value"
+@@ -22,7 +19,7 @@ tracks/0/loop_wrap = true
+ tracks/0/keys = {
+ "times": PackedFloat32Array(0),
+ "transitions": PackedFloat32Array(1),
+-"update": 1,
++"update": 0,
+ "values": [true]
+ }
+ tracks/1/type = "value"
+@@ -134,7 +131,7 @@ tracks/0/loop_wrap = true
+ tracks/0/keys = {
+ "times": PackedFloat32Array(0),
+ "transitions": PackedFloat32Array(1),
+-"update": 1,
++"update": 0,
+ "values": [false]
+ }
+ tracks/1/type = "audio"
+@@ -183,16 +180,9 @@ texture = ExtResource("2_4mdkx")
+ region_enabled = true
+ region_rect = Rect2(17, 119, 16, 16)
+ 
+-[node name="BlockingArea" type="Area2D" parent="Area2D/ClosedDoor" index="0"]
+-collision_mask = 0
+-monitoring = false
+-
+-[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D/ClosedDoor/BlockingArea" index="0"]
+-shape = SubResource("RectangleShape2D_xgpwx")
+-
+ [node name="AnimationPlayer" type="AnimationPlayer" parent="." index="3"]
+ libraries = {
+-"": SubResource("AnimationLibrary_k2tlp")
++&"": SubResource("AnimationLibrary_k2tlp")
+ }
+ autoplay = "RESET"
+ 
+diff --git a/src/field/cutscenes/trigger.gd b/src/field/cutscenes/trigger.gd
+index e6c2289..fc635e2 100644
+--- a/src/field/cutscenes/trigger.gd
++++ b/src/field/cutscenes/trigger.gd
+@@ -83,14 +83,14 @@ func _on_area_entered(area: Area2D) -> void:
+ 	
+ 	# Check to make sure that the gamepiece is moving before connecting to its 'arriving'
+ 	# signal. This catches edge cases where the Trigger is unpaused while a colliding object
+-	# is standing on top of it (which would mean that _on_gamepiece_arriving would trigger once
++	# is standing on top of it (which would mean that _on_gamepiece_arrived would trigger once
+ 	# the gamepiece moves OFF of it. Which is bad.).
+ 	if gamepiece and gamepiece.is_moving():
+ 		gamepiece_entered.emit(gamepiece)
+-		gamepiece.arriving.connect(_on_gamepiece_arriving.bind(gamepiece), CONNECT_ONE_SHOT)
++		gamepiece.arrived.connect(_on_gamepiece_arrived.bind(gamepiece), CONNECT_ONE_SHOT)
+ 	
+-		# Triggers need to block input early. Otherwise, if waiting until the gamepiece is arriving,
+-		# there's a chance that the player's controller may have received the gamepiece.arriving
++		# Triggers need to block input early. Otherwise, if waiting until the gamepiece has arrived,
++		# there's a chance that the player's controller may have received the gamepiece.arrived
+ 		# signal first and continue moving the gamepiece.
+ 		await get_tree().process_frame
+ 		_is_cutscene_in_progress = true
+@@ -102,6 +102,6 @@ func _on_area_exited(area: Area2D) -> void:
+ 		gamepiece_exited.emit(gamepiece)
+ 
+ 
+-func _on_gamepiece_arriving(_distance: float, gamepiece: Gamepiece) -> void:
++func _on_gamepiece_arrived(gamepiece: Gamepiece) -> void:
+ 	triggered.emit(gamepiece)
+ 	run()
+diff --git a/src/field/field_events.gd b/src/field/field_events.gd
+index 6acf076..194eb46 100644
+--- a/src/field/field_events.gd
++++ b/src/field/field_events.gd
+@@ -17,6 +17,10 @@ signal cell_selected(cell: Vector2i)
+ @warning_ignore("unused_signal")
+ signal interaction_selected(interaction: Interaction)
+ 
++### Emitted when the player moves over a cell containing a [Trigger].
++#@warning_ignore("unused_signal")
++#signal interaction_selected(interaction: Interaction)
++
+ ## Emitted whenever a combat is triggered. This will lead to a transition from the field 'state' to
+ ## a combat 'state'.
+ @warning_ignore("unused_signal")
+diff --git a/src/field/gameboard/gameboard.gd b/src/field/gameboard/gameboard.gd
+index 6acae57..51046fc 100644
+--- a/src/field/gameboard/gameboard.gd
++++ b/src/field/gameboard/gameboard.gd
+@@ -6,6 +6,10 @@
+ ## [br][br]The grid is contained within the playable [member boundaries] and its constituent cells.
+ extends Node
+ 
++## Emitted whenever [member properties] is set. This is used in case a [Gamepiece] is added to the
++## board before the board properties are ready.
++signal properties_set
++
+ ## Emitted whenever the [member pathfinder] state changes.
+ ## This signal is emitted automatically in response to changed [GameboardLayer]s.
+ ##[/br][/br]Note: This signal is only emitted when the actual movement state of the Gameboard
+@@ -20,7 +24,11 @@ const INVALID_CELL: = Vector2i(-1, -1)
+ const INVALID_INDEX: = -1
+ 
+ ## Determines the [member GameboardProperties.extents] of the Gameboard, among other details.
+-var properties: GameboardProperties = null
++var properties: GameboardProperties = null:
++	set(value):
++		if value != properties:
++			properties = value
++			properties_set.emit()
+ 
+ ## A reference to the Pathfinder for the current playable area.
+ @onready var pathfinder: Pathfinder = Pathfinder.new()
+@@ -40,6 +48,10 @@ func pixel_to_cell(pixel_coordinates: Vector2) -> Vector2i:
+ 	)
+ 
+ 
++func get_cell_under_node(node: Node2D) -> Vector2i:
++	return pixel_to_cell(node.global_position/node.global_scale)
++
++
+ ## Convert cell coordinates to an index unique to those coordinates.
+ ## [br][br][b]Note:[/b] cell coordinates outside the [member extents] will return
+ ## [constant INVALID_INDEX].
+@@ -97,11 +109,14 @@ func register_gameboard_layer(board_map: GameboardLayer) -> void:
+ 	board_map.cells_changed.connect(
+ 		func _on_gameboard_layer_cells_changed(cleared_cells: Array[Vector2i], 
+ 				blocked_cells: Array[Vector2i]):
++		if board_map.name == "DoorGameboardLayer":
++			print("Door layer ", cleared_cells, " ", blocked_cells)
+ 		var added_cells: = _add_cells_to_pathfinder(cleared_cells)
+ 		var removed_cells: = _remove_cells_from_pathfinder(blocked_cells)
+ 		
+ 		_connect_new_pathfinder_cells(added_cells)
+-		pathfinder_changed.emit(added_cells.values(), removed_cells)
++		if not added_cells.is_empty() or not removed_cells.is_empty():
++			pathfinder_changed.emit(added_cells.values(), removed_cells)
+ 	)
+ 
+ 
+@@ -129,14 +144,15 @@ func _add_cells_to_pathfinder(cleared_cells: Array[Vector2i]) -> Dictionary[int,
+ 
+ 
+ # Remove cells from the pathfinder so that Gamepieces can no longer move through them. 
+-# Only one Gameboard layer needs to block a cell for it to be considered blocked. However,a
+-# GameboardLayer that removed a cell from its TileMap will also trigger this method, so we still
+-# need to check all layers to see if this cell should be cleared or not.
++# Only one Gameboard layer needs to block a cell for it to be considered blocked. 
+ # Returns an array of cell coordinates that have been blocked. Cells that were already not in the
+ # pathfinder will be excluded from this array.
+ func _remove_cells_from_pathfinder(blocked_cells: Array[Vector2i]) -> Array[Vector2i]:
+ 	var removed_cells: Array[Vector2i] = []
+ 	for cell in blocked_cells:
++		# Only remove a cell that is already in the pathfinder. Also, we need to check that the cell
++		# is not clear, since this method is also called when cells are removed from GameboardLayers
++		# and other layers may still have this cell on their map.
+ 		if pathfinder.has_cell(cell) and not _is_cell_clear(cell):
+ 			pathfinder.remove_point(cell_to_index(cell))
+ 			removed_cells.append(cell)
+diff --git a/src/field/gameboard/gameboard_layer.gd b/src/field/gameboard/gameboard_layer.gd
+index 9f6ba93..4b30bbb 100644
+--- a/src/field/gameboard/gameboard_layer.gd
++++ b/src/field/gameboard/gameboard_layer.gd
+@@ -32,6 +32,14 @@ var _affects_collision: = true
+ func _ready() -> void:
+ 	add_to_group(GROUP)
+ 	Gameboard.register_gameboard_layer(self)
++	
++	tree_exiting.connect(
++		func _on_tree_exiting() -> void:
++			_affects_collision = false
++			
++			var blocked_cells: Array[Vector2i] = []
++			cells_changed.emit(get_used_cells(), blocked_cells)
++	)
+ 
+ 
+ ## Returns true if the tile at coord exists and does not have a custom blocking data layer with a
+@@ -40,7 +48,7 @@ func _ready() -> void:
+ func is_cell_clear(coord: Vector2i) -> bool:
+ 	if not _affects_collision:
+ 		return true
+-	
++
+ 	var tile_data: = get_cell_tile_data(coord)
+ 	if tile_data:
+ 		var is_cell_blocked: = tile_data.get_custom_data(BLOCKED_CELL_DATA_LAYER) as bool
+@@ -55,7 +63,8 @@ func is_cell_clear(coord: Vector2i) -> bool:
+ # parameter lets us know which cells have changed. Also, the method is called as the TileMapLayer
+ # is added to the scene.
+ # Note that if forced_cleanup is true, the TileMapLayer is in a state where its tiles should not
+-# affect collision.
++# affect collision. The conditions causing forced_cleanup are handled seperately through signals
++# found in _ready().
+ func _update_cells(coords: Array[Vector2i], forced_cleanup: bool) -> void:
+ 	# First of all, check to make sure the the tilemap has a tileset and the specific custom data
+ 	# layer that we need to specify whether or not a tile blocks movement.
+@@ -66,13 +75,8 @@ func _update_cells(coords: Array[Vector2i], forced_cleanup: bool) -> void:
+ 	# blocked) have been added or removed.
+ 	var cleared_cells: Array[Vector2i] = []
+ 	var blocked_cells: Array[Vector2i] = []
+-	if forced_cleanup:
+-		# This tilemap isn't being used anymore. Flag all of its cells as being removed.
+-		# Currently, toggline visibility back on won't re-add existing cells.
+-		cleared_cells = get_used_cells()
+-		_affects_collision = false
+ 	
+-	else:
++	if not forced_cleanup:
+ 		for coord in coords:
+ 			if is_cell_clear(coord):
+ 				cleared_cells.append(coord)
+diff --git a/src/field/gameboard/pathfinder.gd b/src/field/gameboard/pathfinder.gd
+index d5f0ac8..01f3ed3 100644
+--- a/src/field/gameboard/pathfinder.gd
++++ b/src/field/gameboard/pathfinder.gd
+@@ -28,6 +28,13 @@ func _init() -> void:
+ 			if has_point(old_cell_id):
+ 				set_point_disabled(old_cell_id, false)
+ 	)
++	
++	GamepieceRegistry.gamepiece_freed.connect(
++		func _on_gamepiece_free(_gp: Gamepiece, coord: Vector2i) -> void:
++			var cell_id: = Gameboard.cell_to_index(coord)
++			if has_point(cell_id):
++				set_point_disabled(cell_id, false)
++	)
+ 
+ 
+ ## Returns true if the coordinate is found in the Pathfinder.
+diff --git a/src/field/gamepieces/controllers/gamepiece_controller.gd b/src/field/gamepieces/controllers/gamepiece_controller.gd
+index 450aa4c..6c6a937 100644
+--- a/src/field/gamepieces/controllers/gamepiece_controller.gd
++++ b/src/field/gamepieces/controllers/gamepiece_controller.gd
+@@ -2,6 +2,9 @@
+ @icon("res://assets/editor/icons/IconGamepieceController.svg")
+ class_name GamepieceController extends Node2D
+ 
++## Emitted whenever the gamepiece begins moving towards a new cell in its [member move_path].
++signal waypoint_changed(waypoint: Vector2i)
++
+ ## An active controller will receive inputs (player or otherwise). An inactive controller does
+ ## nothing. This is useful, for example, when toggling of gamepiece movement during cutscenes.
+ var is_active: = false:
+@@ -11,7 +14,11 @@ var is_active: = false:
+ ## gamepiece needs to continue on to the next cell.
+ var move_path: Array[Vector2i] = []:
+ 	set = move_along_path
+-var _current_waypoint: Vector2i
++var _current_waypoint: Vector2i:
++	set(value):
++		if value != _current_waypoint:
++			_current_waypoint = value
++			waypoint_changed.emit(_current_waypoint)
+ 
+ # The controller operates on its direct parent, which must be a gamepiece object.
+ var _gamepiece: Gamepiece
+diff --git a/src/field/gamepieces/controllers/player_controller.gd b/src/field/gamepieces/controllers/player_controller.gd
+index 34b0ef6..5629cfd 100644
+--- a/src/field/gamepieces/controllers/player_controller.gd
++++ b/src/field/gamepieces/controllers/player_controller.gd
+@@ -8,7 +8,10 @@ const GROUP: = "_PLAYER_CONTROLLER_GROUP"
+ 
+ # Keep track of a targeted interaction. Used to face & interact with the object at a path's end.
+ # It is reset on cancelling the move path or continuing movement via arrows/gamepad directions.
+-var _target: Interaction = null
++var _target_interaction: Interaction = null
++
++# Keep track of any Triggers that the player has stepped on.
++var _active_trigger: Trigger = null
+ 
+ # Also keep track of the most recently pressed move key (e.g. WASD keys). This makes keyboard input
+ # feel more intuitive, since the gamepiece will move towards the most recently pressed key rather
+@@ -31,12 +34,31 @@ func _ready() -> void:
+ 	if not Engine.is_editor_hint():
+ 		add_to_group(GROUP)
+ 		
+-		## Refer the various player collision shapes to their gamepiece (parent of the controller).
+-		## This will allow other objects/systems to quickly find which gamepiece they are working on
+-		## via the collision "owners".
++		# Refer the various player collision shapes to their gamepiece (parent of the controller).
++		# This will allow other objects/systems to quickly find which gamepiece they are working on
++		# via the collision "owners".
+ 		_interaction_searcher.owner = _gamepiece
+ 		_player_collision.owner = _gamepiece
+ 		
++		# Update the position of the player's collision shape to match the cell that it is currently
++		# moving towards.
++		waypoint_changed.connect(
++			func _on_waypoint_changed(new_waypoint: Vector2i):
++				if new_waypoint == Gameboard.INVALID_CELL:
++					_player_collision.position = Vector2.ZERO
++				else:
++					_player_collision.position = Gameboard.cell_to_pixel(new_waypoint) \
++						- _gamepiece.position
++		)
++		
++		# The player collision picks up any triggers that it moves over. Keep track of them until
++		# player movement to the current cells has completed.
++		_player_collision.area_entered.connect(
++			func _on_collision_triggered(area: Area2D):
++				if area.owner is Trigger:
++					_active_trigger = area.owner
++		)
++		
+ 		_gamepiece.direction_changed.connect(
+ 			func _on_gamepiece_direction_changed(new_direction: Directions.Points):
+ 				var offset: Vector2 = Directions.MAPPINGS[new_direction] * 16
+@@ -102,7 +124,7 @@ func move_to_pressed_key(input_direction: Vector2) -> void:
+ 
+ func stop_moving() -> void:
+ 	move_path.clear()
+-	_target = null
++	_target_interaction = null
+ 
+ 
+ # The player has clicked on an empty gameboard cell. We'll try to move _gamepiece to the cell.
+@@ -145,7 +167,7 @@ func _on_interaction_selected(interaction: Interaction) -> void:
+ 			var new_path = Gameboard.pathfinder.get_path_cells_to_adjacent_cell(source_cell, 
+ 				target_cell)
+ 			if not new_path.is_empty():
+-				_target = interaction
++				_target_interaction = interaction
+ 				
+ 				move_path = new_path.duplicate()
+ 	
+@@ -155,28 +177,40 @@ func _on_interaction_selected(interaction: Interaction) -> void:
+ 
+ 
+ func _on_gamepiece_arriving(excess_distance: float) -> void:
+-	super._on_gamepiece_arriving(excess_distance)
++	# If the gamepiece moved onto a trigger, stop the gamepiece in its tracks.
++	if _active_trigger:
++		stop_moving()
+ 	
+-	# It may be that the player is holding the keys down. In that case, continue moving the
+-	# gamepiece towards the pressed direction.
+-	var input_direction: = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
+-	if not input_direction.is_equal_approx(Vector2.ZERO):
+-		move_to_pressed_key(_last_input_direction)
++	# Otherwise, carry on with movement.
++	else:
++		super._on_gamepiece_arriving(excess_distance)
++		
++		# It may be that the player is holding the keys down. In that case, continue moving the
++		# gamepiece towards the pressed direction.
++		var input_direction: = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
++		if not input_direction.is_equal_approx(Vector2.ZERO):
++			move_to_pressed_key(_last_input_direction)
+ 
+ 
+ func _on_gamepiece_arrived() -> void:
+ 	super._on_gamepiece_arrived()
+ 	
++	_player_collision.position = Vector2.ZERO
+ 	_interaction_shape.disabled = false
+ 	
+-	if _target:
++	# If there's a trigger at this cell, do nothing but reset the trigger reference.
++	if _active_trigger:
++		_active_trigger = null
++	
++	# Otherwise, if there's an interaction queued, run the interaction.
++	elif _target_interaction:
+ 		# Face the selected interaction...
+-		var direction_to_target: = _target.position - _gamepiece.position
++		var direction_to_target: = _target_interaction.position - _gamepiece.position
+ 		_gamepiece.direction = Directions.vector_to_direction(direction_to_target)
+ 		
+ 		# ...and then execute the interaction.
+-		_target.run()
+-		_target = null
++		_target_interaction.run()
++		_target_interaction = null
+ 	
+ 	# No target, but check to see if the player is holding a key down and face in the direction of
+ 	# the last pressed key.
+diff --git a/src/field/gamepieces/controllers/player_controller.tscn b/src/field/gamepieces/controllers/player_controller.tscn
+index f68ac19..fee48ef 100644
+--- a/src/field/gamepieces/controllers/player_controller.tscn
++++ b/src/field/gamepieces/controllers/player_controller.tscn
+@@ -13,8 +13,7 @@ script = ExtResource("1_5pjdg")
+ 
+ [node name="PlayerCollision" type="Area2D" parent="."]
+ collision_layer = 4
+-collision_mask = 0
+-monitoring = false
++collision_mask = 32
+ 
+ [node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerCollision"]
+ shape = SubResource("CircleShape2D_3ejyl")
+diff --git a/src/field/gamepieces/gamepiece.gd b/src/field/gamepieces/gamepiece.gd
+index 3185eb7..6ae702a 100644
+--- a/src/field/gamepieces/gamepiece.gd
++++ b/src/field/gamepieces/gamepiece.gd
+@@ -103,6 +103,21 @@ var destination: Vector2
+ 
+ func _ready() -> void:
+ 	set_process(false)
++	
++	if not Engine.is_editor_hint() and is_inside_tree():
++		# Some gamepieces may be added to the scene before the Gameboard properties are set. In that
++		# case, wait for Gameboard dimensions to be set before registering the gamepiece.
++		if Gameboard.properties == null:
++			await Gameboard.properties_set
++		
++		# Snap the gamepiece to the cell on which it is standing.
++		var cell: = Gameboard.get_cell_under_node(self)
++		position = Gameboard.cell_to_pixel(cell)
++		
++		# Then register the gamepiece with the registry. Note that if a gamepiece already exists at
++		# the cell, this one will simply be freed.
++		if GamepieceRegistry.register(self, cell) == false:
++			queue_free()
+ 
+ 
+ func _process(delta: float) -> void:
+@@ -176,106 +191,3 @@ func stop() -> void:
+ ## Returns [code]true[/code] if the gamepiece is currently moving along its [member Path2D.curve].
+ func is_moving() -> bool:
+ 	return is_processing()
+-
+-
+-#func move_along_path(waypoints: Array[Vector2]) -> void:
+-	#curve = null
+-	#
+-	#curve = Curve2D.new()
+-	#for point in waypoints:
+-		#curve.add_point(point)
+-
+-
+-#func _physics_process(delta: float) -> void:
+-	#var move_distance: = move_speed * delta
+-	#
+-	## We need to let others know that the gamepiece will arrive at the end of its path THIS frame.
+-	## A controller may want to extend the path (for example, if a move key is held down or if
+-	## another waypoint should be added to the move path).
+-	## If we do NOT do so and the path is extended post arrival, there will be a single frame where
+-	## the gamepiece's velocity is discontinuous (drops, then increases again), causing jittery 
+-	## movement.
+-	## The excess travel distance allows us to know how much to extend the path by. A VERY fast
+-	## gamepiece may jump a few cells at a time.
+-	#var excess_travel_distance: =  _follower.progress + move_distance \
+-		#- _path.curve.get_baked_length()
+-	#if excess_travel_distance >= 0:
+-		#arriving.emit(excess_travel_distance)
+-	#
+-	## Movement may have been extended, so check if we need to cap movement to the waypoint.
+-	#var has_arrived: = _follower.progress + move_distance >= _path.curve.get_baked_length()
+-	#if has_arrived:
+-		#move_distance = _path.curve.get_baked_length() - _follower.progress
+-	#
+-	#_follower.progress += move_distance
+-	#
+-	## If we've reached the end of the path, either travel to the next waypoint or wrap up movement.
+-	#if has_arrived:
+-		#reset_travel()
+-#
+-#
+-### Begin travelling towards the specified cell.
+-### [br][br]The gamepiece's position will update instantly to the target cell, whereas the path
+-### follower will begin moving smoothly towards the destination at [member move_speed]. The 
+-### [signal arriving] and [signal arrived] signals will be emitted accordingly as the path follower
+-### reaches the destination cell.
+-### [br][br]To move the gamepiece instantly to a new cell, call [method set_cell] instead.
+-### [br][br][b]Note:[/b] Calling travel_to_cell on a moving gamepiece will update it's position to 
+-### that indicated by the cell coordinates and add the cell to the movement path.
+-#func travel_to_cell(destination_cell: Vector2i) -> void:
+-	#set_physics_process(true)
+-	#
+-	## Note that updating the gamepiece's cell will snap it to its new grid position. This will
+-	## be accounted for below when calculating the waypoint's pixel coordinates.
+-	#var old_position: = position
+-	#cell = destination_cell
+-	#direction = (position - old_position).normalized()
+-	#
+-	## Setting the cell (the above line) snaps the gamepiece to its new cell, but we want to animate
+-	## its movement. Therefore, the follower must lag behind, 'travelling' to the next cell.
+-	## Reset the follower's position here so that there is no jitter when moving.
+-	#_follower.position = old_position
+-	#
+-	## If the gamepiece is not yet moving, we'll setup a new path.
+-	#if not _path.curve:
+-		#_path.curve = Curve2D.new()
+-#
+-		## The path needs at least two points for the follower to work correctly, so a new path
+-		## will travel from the gamepiece's old position.
+-		#_path.curve.add_point(old_position)
+-		#_follower.progress = 0
+-	#
+-	## The gamepiece serves as the waypoint's frame of reference.
+-	#_path.curve.add_point(gameboard.cell_to_pixel(destination_cell))
+-	#
+-	#travel_begun.emit()
+-#
+-#
+-### Stop the gamepiece from travelling and set it at its cell.
+-#func reset_travel() -> void:
+-	#_path.curve = null
+-	#_follower.progress = 0
+-		#
+-	#set_physics_process(false)
+-	#arrived.emit()
+-#
+-#
+-#
+-#
+-#
+-#func set_cell(value: Vector2i) -> void:
+-	#if Engine.is_editor_hint():
+-		#return
+-	#
+-	#var old_cell: = cell
+-	#cell = value
+-	#
+-	#if not is_inside_tree():
+-		#await ready
+-	#
+-	#position = gameboard.cell_to_pixel(cell)
+-	#cell_changed.emit(old_cell)
+-#
+-#
+-#func get_faced_cell() -> Vector2i:
+-	#return (Vector2(cell) + direction).round()
+diff --git a/src/field/gamepieces/gamepiece_registry.gd b/src/field/gamepieces/gamepiece_registry.gd
+index 3008c5a..21eee4e 100644
+--- a/src/field/gamepieces/gamepiece_registry.gd
++++ b/src/field/gamepieces/gamepiece_registry.gd
+@@ -8,6 +8,7 @@
+ extends Node
+ 
+ signal gamepiece_moved(gp: Gamepiece, new_cell: Vector2i, old_cell: Vector2i)
++signal gamepiece_freed(gp: Gamepiece, cell: Vector2i)
+ 
+ # Store all registered gamepeices by the cell they occupy.
+ var _gamepieces: Dictionary[Vector2i, Gamepiece] = {}
+@@ -22,16 +23,15 @@ func register(gamepiece: Gamepiece, cell: Vector2i) -> bool:
+ 	
+ 	#...or if it has already been registered, for some reason.
+ 	if gamepiece in _gamepieces.values():
+-		printerr("Failed to register Gamepiece '%s' at cell '%s'. " % [gamepiece.name, str(cell)],
++		printerr("Refused to register Gamepiece '%s' at cell '%s'. " % [gamepiece.name, str(cell)],
+ 			"The gamepiece has already been registered!")
+-		return false
++		return true
+ 	
+ 	# We want to know when the gamepiece leaves the scene tree, as it is no longer on the gameboard.
+ 	# This probably means that the gamepiece has been freed.
+ 	gamepiece.tree_exiting.connect(_on_gamepiece_tree_exiting.bind(gamepiece))
+ 	
+ 	_gamepieces[cell] = gamepiece
+-	print("REgistered %s to %s" % [gamepiece.name, str(cell)])
+ 	gamepiece_moved.emit(gamepiece, cell, Gameboard.INVALID_CELL)
+ 	
+ 	return true
+@@ -72,9 +72,11 @@ func get_gamepiece_by_name(gp_name: String) -> Gamepiece:
+ 
+ ## Return the cell occupied by a given gamepiece.
+ func get_cell(gp: Gamepiece) -> Vector2i:
+-	var cell: = _gamepieces.find_key(gp) as Vector2i
+-	if _gamepieces.has(cell):
+-		return cell
++	# Don't look up null gamepieces (i.e. blocked cells).
++	if gp:
++		var cell: = _gamepieces.find_key(gp) as Vector2i
++		if _gamepieces.has(cell):
++			return cell
+ 	return Gameboard.INVALID_CELL
+ 
+ 
+@@ -91,6 +93,7 @@ func _on_gamepiece_tree_exiting(gp: Gamepiece) -> void:
+ 	var cell = _gamepieces.find_key(gp)
+ 	if _gamepieces.has(cell):
+ 		_gamepieces.erase(cell)
++		gamepiece_freed.emit(gp, cell)
+ 	
+ 	#if cell != null:
+ 		#Events.gamepiece_exiting_tree.emit(gp, cell)
+diff --git a/src/field/map.gd b/src/field/map.gd
+index 4291f2c..13db7ab 100644
+--- a/src/field/map.gd
++++ b/src/field/map.gd
+@@ -22,9 +22,9 @@ func _ready() -> void:
+ 		# Gamepieces need to be registered according to which cells they currently occupy.
+ 		# Gamepieces may not overlap, and only the first gamepiece registered to a given cell will
+ 		# be kept.
+-		for gp: Gamepiece in find_children("*", "Gamepiece"):
+-			var cell: = Gameboard.pixel_to_cell(gp.position)
+-			gp.position = Gameboard.cell_to_pixel(cell)
+-			
+-			if GamepieceRegistry.register(gp, cell) == false:
+-				gp.queue_free()
++		#for gamepiece: Gamepiece in find_children("*", "Gamepiece"):
++			#var cell: = Gameboard.get_cell_under_node(gamepiece)
++			#gamepiece.position = Gameboard.cell_to_pixel(cell)
++			#
++			#if GamepieceRegistry.register(gamepiece, cell) == false:
++				#gamepiece.queue_free()
+diff --git a/src/main.tscn b/src/main.tscn
+index 7e511c7..cdf5744 100644
+--- a/src/main.tscn
++++ b/src/main.tscn
+@@ -1,4 +1,4 @@
+-[gd_scene load_steps=90 format=4 uid="uid://p01fb6nvi144"]
++[gd_scene load_steps=89 format=4 uid="uid://p01fb6nvi144"]
+ 
+ [ext_resource type="Script" uid="uid://m3oktjc6gmsb" path="res://src/field/field.gd" id="2_bkxev"]
+ [ext_resource type="PackedScene" uid="uid://d2lj4blu56fte" path="res://src/field/gamepieces/controllers/player_controller.tscn" id="2_esa52"]
+@@ -130,12 +130,13 @@ _data = {
+ }
+ 
+ [sub_resource type="Animation" id="Animation_orjmt"]
+-resource_name = "clear"
++resource_name = "solve"
+ length = 0.25
++step = 0.05
+ tracks/0/type = "audio"
+ tracks/0/imported = false
+ tracks/0/enabled = true
+-tracks/0/path = NodePath("Spikes/SpikesClick")
++tracks/0/path = NodePath("Pedestal/SpikesClick")
+ tracks/0/interp = 1
+ tracks/0/loop_wrap = true
+ tracks/0/keys = {
+@@ -150,11 +151,11 @@ tracks/0/use_blend = true
+ tracks/1/type = "method"
+ tracks/1/imported = false
+ tracks/1/enabled = true
+-tracks/1/path = NodePath("Spikes/SpikesArea")
++tracks/1/path = NodePath("Pedestal")
+ tracks/1/interp = 1
+ tracks/1/loop_wrap = true
+ tracks/1/keys = {
+-"times": PackedFloat32Array(0),
++"times": PackedFloat32Array(0.25),
+ "transitions": PackedFloat32Array(1),
+ "values": [{
+ "args": [],
+@@ -164,12 +165,9 @@ tracks/1/keys = {
+ 
+ [sub_resource type="AnimationLibrary" id="AnimationLibrary_jktnn"]
+ _data = {
+-&"clear": SubResource("Animation_orjmt")
++&"solve": SubResource("Animation_orjmt")
+ }
+ 
+-[sub_resource type="RectangleShape2D" id="RectangleShape2D_44b32"]
+-size = Vector2(15, 15)
+-
+ [sub_resource type="Animation" id="Animation_bwvqs"]
+ length = 0.001
+ tracks/0/type = "value"
+@@ -264,51 +262,37 @@ tracks/1/keys = {
+ "times": PackedFloat32Array(0, 0.2, 0.4, 0.9)
+ }
+ tracks/1/use_blend = true
+-tracks/2/type = "method"
++tracks/2/type = "value"
+ tracks/2/imported = false
+ tracks/2/enabled = true
+-tracks/2/path = NodePath("AnimationPlayer/WinScreen")
++tracks/2/path = NodePath("AnimationPlayer/WinScreen/ColorRect/VBoxContainer/VBoxContainer:modulate")
+ tracks/2/interp = 1
+ tracks/2/loop_wrap = true
+ tracks/2/keys = {
+-"times": PackedFloat32Array(1.1),
+-"transitions": PackedFloat32Array(1),
+-"values": [{
+-"args": [0.2],
+-"method": &"cover"
+-}]
++"times": PackedFloat32Array(1.8, 2.5),
++"transitions": PackedFloat32Array(1, 1),
++"update": 0,
++"values": [Color(1, 1, 1, 0), Color(1, 1, 1, 1)]
+ }
+ tracks/3/type = "value"
+ tracks/3/imported = false
+ tracks/3/enabled = true
+-tracks/3/path = NodePath("AnimationPlayer/WinScreen/ColorRect/VBoxContainer/VBoxContainer:modulate")
++tracks/3/path = NodePath("AnimationPlayer/WinScreen/ColorRect:visible")
+ tracks/3/interp = 1
+ tracks/3/loop_wrap = true
+ tracks/3/keys = {
+-"times": PackedFloat32Array(1.8, 2.5),
+-"transitions": PackedFloat32Array(1, 1),
+-"update": 0,
+-"values": [Color(1, 1, 1, 0), Color(1, 1, 1, 1)]
++"times": PackedFloat32Array(1.1),
++"transitions": PackedFloat32Array(1),
++"update": 1,
++"values": [true]
+ }
+ tracks/4/type = "value"
+ tracks/4/imported = false
+ tracks/4/enabled = true
+-tracks/4/path = NodePath("AnimationPlayer/WinScreen/ColorRect:visible")
++tracks/4/path = NodePath("AnimationPlayer/WinScreen/ColorRect:modulate")
+ tracks/4/interp = 1
+ tracks/4/loop_wrap = true
+ tracks/4/keys = {
+-"times": PackedFloat32Array(1.1),
+-"transitions": PackedFloat32Array(1),
+-"update": 1,
+-"values": [true]
+-}
+-tracks/5/type = "value"
+-tracks/5/imported = false
+-tracks/5/enabled = true
+-tracks/5/path = NodePath("AnimationPlayer/WinScreen/ColorRect:modulate")
+-tracks/5/interp = 1
+-tracks/5/loop_wrap = true
+-tracks/5/keys = {
+ "times": PackedFloat32Array(1.1, 1.4),
+ "transitions": PackedFloat32Array(1, 1),
+ "update": 0,
+@@ -330,8 +314,9 @@ size = Vector2(14, 23)
+ [node name="Main" type="Node2D"]
+ scale = Vector2(5, 5)
+ 
+-[node name="Field" type="Node2D" parent="." node_paths=PackedStringArray("player_default_gamepiece")]
++[node name="Field" type="Node2D" parent="." node_paths=PackedStringArray("opening_cutscene", "player_default_gamepiece")]
+ script = ExtResource("2_bkxev")
++opening_cutscene = NodePath("OpeningCutscene")
+ player_controller = ExtResource("2_esa52")
+ player_default_gamepiece = NodePath("Map/Player")
+ 
+@@ -341,7 +326,7 @@ script = ExtResource("2_la2p5")
+ gameboard_properties = ExtResource("3_esa52")
+ 
+ [node name="Player" parent="Field/Map" instance=ExtResource("11_yntrj")]
+-position = Vector2(264, 120)
++position = Vector2(24.0001, 216)
+ animation_scene = ExtResource("12_oablq")
+ move_speed = 96.0
+ metadata/_edit_group_ = true
+@@ -354,16 +339,19 @@ metadata/_edit_lock_ = true
+ tile_map_data = PackedByteArray("AAAkABAAAAAAAAAAAAAkAA8AAAAAAAAAAAAkAA4AAAAAAAAAAAAkAA0AAAAAAAAAAAAkAAwAAAAAAAAAAAAkAAsAAAAAAAAAAAAkAAoAAAAAAAAAAAAkAAkAAAAAAAAAAAAkAAgAAAAAAAAAAAAkAAcAAAAAAAAAAAAkAAYAAAAAAAAAAAAkAAUAAAAAAAAAAAAkAAQAAAAAAAAAAAAkAAMAAAAAAAAAAAAkAAIAAAACAAAAAAAkAAEAAAAAAAAAAAAkAAAAAAAAAAAAAAAkAP//AAAAAAAAAAAkAP7/AAAAAAAAAAAkAP3/AAAAAAAAAAAkAPz/AAAAAAAAAAAkAPv/AAAAAAAAAAAkAPr/AAAAAAAAAAAkAPn/AAAAAAAAAAAkAPj/AAAAAAAAAAAjABAAAAAAAAAAAAAjAA8AAAAAAAAAAAAjAA4AAAAAAAAAAAAjAA0AAAAAAAAAAAAjAAwAAAAAAAAAAAAjAAsAAAAAAAAAAAAjAAoAAAAAAAAAAAAjAAkAAAAAAAAAAAAjAAgAAAAAAAAAAAAjAAcAAAAAAAAAAAAjAAYAAAAAAAAAAAAjAAUAAAAAAAAAAAAjAAQAAAAAAAAAAAAjAAMAAAAAAAAAAAAjAAIAAAAAAAAAAAAjAAEAAAAAAAAAAAAjAAAAAAAAAAAAAAAjAP//AAAAAAAAAAAjAP7/AAAAAAAAAAAjAP3/AAAAAAAAAAAjAPz/AAAAAAAAAAAjAPv/AAAAAAAAAAAjAPr/AAAAAAAAAAAjAPn/AAAAAAAAAAAjAPj/AAAAAAAAAAAiABAAAAAAAAAAAAAiAA8AAAAAAAAAAAAiAA4AAAAAAAAAAAAiAA0AAAAAAAAAAAAiAAwAAAAAAAAAAAAiAAsAAAAAAAAAAAAiAAoAAAAAAAAAAAAiAAkAAAAAAAAAAAAiAAgAAAAAAAAAAAAiAAcAAAAAAAAAAAAiAAYAAAAAAAAAAAAiAAUAAAAAAAAAAAAiAAQAAAAAAAAAAAAiAAMAAAAAAAAAAAAiAAIAAAAAAAAAAAAiAAEAAAAAAAAAAAAiAAAAAAAAAAAAAAAiAP//AAAAAAAAAAAiAP7/AAAAAAAAAAAiAP3/AAAAAAAAAAAiAPz/AAACAAAAAAAiAPv/AAAAAAAAAAAiAPr/AAAAAAAAAAAiAPn/AAAAAAAAAAAiAPj/AAAAAAAAAAAhABAAAAAAAAAAAAAhAA8AAAAAAAAAAAAhAA4AAAAAAAAAAAAhAA0AAAAAAAAAAAAhAAwAAAAAAAAAAAAhAAsAAAAAAAAAAAAhAAoAAAAAAAAAAAAhAAkAAAAAAAAAAAAhAAgAAAAAAAAAAAAhAAcAAAAAAAAAAAAhAAYAAAAAAAAAAAAhAAUAAAAAAAAAAAAhAAQAAAAAAAAAAAAhAAMAAAACAAAAAAAhAAIAAAAAAAAAAAAhAAEAAAAAAAAAAAAhAAAAAAAAAAAAAAAhAP//AAAAAAAAAAAhAP7/AAAAAAAAAAAhAP3/AAAAAAAAAAAhAPz/AAAAAAAAAAAhAPv/AAAAAAAAAAAhAPr/AAAAAAAAAAAhAPn/AAABAAAAAAAhAPj/AAAAAAAAAAAgABAAAAAAAAAAAAAgAA8AAAAAAAAAAAAgAA4AAAAAAAAAAAAgAA0AAAAAAAAAAAAgAAwAAAAAAAAAAAAgAAsAAAAAAAAAAAAgAAoAAAAAAAAAAAAgAAkAAAAAAAAAAAAgAAgAAAAAAAAAAAAgAAcAAAAAAAAAAAAgAAYAAAAAAAAAAAAgAAUAAAAAAAAAAAAgAAQAAAAAAAAAAAAgAAMAAAAAAAAAAAAgAAIAAAAAAAAAAAAgAAEAAAAAAAAAAAAgAAAAAAAAAAAAAAAgAP//AAAAAAAAAAAgAP7/AAAAAAAAAAAgAP3/AAAAAAAAAAAgAPz/AAAAAAAAAAAgAPv/AAAAAAAAAAAgAPr/AAAAAAAAAAAgAPn/AAAAAAAAAAAgAPj/AAAAAAAAAAAfABAAAAAAAAAAAAAfAA8AAAAAAAAAAAAfAA4AAAAAAAAAAAAfAA0AAAAAAAAAAAAfAAwAAAAAAAAAAAAfAAsAAAAAAAAAAAAfAAoAAAAAAAAAAAAfAAkAAAAAAAAAAAAfAAgAAAAAAAAAAAAfAAcAAAAAAAAAAAAfAAYAAAAAAAAAAAAfAAUAAAAAAAAAAAAfAAQAAAAAAAAAAAAfAAMAAAAAAAAAAAAfAAIAAAAAAAAAAAAfAAEAAAAAAAAAAAAfAAAAAAAAAAAAAAAfAP//AAAAAAAAAAAfAP7/AAAAAAAAAAAfAP3/AAAAAAAAAAAfAPz/AAAAAAAAAAAfAPv/AAAAAAAAAAAfAPr/AAAAAAAAAAAfAPn/AAAAAAAAAAAfAPj/AAAAAAAAAAAeABAAAAAAAAAAAAAeAA8AAAAAAAAAAAAeAA4AAAAAAAAAAAAeAA0AAAAAAAAAAAAeAAwAAAAAAAAAAAAeAAsAAAABAAAAAAAeAAoAAAAAAAAAAAAeAAkAAAAAAAAAAAAeAAgAAAAAAAAAAAAeAAcAAAABAAAAAAAeAAYAAAAAAAAAAAAeAAUAAAAAAAAAAAAeAAQAAAAAAAAAAAAeAAMAAAAAAAAAAAAeAAIAAAAAAAAAAAAeAAEAAAAAAAAAAAAeAAAAAAAAAAAAAAAeAP//AAAAAAAAAAAeAP7/AAAAAAAAAAAeAP3/AAAAAAAAAAAeAPz/AAAAAAAAAAAeAPv/AAAAAAAAAAAeAPr/AAAAAAAAAAAeAPn/AAAAAAAAAAAeAPj/AAAAAAAAAAAdABAAAAAAAAAAAAAdAA8AAAAAAAAAAAAdAA4AAAAAAAAAAAAdAA0AAAAAAAAAAAAdAAwAAAAAAAAAAAAdAAsAAAAAAAAAAAAdAAoAAAAAAAAAAAAdAAkAAAABAAAAAAAdAAgAAAAAAAAAAAAdAAcAAAAAAAAAAAAdAAYAAAAAAAAAAAAdAAUAAAAAAAAAAAAdAAQAAAAAAAAAAAAdAAMAAAAAAAAAAAAdAAIAAAAAAAAAAAAdAAEAAAAAAAAAAAAdAAAAAAACAAAAAAAdAP//AAABAAAAAAAdAP7/AAAAAAAAAAAdAP3/AAAAAAAAAAAdAPz/AAAAAAAAAAAdAPv/AAAAAAAAAAAdAPr/AAAAAAAAAAAdAPn/AAACAAAAAAAdAPj/AAAAAAAAAAAcABAAAAAAAAAAAAAcAA8AAAAAAAAAAAAcAA4AAAAAAAAAAAAcAA0AAAAAAAAAAAAcAAwAAAAAAAAAAAAcAAsAAAAAAAAAAAAcAAoAAAAAAAAAAAAcAAkAAAAAAAAAAAAcAAgAAAAAAAAAAAAcAAcAAAAAAAAAAAAcAAYAAAAAAAAAAAAcAAUAAAAAAAAAAAAcAAQAAAAAAAAAAAAcAAMAAAAAAAAAAAAcAAIAAAAAAAAAAAAcAAEAAAAAAAAAAAAcAAAAAAAAAAAAAAAcAP//AAAAAAAAAAAcAP7/AAAAAAAAAAAcAP3/AAAAAAAAAAAcAPz/AAAAAAAAAAAcAPv/AAAAAAAAAAAcAPr/AAAAAAAAAAAcAPn/AAAAAAAAAAAcAPj/AAAAAAAAAAAbABAAAAAAAAAAAAAbAA8AAAAAAAAAAAAbAA4AAAAAAAAAAAAbAA0AAAAAAAAAAAAbAAwAAAAAAAAAAAAbAAsAAAAAAAAAAAAbAAoAAAAAAAAAAAAbAAkAAAAAAAAAAAAbAAgAAAAAAAAAAAAbAAcAAAAAAAAAAAAbAAYAAAAAAAAAAAAbAAUAAAAAAAAAAAAbAAQAAAAAAAAAAAAbAAMAAAAAAAAAAAAbAAIAAAAAAAAAAAAbAAEAAAAAAAAAAAAbAAAAAAAAAAAAAAAbAP//AAAAAAAAAAAbAP7/AAAAAAAAAAAbAP3/AAAAAAAAAAAbAPz/AAAAAAAAAAAbAPv/AAAAAAAAAAAbAPr/AAAAAAAAAAAbAPn/AAAAAAAAAAAbAPj/AAAAAAAAAAAaABAAAAAAAAAAAAAaAA8AAAAAAAAAAAAaAA4AAAAAAAAAAAAaAA0AAAAAAAAAAAAaAAwAAAAAAAAAAAAaAAsAAAAAAAAAAAAaAAoAAAAAAAAAAAAaAAkAAAAAAAAAAAAaAAgAAAAAAAAAAAAaAAcAAAABAAAAAAAaAAYAAAAAAAAAAAAaAAUAAAAAAAAAAAAaAAQAAAAAAAAAAAAaAAMAAAAAAAAAAAAaAAIAAAAAAAAAAAAaAAEAAAAAAAAAAAAaAAAAAAAAAAAAAAAaAP//AAAAAAAAAAAaAP7/AAAAAAAAAAAaAP3/AAAAAAAAAAAaAPz/AAAAAAAAAAAaAPv/AAAAAAAAAAAaAPr/AAAAAAAAAAAaAPn/AAAAAAAAAAAaAPj/AAAAAAAAAAAZABAAAAABAAAAAAAZAA8AAAAAAAAAAAAZAA4AAAAAAAAAAAAZAA0AAAAAAAAAAAAZAAwAAAAAAAAAAAAZAAsAAAAAAAAAAAAZAAoAAAAAAAAAAAAZAAkAAAAAAAAAAAAZAAgAAAAAAAAAAAAZAAcAAAACAAAAAAAZAAYAAAABAAAAAAAZAAUAAAAAAAAAAAAZAAQAAAAAAAAAAAAZAAMAAAAAAAAAAAAZAAIAAAAAAAAAAAAZAAEAAAAAAAAAAAAZAAAAAAAAAAAAAAAZAP//AAAAAAAAAAAZAP7/AAAAAAAAAAAZAP3/AAAAAAAAAAAZAPz/AAAAAAAAAAAZAPv/AAAAAAAAAAAZAPr/AAAAAAAAAAAZAPn/AAAAAAAAAAAZAPj/AAAAAAAAAAAYABAAAAABAAAAAAAYAA8AAAAAAAAAAAAYAA4AAAAAAAAAAAAYAA0AAAAAAAAAAAAYAAwAAAACAAMAAAAYAAsAAAACAAIAAAAYAAoAAAACAAEAAAAYAAkAAAAAAAAAAAAYAAgAAAABAAAAAAAYAAcAAAACAAAAAAAYAAYAAAAAAAAAAAAYAAUAAAABAAAAAAAYAAQAAAAAAAAAAAAYAAMAAAAAAAAAAAAYAAIAAAAAAAAAAAAYAAEAAAAAAAAAAAAYAAAAAAAAAAAAAAAYAP//AAAAAAAAAAAYAP7/AAAAAAAAAAAYAP3/AAAAAAAAAAAYAPz/AAAAAAAAAAAYAPv/AAAAAAAAAAAYAPr/AAAAAAAAAAAYAPn/AAAAAAAAAAAYAPj/AAAAAAAAAAAXABAAAAAAAAAAAAAXAA8AAAAAAAAAAAAXAA4AAAACAAAAAAAXAA0AAAAAAAAAAAAXAAwAAAAAAAMAAAAXAAsAAAAGAAMAAAAXAAoAAAAEAAMAAAAXAAkAAAACAAIAAAAXAAgAAAACAAEAAAAXAAcAAAAAAAAAAAAXAAYAAAACAAAAAAAXAAUAAAAAAAAAAAAXAAQAAAAAAAAAAAAXAAMAAAAAAAAAAAAXAAIAAAAAAAAAAAAXAAEAAAAAAAAAAAAXAAAAAAAAAAAAAAAXAP//AAAAAAAAAAAXAP7/AAAAAAAAAAAXAP3/AAAAAAAAAAAXAPz/AAAAAAAAAAAXAPv/AAAAAAAAAAAXAPr/AAAAAAAAAAAXAPn/AAAAAAAAAAAXAPj/AAAAAAAAAAAWABgAAAAAAAAAAAAWABcAAAAAAAAAAAAWABYAAAAAAAAAAAAWABUAAAAAAAAAAAAWABQAAAAAAAAAAAAWABMAAAAAAAAAAAAWABIAAAAAAAAAAAAWABEAAAAAAAAAAAAWABAAAAAAAAAAAAAWAA8AAAAAAAAAAAAWAA4AAAAAAAAAAAAWAA0AAAAAAAAAAAAWAAwAAAAAAAAAAAAWAAsAAAAAAAMAAAAWAAoAAAAAAAIAAAAWAAkAAAAGAAMAAAAWAAgAAAAEAAMAAAAWAAcAAAACAAEAAAAWAAYAAAAAAAAAAAAWAAUAAAAAAAAAAAAWAAQAAAACAAAAAAAWAAMAAAAAAAAAAAAWAAIAAAAAAAAAAAAWAAEAAAAAAAAAAAAWAAAAAAAAAAAAAAAWAP//AAAAAAAAAAAWAP7/AAAAAAAAAAAWAP3/AAAAAAAAAAAWAPz/AAAAAAAAAAAWAPv/AAAAAAAAAAAWAPr/AAAAAAAAAAAWAPn/AAAAAAAAAAAWAPj/AAAAAAAAAAAVABgAAAAAAAAAAAAVABcAAAAAAAAAAAAVABYAAAAAAAAAAAAVABUAAAAAAAAAAAAVABQAAAAAAAAAAAAVABMAAAAAAAAAAAAVABIAAAAAAAAAAAAVABEAAAAAAAAAAAAVABAAAAAAAAAAAAAVAA8AAAAAAAAAAAAVAA4AAAAAAAAAAAAVAA0AAAAAAAAAAAAVAAwAAAAAAAAAAAAVAAsAAAAAAAAAAAAVAAoAAAACAAAAAAAVAAkAAAAAAAMAAAAVAAgAAAAAAAIAAAAVAAcAAAAAAAEAAAAVAAYAAAAAAAAAAAAVAAUAAAAAAAAAAAAVAAQAAAAAAAAAAAAVAAMAAAAAAAAAAAAVAAIAAAAAAAAAAAAVAAEAAAAAAAAAAAAVAAAAAAAAAAAAAAAVAP//AAAAAAAAAAAVAP7/AAAAAAAAAAAVAP3/AAAAAAAAAAAVAPz/AAAAAAAAAAAVAPv/AAABAAAAAAAVAPr/AAAAAAAAAAAVAPn/AAAAAAAAAAAVAPj/AAAAAAAAAAAUABgAAAACAAAAAAAUABcAAAAAAAAAAAAUABYAAAAAAAAAAAAUABUAAAAAAAAAAAAUABQAAAAAAAAAAAAUABMAAAAAAAAAAAAUABIAAAAAAAAAAAAUABEAAAAAAAAAAAAUABAAAAAAAAAAAAAUAA8AAAAAAAAAAAAUAA4AAAAAAAAAAAAUAA0AAAABAAAAAAAUAAwAAAAAAAAAAAAUAAsAAAAAAAAAAAAUAAoAAAAAAAAAAAAUAAkAAAABAAAAAAAUAAgAAAAAAAAAAAAUAAcAAAAAAAAAAAAUAAYAAAAAAAAAAAAUAAUAAAAAAAAAAAAUAAQAAAAAAAAAAAAUAAMAAAABAAAAAAAUAAIAAAABAAAAAAAUAAEAAAAAAAAAAAAUAAAAAAAAAAAAAAAUAP//AAABAAAAAAAUAP7/AAAAAAAAAAAUAP3/AAAAAAAAAAAUAPz/AAAAAAAAAAAUAPv/AAAAAAAAAAAUAPr/AAAAAAAAAAAUAPn/AAAAAAAAAAAUAPj/AAAAAAAAAAATABgAAAAAAAAAAAATABcAAAAAAAAAAAATABYAAAAAAAAAAAATABUAAAAAAAAAAAATABQAAAAAAAAAAAATABMAAAAAAAAAAAATABIAAAAAAAAAAAATABEAAAAAAAAAAAATABAAAAAAAAAAAAATAA8AAAAAAAAAAAATAA4AAAAAAAAAAAATAA0AAAABAAAAAAATAAwAAAAAAAAAAAATAAsAAAACAAAAAAATAAoAAAACAAMAAAATAAkAAAACAAEAAAATAAgAAAAHAAMAAAATAAcAAAAHAAMAAAATAAYAAAAAAAAAAAATAAUAAAAAAAAAAAATAAQAAAACAAAAAAATAAMAAAAAAAAAAAATAAIAAAAAAAAAAAATAAEAAAABAAAAAAATAAAAAAACAAAAAAATAP//AAABAAAAAAATAP7/AAAAAAAAAAATAP3/AAAAAAAAAAATAPz/AAAAAAAAAAATAPv/AAAAAAAAAAATAPr/AAAAAAAAAAATAPn/AAAAAAAAAAATAPj/AAAAAAAAAAASABgAAAAAAAAAAAASABcAAAAAAAAAAAASABYAAAACAAAAAAASABUAAAAAAAAAAAASABQAAAAAAAAAAAASABMAAAAAAAAAAAASABIAAAAAAAAAAAASABEAAAAAAAAAAAASABAAAAAAAAAAAAASAA8AAAAAAAAAAAASAA4AAAAAAAAAAAASAA0AAAAAAAAAAAASAAwAAAAHAAMAAAASAAsAAAACAAMAAAASAAoAAAAFAAMAAAASAAkAAAABAAEAAAASAAgAAAAHAAMAAAASAAcAAAAAAAAAAAASAAYAAAAAAAAAAAASAAUAAAAAAAAAAAASAAQAAAAAAAAAAAASAAMAAAAAAAAAAAASAAIAAAAAAAAAAAASAAEAAAAAAAAAAAASAAAAAAAAAAAAAAASAP//AAABAAAAAAASAP7/AAAAAAAAAAASAP3/AAAAAAAAAAASAPz/AAAAAAAAAAASAPv/AAAAAAAAAAASAPr/AAAAAAAAAAASAPn/AAAAAAAAAAASAPj/AAAAAAAAAAARABgAAAACAAAAAAARABcAAAAAAAAAAAARABYAAAAAAAAAAAARABUAAAAAAAAAAAARABQAAAAAAAAAAAARABMAAAACAAAAAAARABIAAAAAAAAAAAARABEAAAAAAAAAAAARABAAAAAAAAAAAAARAA8AAAAAAAAAAAARAA4AAAAAAAAAAAARAA0AAAAAAAAAAAARAAwAAAAHAAMAAAARAAsAAAABAAMAAAARAAoAAAABAAIAAAARAAkAAAABAAEAAAARAAgAAAAHAAMAAAARAAcAAAAAAAAAAAARAAYAAAAAAAAAAAARAAUAAAABAAAAAAARAAQAAAAAAAAAAAARAAMAAAAAAAAAAAARAAIAAAAAAAAAAAARAAEAAAAAAAAAAAARAAAAAAABAAAAAAARAP//AAAAAAAAAAARAP7/AAAAAAAAAAARAP3/AAAAAAAAAAARAPz/AAAAAAAAAAARAPv/AAAAAAAAAAARAPr/AAAAAAAAAAARAPn/AAAAAAAAAAARAPj/AAAAAAAAAAAQABgAAAAAAAAAAAAQABcAAAAAAAAAAAAQABYAAAAAAAAAAAAQABUAAAAAAAAAAAAQABQAAAAAAAAAAAAQABMAAAAAAAAAAAAQABIAAAAAAAAAAAAQABEAAAAAAAAAAAAQABAAAAAAAAAAAAAQAA8AAAAAAAAAAAAQAA4AAAAAAAAAAAAQAA0AAAACAAAAAAAQAAwAAAAHAAMAAAAQAAsAAAAAAAMAAAAQAAoAAAAAAAIAAAAQAAkAAAAAAAEAAAAQAAgAAAAHAAMAAAAQAAcAAAAAAAAAAAAQAAYAAAACAAAAAAAQAAUAAAAAAAAAAAAQAAQAAAAAAAAAAAAQAAMAAAAAAAAAAAAQAAIAAAACAAAAAAAQAAEAAAABAAAAAAAQAAAAAAAAAAAAAAAQAP//AAABAAAAAAAQAP7/AAAAAAAAAAAQAP3/AAAAAAAAAAAQAPz/AAAAAAAAAAAQAPv/AAAAAAAAAAAQAPr/AAAAAAAAAAAQAPn/AAAAAAAAAAAQAPj/AAAAAAAAAAAPABgAAAAAAAAAAAAPABcAAAAAAAAAAAAPABYAAAACAAAAAAAPABUAAAAAAAAAAAAPABQAAAAAAAAAAAAPABMAAAAAAAAAAAAPABIAAAAAAAAAAAAPABEAAAAAAAAAAAAPABAAAAAAAAAAAAAPAA8AAAAAAAAAAAAPAA4AAAAAAAAAAAAPAA0AAAAAAAAAAAAPAAwAAAAHAAMAAAAPAAsAAAAHAAMAAAAPAAoAAAAHAAMAAAAPAAkAAAAHAAMAAAAPAAgAAAAHAAMAAAAPAAcAAAAAAAAAAAAPAAYAAAAAAAAAAAAPAAUAAAAAAAAAAAAPAAQAAAAAAAAAAAAPAAMAAAAAAAAAAAAPAAIAAAAAAAAAAAAPAAEAAAAAAAAAAAAPAAAAAAABAAAAAAAPAP//AAAAAAAAAAAPAP7/AAACAAAAAAAPAP3/AAAAAAAAAAAPAPz/AAAAAAAAAAAPAPv/AAABAAAAAAAPAPr/AAAAAAAAAAAPAPn/AAAAAAAAAAAPAPj/AAAAAAAAAAAOABgAAAAAAAAAAAAOABcAAAAAAAAAAAAOABYAAAAAAAAAAAAOABUAAAACAAMAAAAOABQAAAACAAEAAAAOABMAAAAAAAAAAAAOABIAAAACAAAAAAAOABEAAAAAAAAAAAAOABAAAAAAAAAAAAAOAA8AAAAAAAAAAAAOAA4AAAAAAAAAAAAOAA0AAAAAAAAAAAAOAAwAAAAAAAAAAAAOAAsAAAAHAAMAAAAOAAoAAAAAAAAAAAAOAAkAAAAAAAAAAAAOAAgAAAAHAAMAAAAOAAcAAAAHAAMAAAAOAAYAAAAHAAMAAAAOAAUAAAAAAAAAAAAOAAQAAAAAAAAAAAAOAAMAAAAAAAAAAAAOAAIAAAAAAAAAAAAOAAEAAAAAAAAAAAAOAAAAAAABAAAAAAAOAP//AAACAAAAAAAOAP7/AAAAAAAAAAAOAP3/AAAAAAAAAAAOAPz/AAAAAAAAAAAOAPv/AAAAAAAAAAAOAPr/AAAAAAAAAAAOAPn/AAAAAAAAAAAOAPj/AAAAAAAAAAANABgAAAAAAAAAAAANABcAAAABAAAAAAANABYAAAAAAAAAAAANABUAAAAAAAMAAAANABQAAAAAAAEAAAANABMAAAAAAAAAAAANABIAAAAAAAAAAAANABEAAAAAAAAAAAANABAAAAACAAMAAAANAA8AAAACAAIAAAANAA4AAAACAAIAAAANAA0AAAACAAEAAAANAAwAAAAAAAAAAAANAAsAAAAHAAMAAAANAAoAAAAAAAAAAAANAAkAAAAAAAAAAAANAAgAAAAAAAAAAAANAAcAAAAHAAMAAAANAAYAAAAAAAAAAAANAAUAAAAAAAAAAAANAAQAAAAAAAAAAAANAAMAAAAAAAAAAAANAAIAAAAAAAAAAAANAAEAAAAAAAAAAAANAAAAAAAAAAAAAAANAP//AAAAAAAAAAANAP7/AAAAAAAAAAANAP3/AAAAAAAAAAANAPz/AAAAAAAAAAANAPv/AAAAAAAAAAANAPr/AAAAAAAAAAANAPn/AAAAAAAAAAANAPj/AAABAAAAAAAMABgAAAAAAAAAAAAMABcAAAAAAAAAAAAMABYAAAAAAAAAAAAMABUAAAAAAAAAAAAMABQAAAAAAAAAAAAMABMAAAACAAMAAAAMABIAAAACAAEAAAAMABEAAAAAAAAAAAAMABAAAAAAAAMAAAAMAA8AAAAAAAIAAAAMAA4AAAAAAAIAAAAMAA0AAAAAAAEAAAAMAAwAAAAAAAAAAAAMAAsAAAAHAAMAAAAMAAoAAAAAAAAAAAAMAAkAAAAAAAAAAAAMAAgAAAAAAAAAAAAMAAcAAAAHAAMAAAAMAAYAAAAAAAAAAAAMAAUAAAAAAAAAAAAMAAQAAAAAAAAAAAAMAAMAAAAAAAAAAAAMAAIAAAAAAAAAAAAMAAEAAAABAAAAAAAMAAAAAAAAAAAAAAAMAP//AAAAAAAAAAAMAP7/AAAAAAAAAAAMAP3/AAAAAAAAAAAMAPz/AAAAAAAAAAAMAPv/AAAAAAAAAAAMAPr/AAABAAAAAAAMAPn/AAAAAAAAAAAMAPj/AAAAAAAAAAALABgAAAAAAAAAAAALABcAAAAAAAAAAAALABYAAAAAAAAAAAALABUAAAAAAAAAAAALABQAAAAAAAAAAAALABMAAAAAAAMAAAALABIAAAAAAAEAAAALABEAAAACAAAAAAALABAAAAAAAAAAAAALAA8AAAABAAAAAAALAA4AAAAAAAAAAAALAA0AAAAAAAAAAAALAAwAAAAAAAAAAAALAAsAAAAHAAMAAAALAAoAAAAAAAAAAAALAAkAAAAAAAAAAAALAAgAAAAAAAAAAAALAAcAAAAHAAMAAAALAAYAAAABAAAAAAALAAUAAAAAAAAAAAALAAQAAAAAAAAAAAALAAMAAAABAAAAAAALAAIAAAAAAAAAAAALAAEAAAAAAAAAAAALAAAAAAAAAAAAAAALAP//AAAAAAAAAAALAP7/AAAAAAAAAAALAP3/AAAAAAAAAAALAPz/AAAAAAAAAAALAPv/AAAAAAAAAAALAPr/AAAAAAAAAAALAPn/AAAAAAAAAAALAPj/AAAAAAAAAAAKABgAAAAAAAAAAAAKABcAAAAAAAAAAAAKABYAAAAAAAAAAAAKABUAAAAAAAAAAAAKABQAAAAAAAAAAAAKABMAAAAAAAAAAAAKABIAAAAAAAAAAAAKABEAAAAAAAAAAAAKABAAAAAAAAAAAAAKAA8AAAAAAAAAAAAKAA4AAAAAAAAAAAAKAA0AAAAAAAAAAAAKAAwAAAAAAAAAAAAKAAsAAAAHAAMAAAAKAAoAAAAAAAAAAAAKAAkAAAAAAAAAAAAKAAgAAAAAAAAAAAAKAAcAAAAHAAMAAAAKAAYAAAAAAAAAAAAKAAUAAAAAAAAAAAAKAAQAAAABAAAAAAAKAAMAAAABAAAAAAAKAAIAAAABAAAAAAAKAAEAAAAAAAAAAAAKAAAAAAAAAAAAAAAKAP//AAABAAAAAAAKAP7/AAAAAAAAAAAKAP3/AAAAAAAAAAAKAPz/AAAAAAAAAAAKAPv/AAAAAAAAAAAKAPr/AAAAAAAAAAAKAPn/AAAAAAAAAAAKAPj/AAAAAAAAAAAJABgAAAAAAAAAAAAJABcAAAAAAAAAAAAJABYAAAAAAAAAAAAJABUAAAAAAAAAAAAJABQAAAAAAAAAAAAJABMAAAAAAAAAAAAJABIAAAAAAAAAAAAJABEAAAAAAAAAAAAJABAAAAAAAAAAAAAJAA8AAAAAAAAAAAAJAA4AAAAAAAAAAAAJAA0AAAAAAAAAAAAJAAwAAAAAAAAAAAAJAAsAAAAHAAMAAAAJAAoAAAAAAAAAAAAJAAkAAAAAAAAAAAAJAAgAAAAAAAAAAAAJAAcAAAAHAAMAAAAJAAYAAAAAAAAAAAAJAAUAAAAAAAAAAAAJAAQAAAAAAAAAAAAJAAMAAAAAAAAAAAAJAAIAAAAAAAAAAAAJAAEAAAAAAAAAAAAJAAAAAAAAAAAAAAAJAP//AAACAAAAAAAJAP7/AAAAAAAAAAAJAP3/AAAAAAAAAAAJAPz/AAAAAAAAAAAJAPv/AAAAAAAAAAAJAPr/AAAAAAAAAAAJAPn/AAAAAAAAAAAJAPj/AAAAAAAAAAAIABgAAAAAAAAAAAAIABcAAAAAAAAAAAAIABYAAAAAAAAAAAAIABUAAAAAAAAAAAAIABQAAAAAAAAAAAAIABMAAAAAAAAAAAAIABIAAAAAAAAAAAAIABEAAAAAAAAAAAAIABAAAAAAAAAAAAAIAA8AAAAAAAAAAAAIAA4AAAAAAAAAAAAIAA0AAAAAAAAAAAAIAAwAAAAAAAAAAAAIAAsAAAAHAAMAAAAIAAoAAAAAAAAAAAAIAAkAAAAAAAAAAAAIAAgAAAAAAAAAAAAIAAcAAAAHAAMAAAAIAAYAAAAHAAMAAAAIAAUAAAAHAAMAAAAIAAQAAAAAAAAAAAAIAAMAAAAAAAAAAAAIAAIAAAAAAAAAAAAIAAEAAAAAAAAAAAAIAAAAAAABAAAAAAAIAP//AAAAAAAAAAAIAP7/AAAAAAAAAAAIAP3/AAAAAAAAAAAIAPz/AAAAAAAAAAAIAPv/AAAAAAAAAAAIAPr/AAAAAAAAAAAIAPn/AAAAAAAAAAAIAPj/AAACAAAAAAAHABgAAAAAAAAAAAAHABcAAAAAAAAAAAAHABYAAAAAAAAAAAAHABUAAAAAAAAAAAAHABQAAAAAAAAAAAAHABMAAAAAAAAAAAAHABIAAAAAAAAAAAAHABEAAAAAAAAAAAAHABAAAAAAAAAAAAAHAA8AAAAAAAAAAAAHAA4AAAAAAAAAAAAHAA0AAAAAAAAAAAAHAAwAAAABAAAAAAAHAAsAAAAHAAMAAAAHAAoAAAAAAAAAAAAHAAkAAAAAAAAAAAAHAAgAAAAAAAAAAAAHAAcAAAAAAAAAAAAHAAYAAAAAAAAAAAAHAAUAAAAAAAAAAAAHAAQAAAAAAAAAAAAHAAMAAAAAAAAAAAAHAAIAAAAAAAAAAAAHAAEAAAACAAAAAAAHAAAAAAAAAAAAAAAHAP//AAABAAAAAAAHAP7/AAAAAAAAAAAHAP3/AAAAAAAAAAAHAPz/AAAAAAAAAAAHAPv/AAAAAAAAAAAHAPr/AAAAAAAAAAAHAPn/AAAAAAAAAAAHAPj/AAAAAAAAAAAGABgAAAAAAAAAAAAGABcAAAAAAAAAAAAGABYAAAAAAAAAAAAGABUAAAAAAAAAAAAGABQAAAAAAAAAAAAGABMAAAAAAAAAAAAGABIAAAAAAAAAAAAGABEAAAAAAAAAAAAGABAAAAAAAAAAAAAGAA8AAAAAAAAAAAAGAA4AAAAAAAAAAAAGAA0AAAAAAAAAAAAGAAwAAAAAAAAAAAAGAAsAAAAAAAAAAAAGAAoAAAAAAAAAAAAGAAkAAAACAAAAAAAGAAgAAAAAAAAAAAAGAAcAAAAAAAAAAAAGAAYAAAAAAAAAAAAGAAUAAAAAAAAAAAAGAAQAAAAAAAAAAAAGAAMAAAAAAAAAAAAGAAIAAAAAAAAAAAAGAAEAAAAAAAAAAAAGAAAAAAABAAAAAAAGAP//AAABAAAAAAAGAP7/AAAAAAAAAAAGAP3/AAAAAAAAAAAGAPz/AAAAAAAAAAAGAPv/AAAAAAAAAAAGAPr/AAAAAAAAAAAGAPn/AAABAAAAAAAGAPj/AAAAAAAAAAAFABgAAAAAAAAAAAAFABcAAAAAAAAAAAAFABYAAAAAAAAAAAAFABUAAAAAAAAAAAAFABQAAAAAAAAAAAAFABMAAAAAAAAAAAAFABIAAAAAAAAAAAAFABEAAAAAAAAAAAAFABAAAAAAAAAAAAAFAA8AAAAAAAAAAAAFAA4AAAABAAAAAAAFAA0AAAAAAAAAAAAFAAwAAAAAAAAAAAAFAAsAAAABAAAAAAAFAAoAAAAAAAAAAAAFAAkAAAAAAAAAAAAFAAgAAAABAAAAAAAFAAcAAAABAAAAAAAFAAYAAAAAAAAAAAAFAAUAAAAAAAAAAAAFAAQAAAAAAAAAAAAFAAMAAAAAAAAAAAAFAAIAAAAAAAAAAAAFAAEAAAAAAAAAAAAFAAAAAAAAAAAAAAAFAP//AAAAAAAAAAAFAP7/AAAAAAAAAAAFAP3/AAAAAAAAAAAFAPz/AAAAAAAAAAAFAPv/AAAAAAAAAAAFAPr/AAAAAAAAAAAFAPn/AAACAAAAAAAFAPj/AAAAAAAAAAAEABgAAAAAAAAAAAAEABcAAAAAAAAAAAAEABYAAAAAAAAAAAAEABUAAAAAAAAAAAAEABQAAAAAAAAAAAAEABMAAAACAAAAAAAEABIAAAAAAAAAAAAEABEAAAAAAAAAAAAEABAAAAAAAAAAAAAEAA8AAAAAAAAAAAAEAA4AAAAAAAAAAAAEAA0AAAAAAAAAAAAEAAwAAAAAAAAAAAAEAAsAAAAAAAAAAAAEAAoAAAABAAAAAAAEAAkAAAAAAAAAAAAEAAgAAAAAAAAAAAAEAAcAAAAAAAAAAAAEAAYAAAABAAAAAAAEAAUAAAAAAAAAAAAEAAQAAAABAAAAAAAEAAMAAAAAAAAAAAAEAAIAAAAAAAAAAAAEAAEAAAAAAAAAAAAEAAAAAAABAAAAAAAEAP//AAABAAAAAAAEAP7/AAAAAAAAAAAEAP3/AAAAAAAAAAAEAPz/AAAAAAAAAAAEAPv/AAAAAAAAAAAEAPr/AAAAAAAAAAAEAPn/AAAAAAAAAAAEAPj/AAAAAAAAAAADABgAAAAAAAAAAAADABcAAAAAAAAAAAADABYAAAAAAAAAAAADABUAAAAAAAAAAAADABQAAAAAAAAAAAADABMAAAAAAAAAAAADABIAAAAAAAAAAAADABEAAAAAAAAAAAADABAAAAAAAAAAAAADAA8AAAAAAAAAAAADAA4AAAAAAAAAAAADAA0AAAABAAAAAAADAAwAAAABAAAAAAADAAsAAAAAAAAAAAADAAoAAAACAAAAAAADAAkAAAAAAAAAAAADAAgAAAAAAAAAAAADAAcAAAAAAAAAAAADAAYAAAAAAAAAAAADAAUAAAAAAAAAAAADAAQAAAACAAAAAAADAAMAAAABAAAAAAADAAIAAAABAAAAAAADAAEAAAAAAAAAAAADAAAAAAAAAAAAAAADAP//AAABAAAAAAADAP7/AAAAAAAAAAADAP3/AAAAAAAAAAADAPz/AAAAAAAAAAADAPv/AAABAAAAAAADAPr/AAAAAAAAAAADAPn/AAAAAAAAAAADAPj/AAAAAAAAAAACABgAAAAAAAAAAAACABcAAAAAAAAAAAACABYAAAAAAAAAAAACABUAAAAAAAAAAAACABQAAAAAAAAAAAACABMAAAAAAAAAAAACABIAAAAAAAAAAAACABEAAAAAAAAAAAACABAAAAAAAAAAAAACAA8AAAAAAAAAAAACAA4AAAAAAAAAAAACAA0AAAAAAAAAAAACAAwAAAAAAAAAAAACAAsAAAAAAAAAAAACAAoAAAAAAAAAAAACAAkAAAAAAAAAAAACAAgAAAAAAAAAAAACAAcAAAABAAAAAAACAAYAAAABAAAAAAACAAUAAAABAAAAAAACAAQAAAAAAAAAAAACAAMAAAABAAAAAAACAAIAAAACAAAAAAACAAEAAAAAAAAAAAACAAAAAAAAAAAAAAACAP//AAAAAAAAAAACAP7/AAAAAAAAAAACAP3/AAAAAAAAAAACAPz/AAAAAAAAAAACAPv/AAAAAAAAAAACAPr/AAAAAAAAAAACAPn/AAAAAAAAAAACAPj/AAAAAAAAAAABABgAAAAAAAAAAAABABcAAAAAAAAAAAABABYAAAAAAAAAAAABABUAAAAAAAAAAAABABQAAAAAAAAAAAABABMAAAAAAAAAAAABABIAAAAAAAAAAAABABEAAAAAAAAAAAABABAAAAAAAAAAAAABAA8AAAAAAAAAAAABAA4AAAAAAAAAAAABAA0AAAAAAAAAAAABAAwAAAAAAAAAAAABAAsAAAAAAAAAAAABAAoAAAAAAAAAAAABAAkAAAAAAAAAAAABAAgAAAAAAAAAAAABAAcAAAAAAAAAAAABAAYAAAABAAAAAAABAAUAAAAAAAAAAAABAAQAAAABAAAAAAABAAMAAAAAAAAAAAABAAIAAAACAAAAAAABAAEAAAABAAAAAAABAAAAAAABAAAAAAABAP//AAAAAAAAAAABAP7/AAAAAAAAAAABAP3/AAAAAAAAAAABAPz/AAAAAAAAAAABAPv/AAAAAAAAAAABAPr/AAACAAAAAAABAPn/AAAAAAAAAAABAPj/AAAAAAAAAAAAABgAAAAAAAAAAAAAABcAAAAAAAAAAAAAABYAAAAAAAAAAAAAABUAAAAAAAAAAAAAABQAAAAAAAAAAAAAABMAAAAAAAAAAAAAABIAAAAAAAAAAAAAABEAAAAAAAAAAAAAABAAAAAAAAAAAAAAAA8AAAAAAAAAAAAAAA4AAAAAAAAAAAAAAA0AAAACAAAAAAAAAAwAAAABAAAAAAAAAAsAAAABAAAAAAAAAAoAAAAAAAAAAAAAAAkAAAABAAAAAAAAAAgAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAAYAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAMAAAABAAAAAAAAAAIAAAABAAAAAAAAAAEAAAABAAAAAAAAAAAAAAAAAAAAAAAAAP//AAACAAAAAAAAAP7/AAABAAAAAAAAAP3/AAAAAAAAAAAAAPz/AAAAAAAAAAAAAPv/AAAAAAAAAAAAAPr/AAAAAAAAAAAAAPn/AAAAAAAAAAAAAPj/AAAAAAAAAAD//xgAAAAAAAAAAAD//xcAAAAAAAAAAAD//xYAAAAAAAAAAAD//xUAAAACAAAAAAD//xQAAAACAAAAAAD//xMAAAAAAAAAAAD//xIAAAAAAAAAAAD//xEAAAAAAAAAAAD//xAAAAAAAAAAAAD//w8AAAAAAAAAAAD//w4AAAAAAAAAAAD//w0AAAAAAAAAAAD//wwAAAAAAAAAAAD//wsAAAACAAAAAAD//woAAAAAAAAAAAD//wkAAAAAAAAAAAD//wgAAAAAAAAAAAD//wcAAAAAAAAAAAD//wYAAAAAAAAAAAD//wUAAAAAAAAAAAD//wQAAAABAAAAAAD//wMAAAABAAAAAAD//wIAAAAAAAAAAAD//wEAAAAAAAAAAAD//wAAAAAAAAAAAAD/////AAAAAAAAAAD///7/AAAAAAAAAAD///3/AAAAAAAAAAD///z/AAAAAAAAAAD///v/AAAAAAAAAAD///r/AAAAAAAAAAD///n/AAAAAAAAAAD///j/AAAAAAAAAAD+/xgAAAAAAAAAAAD+/xcAAAAAAAAAAAD+/xYAAAAAAAAAAAD+/xUAAAAAAAAAAAD+/xQAAAAAAAAAAAD+/xMAAAAAAAAAAAD+/xIAAAAAAAAAAAD+/xEAAAAAAAAAAAD+/xAAAAAAAAAAAAD+/w8AAAAAAAAAAAD+/w4AAAAAAAAAAAD+/w0AAAAAAAAAAAD+/wwAAAAAAAAAAAD+/wsAAAACAAAAAAD+/woAAAAAAAAAAAD+/wkAAAAAAAAAAAD+/wgAAAAAAAAAAAD+/wcAAAAAAAAAAAD+/wYAAAAAAAAAAAD+/wUAAAAAAAAAAAD+/wQAAAAAAAAAAAD+/wMAAAAAAAAAAAD+/wIAAAABAAAAAAD+/wEAAAAAAAAAAAD+/wAAAAAAAAAAAAD+////AAAAAAAAAAD+//7/AAAAAAAAAAD+//3/AAAAAAAAAAD+//z/AAAAAAAAAAD+//v/AAABAAAAAAD+//r/AAAAAAAAAAD+//n/AAAAAAAAAAD+//j/AAAAAAAAAAD9/xgAAAAAAAAAAAD9/xcAAAAAAAAAAAD9/xYAAAAAAAAAAAD9/xUAAAAAAAAAAAD9/xQAAAAAAAAAAAD9/xMAAAAAAAAAAAD9/xIAAAAAAAAAAAD9/xEAAAAAAAAAAAD9/xAAAAAAAAAAAAD9/w8AAAAAAAAAAAD9/w4AAAAAAAAAAAD9/w0AAAAAAAAAAAD9/wwAAAAAAAAAAAD9/wsAAAAAAAAAAAD9/woAAAAAAAAAAAD9/wkAAAAAAAAAAAD9/wgAAAAAAAAAAAD9/wcAAAAAAAAAAAD9/wYAAAAAAAAAAAD9/wUAAAAAAAAAAAD9/wQAAAAAAAAAAAD9/wMAAAAAAAAAAAD9/wIAAAAAAAAAAAD9/wEAAAAAAAAAAAD9/wAAAAAAAAAAAAD9////AAAAAAAAAAD9//7/AAAAAAAAAAD9//3/AAAAAAAAAAD9//z/AAAAAAAAAAD9//v/AAAAAAAAAAD9//r/AAAAAAAAAAD9//n/AAAAAAAAAAD9//j/AAAAAAAAAAD8/xgAAAAAAAAAAAD8/xcAAAAAAAAAAAD8/xYAAAAAAAAAAAD8/xUAAAAAAAAAAAD8/xQAAAAAAAAAAAD8/xMAAAAAAAAAAAD8/xIAAAAAAAAAAAD8/xEAAAAAAAAAAAD8/xAAAAAAAAAAAAD8/w8AAAAAAAAAAAD8/w4AAAAAAAAAAAD8/w0AAAAAAAAAAAD8/wwAAAACAAAAAAD8/wsAAAACAAAAAAD8/woAAAAAAAAAAAD8/wkAAAAAAAAAAAD8/wgAAAAAAAAAAAD8/wcAAAAAAAAAAAD8/wYAAAABAAAAAAD8/wUAAAAAAAAAAAD8/wQAAAAAAAAAAAD8/wMAAAAAAAAAAAD8/wIAAAAAAAAAAAD8/wEAAAAAAAAAAAD8/wAAAAAAAAAAAAD8////AAAAAAAAAAD8//7/AAAAAAAAAAD8//3/AAAAAAAAAAD8//z/AAAAAAAAAAD8//v/AAABAAAAAAD8//r/AAACAAAAAAD8//n/AAAAAAAAAAD8//j/AAAAAAAAAAD7/xgAAAAAAAAAAAD7/xcAAAAAAAAAAAD7/xYAAAACAAAAAAD7/xUAAAAAAAAAAAD7/xQAAAAAAAAAAAD7/xMAAAAAAAAAAAD7/xIAAAAAAAAAAAD7/xEAAAAAAAAAAAD7/xAAAAAAAAAAAAD7/w8AAAAAAAAAAAD7/w4AAAAAAAAAAAD7/w0AAAAAAAAAAAD7/wwAAAAAAAAAAAD7/wsAAAAAAAAAAAD7/woAAAAAAAAAAAD7/wkAAAAAAAAAAAD7/wgAAAAAAAAAAAD7/wcAAAAAAAAAAAD7/wYAAAAAAAAAAAD7/wUAAAAAAAAAAAD7/wQAAAAAAAAAAAD7/wMAAAAAAAAAAAD7/wIAAAAAAAAAAAD7/wEAAAABAAAAAAD7/wAAAAAAAAAAAAD7////AAAAAAAAAAD7//7/AAAAAAAAAAD7//3/AAAAAAAAAAD7//z/AAAAAAAAAAD7//v/AAAAAAAAAAD7//r/AAAAAAAAAAD7//n/AAAAAAAAAAD7//j/AAAAAAAAAAD6/xgAAAAAAAAAAAD6/xcAAAAAAAAAAAD6/xYAAAAAAAAAAAD6/xUAAAAAAAAAAAD6/xQAAAACAAAAAAD6/xMAAAAAAAAAAAD6/xIAAAAAAAAAAAD6/xEAAAAAAAAAAAD6/xAAAAAAAAAAAAD6/w8AAAAAAAAAAAD6/w4AAAAAAAAAAAD6/w0AAAAAAAAAAAD6/wwAAAAAAAAAAAD6/wsAAAAAAAAAAAD6/woAAAACAAAAAAD6/wkAAAABAAAAAAD6/wgAAAAAAAAAAAD6/wcAAAAAAAAAAAD6/wYAAAAAAAAAAAD6/wUAAAABAAAAAAD6/wQAAAAAAAAAAAD6/wMAAAAAAAAAAAD6/wIAAAACAAAAAAD6/wEAAAAAAAAAAAD6/wAAAAAAAAAAAAD6////AAAAAAAAAAD6//7/AAAAAAAAAAD6//3/AAAAAAAAAAD6//z/AAAAAAAAAAD6//v/AAAAAAAAAAD6//r/AAAAAAAAAAD6//n/AAAAAAAAAAD6//j/AAACAAAAAAD5/xgAAAAAAAAAAAD5/xcAAAAAAAAAAAD5/xYAAAAAAAAAAAD5/xUAAAAAAAAAAAD5/xQAAAAAAAAAAAD5/xMAAAAAAAAAAAD5/xIAAAAAAAAAAAD5/xEAAAAAAAAAAAD5/xAAAAAAAAAAAAD5/w8AAAAAAAAAAAD5/w4AAAAAAAAAAAD5/w0AAAAAAAAAAAD5/wwAAAAAAAAAAAD5/wsAAAAAAAAAAAD5/woAAAAAAAAAAAD5/wkAAAAAAAAAAAD5/wgAAAAAAAAAAAD5/wcAAAAAAAAAAAD5/wYAAAAAAAAAAAD5/wUAAAAAAAAAAAD5/wQAAAABAAAAAAD5/wMAAAAAAAAAAAD5/wIAAAAAAAAAAAD5/wEAAAAAAAAAAAD5/wAAAAAAAAAAAAD5////AAAAAAAAAAD5//7/AAAAAAAAAAD5//3/AAAAAAAAAAD5//z/AAACAAAAAAD5//v/AAAAAAAAAAD5//r/AAAAAAAAAAD5//n/AAAAAAAAAAD5//j/AAAAAAAAAAD4/xgAAAAAAAAAAAD4/xcAAAAAAAAAAAD4/xYAAAAAAAAAAAD4/xUAAAAAAAAAAAD4/xQAAAACAAAAAAD4/xMAAAAAAAAAAAD4/xIAAAAAAAAAAAD4/xEAAAAAAAAAAAD4/xAAAAAAAAAAAAD4/w8AAAAAAAAAAAD4/w4AAAAAAAAAAAD4/w0AAAAAAAAAAAD4/wwAAAAAAAAAAAD4/wsAAAAAAAAAAAD4/woAAAAAAAAAAAD4/wkAAAAAAAAAAAD4/wgAAAAAAAAAAAD4/wcAAAAAAAAAAAD4/wYAAAAAAAAAAAD4/wUAAAAAAAAAAAD4/wQAAAAAAAAAAAD4/wMAAAAAAAAAAAD4/wIAAAAAAAAAAAD4/wEAAAAAAAAAAAD4/wAAAAAAAAAAAAD4////AAAAAAAAAAD4//7/AAAAAAAAAAD4//3/AAAAAAAAAAD4//z/AAAAAAAAAAD4//v/AAAAAAAAAAD4//r/AAABAAAAAAD4//n/AAAAAAAAAAD4//j/AAAAAAAAAAD3/xgAAAAAAAAAAAD3/xcAAAABAAAAAAD3/xYAAAAAAAAAAAD3/xUAAAAAAAAAAAD3/xQAAAAAAAAAAAD3/xMAAAAAAAAAAAD3/xIAAAAAAAAAAAD3/xEAAAAAAAAAAAD3/xAAAAAAAAAAAAD3/w8AAAAAAAAAAAD3/w4AAAAAAAAAAAD3/w0AAAAAAAAAAAD3/wwAAAAAAAAAAAD3/wsAAAAAAAAAAAD3/woAAAAAAAAAAAD3/wkAAAAAAAAAAAD3/wgAAAAAAAAAAAD3/wcAAAAAAAAAAAD3/wYAAAAAAAAAAAD3/wUAAAAAAAAAAAD3/wQAAAAAAAAAAAD3/wMAAAAAAAAAAAD3/wIAAAAAAAAAAAD3/wEAAAAAAAAAAAD3/wAAAAAAAAAAAAD3////AAAAAAAAAAD3//7/AAAAAAAAAAD3//3/AAAAAAAAAAD3//z/AAAAAAAAAAD3//v/AAAAAAAAAAD3//r/AAAAAAAAAAD3//n/AAAAAAAAAAD3//j/AAAAAAAAAAD2/xgAAAAAAAAAAAD2/xcAAAAAAAAAAAD2/xYAAAAAAAAAAAD2/xUAAAAAAAAAAAD2/xQAAAAAAAAAAAD2/xMAAAAAAAAAAAD2/xIAAAAAAAAAAAD2/xEAAAAAAAAAAAD2/xAAAAAAAAAAAAD2/w8AAAAAAAAAAAD2/w4AAAAAAAAAAAD2/w0AAAAAAAAAAAD2/wwAAAAAAAAAAAD2/wsAAAAAAAAAAAD2/woAAAAAAAAAAAD2/wkAAAAAAAAAAAD2/wgAAAAAAAAAAAD2/wcAAAAAAAAAAAD2/wYAAAAAAAAAAAD2/wUAAAAAAAAAAAD2/wQAAAAAAAAAAAD2/wMAAAAAAAAAAAD2/wIAAAAAAAAAAAD2/wEAAAAAAAAAAAD2/wAAAAAAAAAAAAD2////AAAAAAAAAAD2//7/AAAAAAAAAAD2//3/AAAAAAAAAAD2//z/AAAAAAAAAAD2//v/AAAAAAAAAAD2//r/AAACAAAAAAD2//n/AAAAAAAAAAD2//j/AAAAAAAAAAD1/xgAAAAAAAAAAAD1/xcAAAAAAAAAAAD1/xYAAAACAAAAAAD1/xUAAAAAAAAAAAD1/xQAAAAAAAAAAAD1/xMAAAAAAAAAAAD1/xIAAAAAAAAAAAD1/xEAAAAAAAAAAAD1/xAAAAAAAAAAAAD1/w8AAAAAAAAAAAD1/w4AAAAAAAAAAAD1/w0AAAAAAAAAAAD1/wwAAAAAAAAAAAD1/wsAAAAAAAAAAAD1/woAAAAAAAAAAAD1/wkAAAAAAAAAAAD1/wgAAAACAAAAAAD1/wcAAAAAAAAAAAD1/wYAAAACAAAAAAD1/wUAAAAAAAAAAAD1/wQAAAAAAAAAAAD1/wMAAAAAAAAAAAD1/wIAAAAAAAAAAAD1/wEAAAAAAAAAAAD1/wAAAAAAAAAAAAD1////AAAAAAAAAAD1//7/AAAAAAAAAAD1//3/AAAAAAAAAAD1//z/AAAAAAAAAAD1//v/AAAAAAAAAAD1//r/AAACAAAAAAD1//n/AAAAAAAAAAD1//j/AAAAAAAAAAD0/xgAAAAAAAAAAAD0/xcAAAAAAAAAAAD0/xYAAAAAAAAAAAD0/xUAAAABAAAAAAD0/xQAAAAAAAAAAAD0/xMAAAAAAAAAAAD0/xIAAAAAAAAAAAD0/xEAAAAAAAAAAAD0/xAAAAAAAAAAAAD0/w8AAAAAAAAAAAD0/w4AAAAAAAAAAAD0/w0AAAAAAAAAAAD0/wwAAAAAAAAAAAD0/wsAAAAAAAAAAAD0/woAAAABAAAAAAD0/wkAAAAAAAAAAAD0/wgAAAAAAAAAAAD0/wcAAAAAAAAAAAD0/wYAAAAAAAAAAAD0/wUAAAAAAAAAAAD0/wQAAAAAAAAAAAD0/wMAAAAAAAAAAAD0/wIAAAAAAAAAAAD0/wEAAAAAAAAAAAD0/wAAAAAAAAAAAAD0////AAAAAAAAAAD0//7/AAAAAAAAAAD0//3/AAAAAAAAAAD0//z/AAAAAAAAAAD0//v/AAAAAAAAAAD0//r/AAAAAAAAAAD0//n/AAAAAAAAAAD0//j/AAACAAAAAAA=")
+ tile_set = ExtResource("7_po5fq")
+ script = ExtResource("55_a8sfs")
++metadata/_edit_lock_ = true
+ 
+ [node name="Buildings" type="TileMapLayer" parent="Field/Map/Town"]
+ tile_map_data = PackedByteArray("AAAEAAEAAAAEAAQAAAAEAAIAAAAEAAUAAAAEAAMAAAAEAAYAAAAEAAQAAAAEAAYAAAAFAAEAAAAHAAQAAAAFAAIAAAAFAAUAAAAFAAMAAAAEAAcAAAAFAAQAAAAEAAcAAAAGAAEAAAAGAAQAAAAGAAIAAAAGAAUAAAAGAAMAAAAHAAYAAAAGAAQAAAAFAAYAAAAHAAIAAAAEAAQAAAAHAAMAAAAEAAUAAAAHAAQAAAAEAAYAAAAIAAIAAAAFAAQAAAAIAAMAAAAHAAUAAAAIAAQAAAAFAAcAAAAJAAIAAAAGAAQAAAAJAAMAAAAGAAUAAAAJAAQAAAAHAAYAAAANAAMAAAAAAAQAAAANAAQAAAAAAAUAAAANAAUAAAAAAAYAAAAOAAMAAAABAAQAAAAOAAQAAAABAAUAAAAOAAUAAAABAAcAAAAPAAMAAAACAAQAAAAPAAQAAAACAAUAAAAPAAUAAAADAAYAAAASAAQAAAAAAAQAAAASAAUAAAAAAAUAAAASAAYAAAAAAAYAAAATAAQAAAADAAQAAAATAAUAAAABAAUAAAATAAYAAAAAAAcAAAAUAAQAAAACAAQAAAAUAAUAAAACAAUAAAAUAAYAAAADAAYAAAATAAoAAAAAAAQAAAATAAsAAAAAAAUAAAATAAwAAAAAAAYAAAAUAAoAAAABAAQAAAAUAAsAAAABAAUAAAAUAAwAAAAAAAcAAAAVAAoAAAABAAQAAAAVAAsAAAABAAUAAAAVAAwAAAAAAAcAAAAWAAoAAAACAAQAAAAWAAsAAAACAAUAAAAWAAwAAAADAAYAAAAFAAgAAAAAAAQAAAAFAAkAAAAAAAUAAAAFAAoAAAAAAAYAAAAGAAgAAAADAAQAAAAGAAkAAAABAAUAAAAGAAoAAAAAAAcAAAAHAAgAAAABAAQAAAAIAAgAAAACAAQAAAAIAAkAAAACAAUAAAAIAAoAAAADAAYAAAA=")
+ tile_set = ExtResource("7_po5fq")
+ script = ExtResource("55_a8sfs")
++metadata/_edit_lock_ = true
+ 
+ [node name="Trees" type="TileMapLayer" parent="Field/Map/Town"]
+ tile_map_data = PackedByteArray("AAD1/wAAAAAHAAEAAAD1/wEAAAAHAAEAAAD1/wIAAAAHAAEAAAD1/wMAAAAHAAEAAAD1/wQAAAAHAAEAAAD1/wUAAAAHAAEAAAD1/wYAAAAHAAEAAAD1/wcAAAAHAAEAAAD1/wgAAAAHAAEAAAD1/wkAAAAHAAEAAAD1/woAAAAHAAEAAAD1/wsAAAAHAAEAAAD1/wwAAAAHAAEAAAD1/w0AAAAHAAEAAAD1/w4AAAAHAAEAAAD1/w8AAAAHAAEAAAD1/xAAAAAHAAEAAAD1/xEAAAAHAAEAAAD1/xIAAAAHAAEAAAD1/xMAAAAHAAEAAAD1/xQAAAAHAAEAAAD1/xUAAAAHAAEAAAD1/xYAAAAHAAEAAAD1/xcAAAAHAAEAAAD2/wAAAAAHAAEAAAD2/wEAAAAHAAEAAAD2/wIAAAAHAAEAAAD2/wMAAAAHAAEAAAD2/wQAAAAHAAEAAAD2/wUAAAAHAAEAAAD2/wYAAAAHAAEAAAD2/wcAAAAHAAEAAAD2/wgAAAAHAAEAAAD2/wkAAAAHAAEAAAD2/woAAAAHAAEAAAD2/wsAAAAHAAEAAAD2/wwAAAAHAAEAAAD2/w0AAAAHAAEAAAD2/w4AAAAHAAEAAAD2/w8AAAAHAAEAAAD2/xAAAAAHAAEAAAD2/xEAAAAHAAEAAAD2/xIAAAAHAAEAAAD2/xMAAAAHAAEAAAD2/xQAAAAHAAEAAAD2/xUAAAAHAAEAAAD2/xYAAAAHAAEAAAD2/xcAAAAHAAEAAAD3/wAAAAAHAAEAAAD3/wEAAAAHAAEAAAD3/wIAAAAHAAEAAAD3/wMAAAAHAAEAAAD3/wQAAAAHAAEAAAD3/wUAAAAHAAEAAAD3/wYAAAAHAAEAAAD3/wcAAAAHAAEAAAD3/wgAAAAHAAEAAAD3/wkAAAAHAAEAAAD3/woAAAAHAAEAAAD3/wsAAAAHAAEAAAD3/wwAAAAHAAEAAAD3/w0AAAAHAAEAAAD3/w4AAAAHAAEAAAD3/w8AAAAHAAEAAAD3/xAAAAAHAAEAAAD3/xEAAAAHAAEAAAD3/xIAAAAHAAEAAAD3/xMAAAAHAAEAAAD3/xQAAAAHAAEAAAD3/xUAAAAHAAEAAAD3/xYAAAAHAAEAAAD3/xcAAAAHAAEAAAD4/wAAAAAHAAEAAAD4/wEAAAAHAAEAAAD4/wIAAAAHAAEAAAD4/wMAAAAHAAEAAAD4/wQAAAAHAAEAAAD4/wUAAAAHAAEAAAD4/wYAAAAHAAEAAAD4/wcAAAAHAAEAAAD4/wgAAAAHAAEAAAD4/wkAAAAHAAEAAAD4/woAAAAHAAEAAAD4/wsAAAAHAAEAAAD4/wwAAAAHAAEAAAD4/w0AAAAHAAEAAAD4/w4AAAAHAAEAAAD4/w8AAAAHAAEAAAD4/xAAAAAHAAEAAAD4/xEAAAAHAAEAAAD4/xIAAAAHAAEAAAD4/xMAAAAHAAEAAAD4/xQAAAAHAAEAAAD4/xUAAAAHAAEAAAD4/xYAAAAHAAEAAAD4/xcAAAAHAAEAAAD5/wAAAAAHAAEAAAD5/wEAAAAHAAEAAAD5/wIAAAAHAAEAAAD5/wMAAAAHAAEAAAD5/wQAAAAHAAEAAAD5/wUAAAAHAAEAAAD5/wYAAAAHAAEAAAD5/wcAAAAHAAEAAAD5/wgAAAAHAAEAAAD5/wkAAAAHAAEAAAD5/woAAAAHAAEAAAD5/wsAAAAHAAEAAAD5/wwAAAAHAAEAAAD5/w0AAAAHAAEAAAD5/w4AAAAHAAEAAAD5/w8AAAAHAAEAAAD5/xAAAAAHAAEAAAD5/xEAAAAHAAEAAAD5/xIAAAAHAAEAAAD5/xMAAAAHAAEAAAD5/xQAAAAHAAEAAAD5/xUAAAAHAAEAAAD5/xYAAAAHAAEAAAD5/xcAAAAHAAEAAAD6/wAAAAAHAAEAAAD6/wEAAAAHAAEAAAD6/wIAAAAHAAEAAAD6/wMAAAAHAAEAAAD6/wQAAAAHAAEAAAD6/wUAAAAHAAEAAAD6/wYAAAAHAAEAAAD6/wcAAAAHAAEAAAD6/wgAAAAHAAEAAAD6/wkAAAAHAAEAAAD6/woAAAAHAAEAAAD6/wsAAAAHAAEAAAD6/wwAAAAHAAEAAAD6/w0AAAAHAAEAAAD6/w4AAAAHAAEAAAD6/w8AAAAHAAEAAAD6/xAAAAAHAAEAAAD6/xEAAAAHAAEAAAD6/xIAAAAHAAEAAAD6/xMAAAAHAAEAAAD6/xQAAAAHAAEAAAD6/xUAAAAHAAEAAAD6/xYAAAAHAAEAAAD6/xcAAAAHAAEAAAD7/wAAAAAHAAEAAAD7/wEAAAAHAAEAAAD7/wIAAAAHAAEAAAD7/wMAAAAHAAEAAAD7/wQAAAAHAAEAAAD7/wUAAAAHAAEAAAD7/wYAAAAHAAEAAAD7/wcAAAAHAAEAAAD7/wgAAAAHAAEAAAD7/wkAAAAHAAEAAAD7/woAAAAHAAEAAAD7/wsAAAAHAAEAAAD7/wwAAAAHAAEAAAD7/w0AAAAHAAEAAAD7/w4AAAAHAAEAAAD7/w8AAAAHAAEAAAD7/xAAAAAHAAEAAAD7/xEAAAAHAAEAAAD7/xIAAAAHAAEAAAD7/xMAAAAHAAEAAAD7/xQAAAAHAAEAAAD7/xUAAAAHAAEAAAD7/xYAAAAHAAEAAAD7/xcAAAAHAAEAAAD8/wAAAAAHAAEAAAD8/wEAAAAHAAEAAAD8/wIAAAAHAAEAAAD8/wMAAAAHAAEAAAD8/wQAAAAHAAEAAAD8/wUAAAAHAAEAAAD8/wYAAAAHAAEAAAD8/wcAAAAHAAEAAAD8/wgAAAAHAAEAAAD8/wkAAAAHAAEAAAD8/woAAAAHAAEAAAD8/wsAAAAHAAEAAAD8/wwAAAAHAAEAAAD8/w0AAAAHAAEAAAD8/w4AAAAHAAEAAAD8/w8AAAAHAAEAAAD8/xAAAAAHAAEAAAD8/xEAAAAHAAEAAAD8/xIAAAAHAAEAAAD8/xMAAAAHAAEAAAD8/xQAAAAHAAEAAAD8/xUAAAAHAAEAAAD8/xYAAAAHAAEAAAD8/xcAAAAHAAEAAAD9/wAAAAAHAAEAAAD9/wEAAAAHAAEAAAD9/wIAAAAHAAEAAAD9/wMAAAAHAAEAAAD9/wQAAAAHAAEAAAD9/wUAAAAHAAEAAAD9/wYAAAAHAAEAAAD9/wcAAAAHAAEAAAD9/wgAAAAHAAEAAAD9/wkAAAAHAAEAAAD9/woAAAAHAAEAAAD9/wsAAAAHAAEAAAD9/wwAAAAHAAEAAAD9/w0AAAAHAAEAAAD9/w4AAAAHAAEAAAD9/w8AAAAHAAEAAAD9/xAAAAAHAAEAAAD9/xEAAAAHAAEAAAD9/xIAAAAHAAEAAAD9/xMAAAAHAAEAAAD9/xQAAAAHAAEAAAD9/xUAAAAHAAEAAAD9/xYAAAAHAAEAAAD9/xcAAAAHAAEAAAD+/wAAAAAHAAEAAAD+/wEAAAAHAAEAAAD+/wIAAAAHAAEAAAD+/wMAAAAHAAEAAAD+/wQAAAAHAAEAAAD+/wUAAAAHAAEAAAD+/wYAAAAHAAEAAAD+/wcAAAAHAAEAAAD+/wgAAAAHAAEAAAD+/wkAAAAHAAEAAAD+/woAAAAHAAEAAAD+/wsAAAAHAAEAAAD+/wwAAAAHAAEAAAD+/w0AAAAHAAEAAAD+/w4AAAAHAAEAAAD+/w8AAAAHAAEAAAD+/xAAAAAHAAEAAAD+/xEAAAAHAAEAAAD+/xIAAAAHAAEAAAD+/xMAAAAHAAEAAAD+/xQAAAAHAAEAAAD+/xUAAAAHAAEAAAD+/xYAAAAHAAEAAAD+/xcAAAAHAAEAAAD//wAAAAAHAAEAAAD//wEAAAAHAAEAAAD//wIAAAAHAAEAAAD//wMAAAAHAAEAAAD//wQAAAAHAAEAAAD//wUAAAAHAAEAAAD//wYAAAAHAAEAAAD//wcAAAAHAAEAAAD//wgAAAAHAAEAAAD//wkAAAAHAAEAAAD//woAAAAHAAEAAAD//wsAAAAHAAEAAAD//wwAAAAHAAEAAAD//w0AAAAHAAEAAAD//w4AAAAHAAEAAAD//w8AAAAHAAEAAAD//xAAAAAHAAEAAAD//xEAAAAHAAEAAAD//xIAAAAHAAEAAAD//xMAAAAHAAEAAAD//xQAAAAHAAEAAAD//xUAAAAHAAEAAAD//xYAAAAHAAEAAAD//xcAAAAHAAEAAAAAAAAAAAAHAAEAAAAAAAEAAAAHAAEAAAAAAAIAAAAIAAIAAAAAAAMAAAAIAAEAAAAAAAQAAAAIAAEAAAAAAAUAAAAIAAAAAAAAAAYAAAAHAAEAAAAAAAcAAAAHAAEAAAAAAAgAAAAIAAIAAAAAAAkAAAAIAAAAAAAAAAoAAAAIAAIAAAAAAAsAAAAHAAEAAAAAAAwAAAAIAAIAAAAAAA0AAAAIAAAAAAAAAA4AAAAHAAEAAAAAAA8AAAAHAAEAAAAAABAAAAAHAAEAAAAAABEAAAAHAAEAAAAAABIAAAAHAAEAAAAAABMAAAAHAAEAAAAAABQAAAAHAAEAAAAAABUAAAAHAAEAAAAAABYAAAAHAAEAAAAAABcAAAAHAAEAAAABAAAAAAAHAAEAAAABAAEAAAAIAAIAAAABAAYAAAAIAAAAAAABAAcAAAAIAAIAAAABAAgAAAAIAAMAAAABAAkAAAAIAAQAAAABAAoAAAAIAAUAAAABAAsAAAAIAAEAAAABAA4AAAAIAAAAAAABAA8AAAAHAAEAAAABABAAAAAHAAEAAAABABEAAAAHAAEAAAABABIAAAAHAAEAAAABABMAAAAHAAEAAAABABQAAAAHAAEAAAABABUAAAAHAAEAAAABABYAAAAHAAEAAAABABcAAAAHAAEAAAACAAAAAAAIAAIAAAACAAcAAAAFAAAAAAACAAgAAAAJAAMAAAACAAkAAAAKAAcAAAACAAoAAAAJAAMAAAACAA0AAAAEAAEAAAACAA4AAAAEAAIAAAACAA8AAAAIAAAAAAACABAAAAAHAAEAAAACABEAAAAHAAEAAAACABIAAAAHAAEAAAACABMAAAAHAAEAAAACABQAAAAHAAEAAAACABUAAAAHAAEAAAACABYAAAAHAAEAAAACABcAAAAHAAEAAAADAAYAAAAEAAEAAAADAAcAAAAFAAEAAAADAAgAAAAJAAMAAAADAA8AAAAEAAEAAAADABAAAAAIAAAAAAADABEAAAAHAAEAAAADABIAAAAHAAEAAAADABMAAAAHAAEAAAADABQAAAAHAAEAAAADABUAAAAHAAEAAAADABYAAAAHAAEAAAADABcAAAAHAAEAAAAEAAcAAAAEAAIAAAAEAAkAAAAKAAcAAAAEAA4AAAAEAAEAAAAEAA8AAAAEAAIAAAAEABAAAAAGAAAAAAAEABEAAAAHAAEAAAAEABIAAAAHAAEAAAAEABMAAAAHAAEAAAAEABQAAAAHAAEAAAAEABUAAAAHAAEAAAAEABYAAAAHAAEAAAAEABcAAAAHAAEAAAAFAAYAAAAFAAAAAAAFAA8AAAAHAAAAAAAFABAAAAAHAAEAAAAFABEAAAAHAAEAAAAFABIAAAAHAAEAAAAFABMAAAAHAAEAAAAFABQAAAAHAAEAAAAFABUAAAAHAAEAAAAFABYAAAAHAAEAAAAFABcAAAAHAAEAAAAGAA8AAAAHAAAAAAAGABAAAAAHAAEAAAAGABEAAAAHAAEAAAAGABIAAAAHAAEAAAAGABMAAAAHAAEAAAAGABQAAAAHAAEAAAAGABUAAAAHAAEAAAAGABYAAAAHAAEAAAAHAA8AAAAHAAAAAAAHABAAAAAHAAEAAAAHABEAAAAHAAEAAAAHABIAAAAHAAEAAAAHABMAAAAHAAEAAAAHABQAAAAHAAEAAAAHABUAAAAHAAEAAAAIAAwAAAAJAAMAAAAIAA8AAAAEAAIAAAAIABAAAAAIAAAAAAAIABEAAAAHAAEAAAAIABIAAAAHAAEAAAAIABMAAAAHAAEAAAAIABQAAAAHAAEAAAAIABUAAAAHAAEAAAAJAAkAAAALAAgAAAAJAAwAAAAJAAYAAAAJAA8AAAAEAAEAAAAJABAAAAAGAAAAAAAJABEAAAAHAAEAAAAJABIAAAAHAAEAAAAJABMAAAAHAAEAAAAJABQAAAAHAAEAAAAJABUAAAAHAAEAAAAKAA8AAAAHAAAAAAAKABAAAAAHAAEAAAAKABEAAAAIAAIAAAAKABIAAAAIAAAAAAAKABMAAAAHAAEAAAAKABQAAAAHAAEAAAAKABUAAAAHAAEAAAALAAwAAAAJAAYAAAALABAAAAAIAAEAAAALABEAAAAEAAIAAAALABMAAAAIAAEAAAALABQAAAAIAAAAAAALABUAAAAHAAEAAAALABYAAAAHAAEAAAALABcAAAAHAAEAAAAMAAAAAAAHAAEAAAAMAAMAAQAKAAYAAAAMAAQAAQAKAAYAAAAMAAUAAAAJAAYAAAAMABUAAAAIAAAAAAAMABYAAAAHAAEAAAAMABcAAAAHAAEAAAANAAAAAAAIAAIAAAANABUAAAAHAAAAAAANABYAAAAIAAIAAAAOAAIAAAALAAgAAAAOAAYAAAAFAAEAAAAOABAAAAAGAAAAAAAOABEAAAAHAAEAAAAOABIAAAAHAAEAAAAPAAYAAAAFAAEAAAAPAA8AAAAGAAAAAAAPABAAAAAHAAEAAAAPABEAAAAHAAEAAAAPABIAAAAHAAEAAAAQAAMAAAAEAAEAAAAQAAUAAAAFAAAAAAAQAA4AAAAHAAAAAAAQAA8AAAAHAAEAAAAQABAAAAAHAAEAAAAQABEAAAAHAAEAAAAQABIAAAAHAAEAAAAQABMAAAAHAAEAAAAQABQAAAAHAAEAAAAQABUAAAAHAAEAAAARAA4AAAAHAAAAAAARAA8AAAAHAAEAAAARABAAAAAHAAEAAAARABEAAAAHAAEAAAARABIAAAAHAAEAAAARABMAAAAHAAEAAAARABQAAAAHAAEAAAARABUAAAAHAAEAAAASAA4AAAAFAAIAAAASAA8AAAAIAAAAAAASABAAAAAHAAEAAAASABEAAAAHAAEAAAASABIAAAAHAAEAAAASABMAAAAHAAEAAAASABQAAAAHAAEAAAASABUAAAAHAAEAAAASABYAAAAHAAEAAAASABcAAAAHAAEAAAATAA4AAAAFAAEAAAATAA8AAAAHAAAAAAATABAAAAAHAAEAAAATABEAAAAHAAEAAAATABIAAAAHAAEAAAATABMAAAAHAAEAAAATABQAAAAHAAEAAAATABUAAAAHAAEAAAATABYAAAAHAAEAAAATABcAAAAHAAEAAAAUAA8AAAAHAAAAAAAUABAAAAAHAAEAAAAUABEAAAAHAAEAAAAUABIAAAAHAAEAAAAUABMAAAAHAAEAAAAUABQAAAAHAAEAAAAUABUAAAAHAAEAAAAUABYAAAAHAAEAAAAUABcAAAAHAAEAAAAVAAYAAAAJAAQAAAAVAA4AAAAEAAEAAAAVAA8AAAAHAAAAAAAVABAAAAAHAAEAAAAVABEAAAAHAAEAAAAVABIAAAAIAAIAAAAVABMAAAAIAAAAAAAVABQAAAAHAAEAAAAVABUAAAAHAAEAAAAVABYAAAAHAAEAAAAVABcAAAAHAAEAAAAWAAUAAAAGAAEAAAAWAA8AAAAHAAAAAAAWABAAAAAHAAEAAAAWABEAAAAHAAEAAAAWABIAAAAGAAIAAAAWABMAAAAGAAAAAAAWABQAAAAHAAEAAAAWABUAAAAHAAEAAAAWABYAAAAHAAEAAAAWABcAAAAHAAEAAAAXAAAAAAAHAAEAAAAXAAMAAAAGAAAAAAAXAAQAAAAHAAEAAAAXAAoAAAAJAAYAAAAXAAsAAAAFAAEAAAAXAA4AAAAFAAEAAAAXAA8AAAAHAAAAAAAXABAAAAAHAAEAAAAYAAAAAAAHAAEAAAAYAAEAAAAHAAEAAAAYAAIAAAAHAAEAAAAYAAMAAAAHAAEAAAAYAAQAAAAHAAEAAAAYAAUAAAAHAAEAAAAYAAkAAAAEAAEAAAAYAAoAAAAKAAMAAAAYAAsAAAAKAAQAAAAYAA0AAAAFAAEAAAAYAA8AAAAGAAAAAAAZAAAAAAAHAAEAAAAZAAEAAAAHAAEAAAAZAAIAAAAHAAEAAAAZAAMAAAAHAAEAAAAZAAQAAAAHAAEAAAAZAAUAAAAHAAEAAAAZAAgAAAAGAAEAAAAZAAkAAAAGAAEAAAAZAAoAAAAGAAEAAAAZAAsAAAAGAAEAAAAZAAwAAAAGAAEAAAAZAA4AAAAGAAAAAAAZAA8AAAAHAAEAAAAaAAAAAAAHAAEAAAAaAAEAAAAHAAEAAAAaAAIAAAAHAAEAAAAaAAMAAAAHAAEAAAAaAAQAAAAHAAEAAAAaAAUAAAAHAAEAAAAaAAYAAAAHAAEAAAAaAAcAAAAHAAEAAAAaAAgAAAAHAAEAAAAaAAkAAAAHAAEAAAAaAAoAAAAHAAEAAAAaAAsAAAAHAAEAAAAaAAwAAAAHAAEAAAAaAA0AAAAHAAEAAAAaAA4AAAAHAAEAAAAaAA8AAAAHAAEAAAAbAAAAAAAHAAEAAAAbAAEAAAAHAAEAAAAbAAIAAAAHAAEAAAAbAAMAAAAHAAEAAAAbAAQAAAAHAAEAAAAbAAUAAAAHAAEAAAAbAAYAAAAHAAEAAAAbAAcAAAAHAAEAAAAbAAgAAAAHAAEAAAAbAAkAAAAHAAEAAAAbAAoAAAAHAAEAAAAbAAsAAAAHAAEAAAAbAAwAAAAHAAEAAAAbAA0AAAAHAAEAAAAbAA4AAAAHAAEAAAAbAA8AAAAHAAEAAAAcAAAAAAAHAAEAAAAcAAEAAAAHAAEAAAAcAAIAAAAHAAEAAAAcAAMAAAAHAAEAAAAcAAQAAAAHAAEAAAAcAAUAAAAHAAEAAAAcAAYAAAAHAAEAAAAcAAcAAAAHAAEAAAAcAAgAAAAHAAEAAAAcAAkAAAAHAAEAAAAcAAoAAAAHAAEAAAAcAAsAAAAHAAEAAAAcAAwAAAAHAAEAAAAcAA0AAAAHAAEAAAAcAA4AAAAHAAEAAAAcAA8AAAAHAAEAAAAdAAAAAAAHAAEAAAAdAAEAAAAHAAEAAAAdAAIAAAAHAAEAAAAdAAMAAAAHAAEAAAAdAAQAAAAHAAEAAAAdAAUAAAAHAAEAAAAdAAYAAAAHAAEAAAAdAAcAAAAHAAEAAAAdAAgAAAAHAAEAAAAdAAkAAAAHAAEAAAAdAAoAAAAHAAEAAAAdAAsAAAAHAAEAAAAdAAwAAAAHAAEAAAAdAA0AAAAHAAEAAAAdAA4AAAAHAAEAAAAdAA8AAAAHAAEAAAAeAAAAAAAHAAEAAAAeAAEAAAAHAAEAAAAeAAIAAAAHAAEAAAAeAAMAAAAHAAEAAAAeAAQAAAAHAAEAAAAeAAUAAAAHAAEAAAAeAAYAAAAHAAEAAAAeAAcAAAAHAAEAAAAeAAgAAAAHAAEAAAAeAAkAAAAHAAEAAAAeAAoAAAAHAAEAAAAeAAsAAAAHAAEAAAAeAAwAAAAHAAEAAAAeAA0AAAAHAAEAAAAeAA4AAAAHAAEAAAAeAA8AAAAHAAEAAAAfAAAAAAAHAAEAAAAfAAEAAAAHAAEAAAAfAAIAAAAHAAEAAAAfAAMAAAAHAAEAAAAfAAQAAAAHAAEAAAAfAAUAAAAHAAEAAAAfAAYAAAAHAAEAAAAfAAcAAAAHAAEAAAAfAAgAAAAHAAEAAAAfAAkAAAAHAAEAAAAfAAoAAAAHAAEAAAAfAAsAAAAHAAEAAAAfAAwAAAAHAAEAAAAfAA0AAAAHAAEAAAAfAA4AAAAHAAEAAAAfAA8AAAAHAAEAAAAgAAAAAAAHAAEAAAAgAAEAAAAHAAEAAAAgAAIAAAAHAAEAAAAgAAMAAAAHAAEAAAAgAAQAAAAHAAEAAAAgAAUAAAAHAAEAAAAgAAYAAAAHAAEAAAAgAAcAAAAHAAEAAAAgAAgAAAAHAAEAAAAgAAkAAAAHAAEAAAAgAAoAAAAHAAEAAAAgAAsAAAAHAAEAAAAgAAwAAAAHAAEAAAAgAA0AAAAHAAEAAAAgAA4AAAAHAAEAAAAgAA8AAAAHAAEAAAAhAAAAAAAHAAEAAAAhAAEAAAAHAAEAAAAhAAIAAAAHAAEAAAAhAAMAAAAHAAEAAAAhAAQAAAAHAAEAAAAhAAUAAAAHAAEAAAAhAAYAAAAHAAEAAAAhAAcAAAAHAAEAAAAhAAgAAAAHAAEAAAAhAAkAAAAHAAEAAAAhAAoAAAAHAAEAAAAhAAsAAAAHAAEAAAAhAAwAAAAHAAEAAAAhAA0AAAAHAAEAAAAhAA4AAAAHAAEAAAAhAA8AAAAHAAEAAAAiAAAAAAAHAAEAAAAiAAEAAAAHAAEAAAAiAAIAAAAHAAEAAAAiAAMAAAAHAAEAAAAiAAQAAAAHAAEAAAAiAAUAAAAHAAEAAAAiAAYAAAAHAAEAAAAiAAcAAAAHAAEAAAAiAAgAAAAHAAEAAAAiAAkAAAAHAAEAAAAiAAoAAAAHAAEAAAAiAAsAAAAHAAEAAAAiAAwAAAAHAAEAAAAiAA0AAAAHAAEAAAAiAA4AAAAHAAEAAAAiAA8AAAAHAAEAAAAjAAAAAAAHAAEAAAAjAAEAAAAHAAEAAAAjAAIAAAAHAAEAAAAjAAMAAAAHAAEAAAAjAAQAAAAHAAEAAAAjAAUAAAAHAAEAAAAjAAYAAAAHAAEAAAAjAAcAAAAHAAEAAAAjAAgAAAAHAAEAAAAjAAkAAAAHAAEAAAAjAAoAAAAHAAEAAAAjAAsAAAAHAAEAAAAjAAwAAAAHAAEAAAAjAA0AAAAHAAEAAAAjAA4AAAAHAAEAAAAjAA8AAAAHAAEAAAAkAAAAAAAHAAEAAAAkAAEAAAAHAAEAAAAkAAIAAAAHAAEAAAAkAAMAAAAHAAEAAAAkAAQAAAAHAAEAAAAkAAUAAAAHAAEAAAAkAAYAAAAHAAEAAAAkAAcAAAAHAAEAAAAkAAgAAAAHAAEAAAAkAAkAAAAHAAEAAAAkAAoAAAAHAAEAAAAkAAsAAAAHAAEAAAAkAAwAAAAHAAEAAAAkAA0AAAAHAAEAAAAkAA4AAAAHAAEAAAAkAA8AAAAHAAEAAAD0/wAAAAAHAAEAAAD0/wEAAAAHAAEAAAD0/wIAAAAHAAEAAAD0/wMAAAAHAAEAAAD0/wQAAAAHAAEAAAD0/wUAAAAHAAEAAAD0/wYAAAAHAAEAAAD0/wcAAAAHAAEAAAD0/wgAAAAHAAEAAAD0/wkAAAAHAAEAAAD0/woAAAAHAAEAAAD0/wsAAAAHAAEAAAD0/wwAAAAHAAEAAAD0/w0AAAAHAAEAAAD0/w4AAAAHAAEAAAD0/w8AAAAHAAEAAAD0/xAAAAAHAAEAAAD0/xEAAAAHAAEAAAD0/xIAAAAHAAEAAAD0/xMAAAAHAAEAAAD0/xQAAAAHAAEAAAD0/xUAAAAGAAIAAAD0/xYAAAAHAAEAAAD0/xcAAAAHAAEAAAD0/xgAAAAGAAIAAAD1/xgAAAAHAAEAAAD2/xgAAAAHAAEAAAD3/xgAAAAHAAEAAAD4/xgAAAAHAAEAAAD5/xgAAAAHAAEAAAD6/xgAAAAHAAEAAAD7/xgAAAAHAAEAAAD8/xgAAAAHAAEAAAD9/xgAAAAHAAEAAAD+/xgAAAAHAAEAAAD//xgAAAAHAAEAAAAAABgAAAAHAAEAAAABABgAAAAHAAEAAAACABgAAAAHAAEAAAADAAAAAAAHAAIAAAADAAQAAAADAAIAAAADAAoAAAAJAAMAAAADABgAAAAHAAEAAAAEAAgAAAAJAAMAAAAEAAoAAAAJAAMAAAAEABgAAAAHAAEAAAAFABgAAAAIAAIAAAAGAAwAAAAIAAYAAAAHAAUAAAAEAAIAAAAHAAwAAAAJAAYAAAAHAA0AAAAEAAEAAAAHABYAAAAIAAIAAAAIAA0AAAAEAAEAAAAIABYAAAAGAAIAAAAJAAUAAAAEAAIAAAAJAAoAAAALAAYAAAAJABYAAAAIAAIAAAAKAAAAAAAGAAIAAAAKAAoAAAAEAAEAAAAKAAwAAAAJAAMAAAAKAA0AAAAEAAIAAAAKABYAAAAHAAEAAAAKABcAAAAHAAEAAAAKABgAAAAGAAIAAAALAAAAAAAHAAEAAAALAAEAAAAHAAIAAAALAAQAAQADAAUAAAALAAUAAAAIAAYAAAALAAYAAAAFAAEAAAALABgAAAAHAAEAAAAMAAEAAAAHAAIAAAAMAAIAAQADAAUAAAAMAAYAAAAFAAEAAAAMAAoAAAAEAAEAAAAMAAwAAAAKAAYAAAAMABgAAAAIAAIAAAANAAYAAAAFAAIAAAANAAcAAAAFAAEAAAANABEAAAAGAAAAAAANABIAAAAGAAIAAAANABMAAAAEAAIAAAAOAAAAAQAFAAcAAAAOAAEAAAAFAAIAAAAOAAcAAAAFAAEAAAAOAAoAAAAIAAgAAAAOABMAAAAGAAIAAAAPAAcAAAAFAAEAAAAPAA4AAAAEAAEAAAAPABMAAAAHAAEAAAAPABQAAAAGAAIAAAAPABUAAAAGAAEAAAAPABYAAAAGAAEAAAAQABYAAAAIAAIAAAARABYAAAAHAAEAAAARABcAAAAHAAEAAAARABgAAAAGAAIAAAASAAIAAAAEAAEAAAASABgAAAAHAAEAAAATABgAAAAHAAEAAAAUAAEAAAAEAAEAAAAUAAcAAAAFAAEAAAAUABgAAAAHAAEAAAAVABgAAAAHAAEAAAAWAAAAAAAGAAIAAAAWAAEAAAAGAAEAAAAWAAQAAAAGAAEAAAAWABgAAAAIAAIAAAAXAAEAAAAHAAEAAAAXAAIAAAAGAAIAAAAXAAUAAAAHAAEAAAAXAAYAAAAGAAIAAAAXAAwAAAAJAAYAAAAYAAYAAAAIAAIAAAAYAAwAAAAKAAUAAAAYABAAAAAHAAEAAAAZAAYAAAAGAAIAAAAZAAcAAAAGAAEAAAAZAA0AAAAGAAEAAAAZABAAAAAHAAEAAAAaABAAAAAHAAEAAAAbABAAAAAHAAEAAAAcABAAAAAHAAEAAAAdABAAAAAHAAEAAAAeABAAAAAHAAEAAAAfABAAAAAHAAEAAAAgABAAAAAHAAEAAAAhABAAAAAHAAEAAAAiABAAAAAHAAEAAAAjABAAAAAHAAEAAAAkABAAAAAHAAEAAAAkAP//AAAHAAEAAAAkAP7/AAAHAAEAAAAkAP3/AAAHAAEAAAAkAPz/AAAHAAEAAAAkAPv/AAAHAAEAAAAkAPr/AAAHAAEAAAAkAPn/AAAHAAEAAAAkAPj/AAAIAAAAAAAjAP//AAAHAAEAAAAjAP7/AAAHAAEAAAAjAP3/AAAHAAEAAAAjAPz/AAAHAAEAAAAjAPv/AAAHAAEAAAAjAPr/AAAHAAEAAAAjAPn/AAAHAAEAAAAjAPj/AAAHAAEAAAAiAP//AAAHAAEAAAAiAP7/AAAHAAEAAAAiAP3/AAAHAAEAAAAiAPz/AAAHAAEAAAAiAPv/AAAHAAEAAAAiAPr/AAAHAAEAAAAiAPn/AAAHAAEAAAAiAPj/AAAHAAEAAAAhAP//AAAHAAEAAAAhAP7/AAAHAAEAAAAhAP3/AAAHAAEAAAAhAPz/AAAHAAEAAAAhAPv/AAAHAAEAAAAhAPr/AAAHAAEAAAAhAPn/AAAHAAEAAAAhAPj/AAAHAAEAAAAgAP//AAAHAAEAAAAgAP7/AAAHAAEAAAAgAP3/AAAHAAEAAAAgAPz/AAAHAAEAAAAgAPv/AAAHAAEAAAAgAPr/AAAHAAEAAAAgAPn/AAAHAAEAAAAgAPj/AAAHAAEAAAAfAP//AAAHAAEAAAAfAP7/AAAHAAEAAAAfAP3/AAAHAAEAAAAfAPz/AAAHAAEAAAAfAPv/AAAHAAEAAAAfAPr/AAAHAAEAAAAfAPn/AAAHAAEAAAAfAPj/AAAHAAEAAAAeAP//AAAHAAEAAAAeAP7/AAAHAAEAAAAeAP3/AAAHAAEAAAAeAPz/AAAHAAEAAAAeAPv/AAAHAAEAAAAeAPr/AAAHAAEAAAAeAPn/AAAHAAEAAAAeAPj/AAAHAAEAAAAdAP//AAAHAAEAAAAdAP7/AAAHAAEAAAAdAP3/AAAHAAEAAAAdAPz/AAAHAAEAAAAdAPv/AAAHAAEAAAAdAPr/AAAHAAEAAAAdAPn/AAAHAAEAAAAdAPj/AAAHAAEAAAAcAP//AAAHAAEAAAAcAP7/AAAHAAEAAAAcAP3/AAAHAAEAAAAcAPz/AAAHAAEAAAAcAPv/AAAHAAEAAAAcAPr/AAAHAAEAAAAcAPn/AAAHAAEAAAAcAPj/AAAHAAEAAAAbAP//AAAHAAEAAAAbAP7/AAAHAAEAAAAbAP3/AAAHAAEAAAAbAPz/AAAHAAEAAAAbAPv/AAAHAAEAAAAbAPr/AAAHAAEAAAAbAPn/AAAHAAEAAAAbAPj/AAAHAAEAAAAaAP//AAAHAAEAAAAaAP7/AAAHAAEAAAAaAP3/AAAHAAEAAAAaAPz/AAAHAAEAAAAaAPv/AAAHAAEAAAAaAPr/AAAHAAEAAAAaAPn/AAAHAAEAAAAaAPj/AAAHAAEAAAAZAP//AAAHAAEAAAAZAP7/AAAHAAEAAAAZAP3/AAAHAAEAAAAZAPz/AAAHAAEAAAAZAPv/AAAHAAEAAAAZAPr/AAAHAAEAAAAZAPn/AAAHAAEAAAAZAPj/AAAHAAEAAAAYAP//AAAHAAEAAAAYAP7/AAAHAAEAAAAYAP3/AAAHAAEAAAAYAPz/AAAHAAEAAAAYAPv/AAAHAAEAAAAYAPr/AAAHAAEAAAAYAPn/AAAHAAEAAAAYAPj/AAAHAAEAAAAXAP//AAAHAAEAAAAXAP7/AAAHAAEAAAAXAP3/AAAHAAEAAAAXAPz/AAAHAAEAAAAXAPv/AAAHAAEAAAAXAPr/AAAHAAEAAAAXAPn/AAAHAAEAAAAXAPj/AAAHAAEAAAAWAP//AAAHAAEAAAAWAP7/AAAHAAEAAAAWAP3/AAAHAAEAAAAWAPz/AAAHAAEAAAAWAPv/AAAHAAEAAAAWAPr/AAAHAAEAAAAWAPn/AAAHAAEAAAAWAPj/AAAHAAEAAAAVAP//AAAGAAIAAAAVAP7/AAAHAAEAAAAVAP3/AAAHAAEAAAAVAPz/AAAHAAEAAAAVAPv/AAAHAAEAAAAVAPr/AAAHAAEAAAAVAPn/AAAHAAEAAAAVAPj/AAAHAAEAAAAUAP//AAAHAAIAAAAUAP7/AAAHAAEAAAAUAP3/AAAHAAEAAAAUAPz/AAAHAAEAAAAUAPv/AAAHAAEAAAAUAPr/AAAHAAEAAAAUAPn/AAAHAAEAAAAUAPj/AAAHAAEAAAATAP//AAAHAAIAAAATAP7/AAAHAAEAAAATAP3/AAAHAAEAAAATAPz/AAAHAAEAAAATAPv/AAAHAAEAAAATAPr/AAAHAAEAAAATAPn/AAAHAAEAAAATAPj/AAAHAAEAAAASAP//AAAHAAIAAAASAP7/AAAHAAEAAAASAP3/AAAHAAEAAAASAPz/AAAHAAEAAAASAPv/AAAHAAEAAAASAPr/AAAHAAEAAAASAPn/AAAHAAEAAAASAPj/AAAHAAEAAAARAP//AAAHAAIAAAARAP7/AAAHAAEAAAARAP3/AAAHAAEAAAARAPz/AAAHAAEAAAARAPv/AAAHAAEAAAARAPr/AAAHAAEAAAARAPn/AAAHAAEAAAARAPj/AAAHAAEAAAAQAP//AAAHAAIAAAAQAP7/AAAHAAEAAAAQAP3/AAAHAAEAAAAQAPz/AAAHAAEAAAAQAPv/AAAHAAEAAAAQAPr/AAAHAAEAAAAQAPn/AAAHAAEAAAAQAPj/AAAHAAEAAAAPAP//AAAHAAIAAAAPAP7/AAAHAAEAAAAPAP3/AAAHAAEAAAAPAPz/AAAHAAEAAAAPAPv/AAAHAAEAAAAPAPr/AAAHAAEAAAAPAPn/AAAHAAEAAAAPAPj/AAAHAAEAAAAOAP//AAAIAAIAAAAOAP7/AAAHAAEAAAAOAP3/AAAHAAEAAAAOAPz/AAAHAAEAAAAOAPv/AAAHAAEAAAAOAPr/AAAHAAEAAAAOAPn/AAAHAAEAAAAOAPj/AAAHAAEAAAANAP//AAAHAAEAAAANAP7/AAAHAAEAAAANAP3/AAAHAAEAAAANAPz/AAAHAAEAAAANAPv/AAAHAAEAAAANAPr/AAAHAAEAAAANAPn/AAAHAAEAAAANAPj/AAAHAAEAAAAMAP//AAAHAAEAAAAMAP7/AAAHAAEAAAAMAP3/AAAHAAEAAAAMAPz/AAAHAAEAAAAMAPv/AAAHAAEAAAAMAPr/AAAHAAEAAAAMAPn/AAAHAAEAAAAMAPj/AAAHAAEAAAALAP//AAAHAAEAAAALAP7/AAAHAAEAAAALAP3/AAAHAAEAAAALAPz/AAAHAAEAAAALAPv/AAAHAAEAAAALAPr/AAAHAAEAAAALAPn/AAAHAAEAAAALAPj/AAAHAAEAAAAKAP//AAAHAAEAAAAKAP7/AAAHAAEAAAAKAP3/AAAHAAEAAAAKAPz/AAAHAAEAAAAKAPv/AAAHAAEAAAAKAPr/AAAHAAEAAAAKAPn/AAAHAAEAAAAKAPj/AAAHAAEAAAAJAP//AAAGAAIAAAAJAP7/AAAHAAEAAAAJAP3/AAAHAAEAAAAJAPz/AAAHAAEAAAAJAPv/AAAHAAEAAAAJAPr/AAAHAAEAAAAJAPn/AAAHAAEAAAAJAPj/AAAHAAEAAAAIAP//AAAHAAIAAAAIAP7/AAAHAAEAAAAIAP3/AAAHAAEAAAAIAPz/AAAHAAEAAAAIAPv/AAAHAAEAAAAIAPr/AAAHAAEAAAAIAPn/AAAHAAEAAAAIAPj/AAAHAAEAAAAHAP//AAAHAAIAAAAHAP7/AAAHAAEAAAAHAP3/AAAHAAEAAAAHAPz/AAAHAAEAAAAHAPv/AAAHAAEAAAAHAPr/AAAHAAEAAAAHAPn/AAAHAAEAAAAHAPj/AAAHAAEAAAAGAP//AAAHAAIAAAAGAP7/AAAHAAEAAAAGAP3/AAAHAAEAAAAGAPz/AAAHAAEAAAAGAPv/AAAHAAEAAAAGAPr/AAAHAAEAAAAGAPn/AAAHAAEAAAAGAPj/AAAHAAEAAAAFAP//AAAHAAIAAAAFAP7/AAAHAAEAAAAFAP3/AAAHAAEAAAAFAPz/AAAHAAEAAAAFAPv/AAAHAAEAAAAFAPr/AAAHAAEAAAAFAPn/AAAHAAEAAAAFAPj/AAAHAAEAAAAEAP//AAAIAAIAAAAEAP7/AAAHAAEAAAAEAP3/AAAHAAEAAAAEAPz/AAAHAAEAAAAEAPv/AAAHAAEAAAAEAPr/AAAHAAEAAAAEAPn/AAAHAAEAAAAEAPj/AAAHAAEAAAADAP//AAAHAAEAAAADAP7/AAAHAAEAAAADAP3/AAAHAAEAAAADAPz/AAAHAAEAAAADAPv/AAAHAAEAAAADAPr/AAAHAAEAAAADAPn/AAAHAAEAAAADAPj/AAAHAAEAAAACAP//AAAHAAEAAAACAP7/AAAHAAEAAAACAP3/AAAHAAEAAAACAPz/AAAHAAEAAAACAPv/AAAHAAEAAAACAPr/AAAHAAEAAAACAPn/AAAHAAEAAAACAPj/AAAHAAEAAAABAP//AAAHAAEAAAABAP7/AAAHAAEAAAABAP3/AAAHAAEAAAABAPz/AAAHAAEAAAABAPv/AAAHAAEAAAABAPr/AAAHAAEAAAABAPn/AAAHAAEAAAABAPj/AAAHAAEAAAAAAP//AAAHAAEAAAAAAP7/AAAHAAEAAAAAAP3/AAAHAAEAAAAAAPz/AAAHAAEAAAAAAPv/AAAHAAEAAAAAAPr/AAAHAAEAAAAAAPn/AAAHAAEAAAAAAPj/AAAHAAEAAAD/////AAAHAAEAAAD///7/AAAHAAEAAAD///3/AAAHAAEAAAD///z/AAAHAAEAAAD///v/AAAHAAEAAAD///r/AAAHAAEAAAD///n/AAAHAAEAAAD///j/AAAHAAEAAAD+////AAAHAAEAAAD+//7/AAAHAAEAAAD+//3/AAAHAAEAAAD+//z/AAAHAAEAAAD+//v/AAAHAAEAAAD+//r/AAAHAAEAAAD+//n/AAAHAAEAAAD+//j/AAAHAAEAAAD9////AAAHAAEAAAD9//7/AAAHAAEAAAD9//3/AAAHAAEAAAD9//z/AAAHAAEAAAD9//v/AAAHAAEAAAD9//r/AAAHAAEAAAD9//n/AAAHAAEAAAD9//j/AAAHAAEAAAD8////AAAHAAEAAAD8//7/AAAHAAEAAAD8//3/AAAHAAEAAAD8//z/AAAHAAEAAAD8//v/AAAHAAEAAAD8//r/AAAHAAEAAAD8//n/AAAHAAEAAAD8//j/AAAHAAEAAAD7////AAAHAAEAAAD7//7/AAAHAAEAAAD7//3/AAAHAAEAAAD7//z/AAAHAAEAAAD7//v/AAAHAAEAAAD7//r/AAAHAAEAAAD7//n/AAAHAAEAAAD7//j/AAAHAAEAAAD6////AAAHAAEAAAD6//7/AAAHAAEAAAD6//3/AAAHAAEAAAD6//z/AAAHAAEAAAD6//v/AAAHAAEAAAD6//r/AAAHAAEAAAD6//n/AAAHAAEAAAD6//j/AAAHAAEAAAD5////AAAHAAEAAAD5//7/AAAHAAEAAAD5//3/AAAHAAEAAAD5//z/AAAHAAEAAAD5//v/AAAHAAEAAAD5//r/AAAHAAEAAAD5//n/AAAHAAEAAAD5//j/AAAHAAEAAAD4////AAAHAAEAAAD4//7/AAAHAAEAAAD4//3/AAAHAAEAAAD4//z/AAAHAAEAAAD4//v/AAAHAAEAAAD4//r/AAAHAAEAAAD4//n/AAAHAAEAAAD4//j/AAAHAAEAAAD3////AAAHAAEAAAD3//7/AAAHAAEAAAD3//3/AAAHAAEAAAD3//z/AAAHAAEAAAD3//v/AAAHAAEAAAD3//r/AAAHAAEAAAD3//n/AAAHAAEAAAD3//j/AAAHAAEAAAD2////AAAHAAEAAAD2//7/AAAHAAEAAAD2//3/AAAHAAEAAAD2//z/AAAHAAEAAAD2//v/AAAHAAEAAAD2//r/AAAHAAEAAAD2//n/AAAHAAEAAAD2//j/AAAHAAEAAAD1////AAAHAAEAAAD1//7/AAAHAAEAAAD1//3/AAAHAAEAAAD1//z/AAAHAAEAAAD1//v/AAAHAAEAAAD1//r/AAAHAAEAAAD1//n/AAAHAAEAAAD1//j/AAAHAAEAAAD0////AAAHAAEAAAD0//7/AAAHAAEAAAD0//3/AAAHAAEAAAD0//z/AAAHAAEAAAD0//v/AAAHAAEAAAD0//r/AAAHAAEAAAD0//n/AAAHAAEAAAD0//j/AAAGAAAAAAA=")
+ tile_set = ExtResource("7_po5fq")
+ script = ExtResource("55_a8sfs")
++metadata/_edit_lock_ = true
+ 
+ [node name="TreeTops" type="TileMapLayer" parent="Field/Map/Town"]
+ y_sort_enabled = true
+@@ -390,11 +378,9 @@ animation_scene = ExtResource("12_n5rm1")
+ metadata/_edit_group_ = true
+ 
+ [node name="InteractionPopup" parent="Field/Map/Town/Gamepieces/Runner" instance=ExtResource("34_qs25x")]
+-scale = Vector2(1, 1)
+ script = ExtResource("18_8igsj")
+ 
+ [node name="Interaction" parent="Field/Map/Town/Gamepieces/Runner/InteractionPopup" instance=ExtResource("19_sa6jd")]
+-scale = Vector2(1, 1)
+ script = ExtResource("14_b3y71")
+ timeline = ExtResource("16_ybo02")
+ 
+@@ -458,32 +444,34 @@ timeline = ExtResource("28_ll4xp")
+ position = Vector2(280, 104)
+ animation_scene = ExtResource("12_n5rm1")
+ move_speed = 235.0
+-metadata/_edit_group_ = true
+ 
+ [node name="GamepieceController" type="Node2D" parent="Field/Map/Town/Gamepieces/AdoringFan"]
+ script = ExtResource("26_p8jrd")
++metadata/_edit_lock_ = true
+ 
+ [node name="Interaction" parent="Field/Map/Town/Gamepieces/AdoringFan" node_paths=PackedStringArray("controller") instance=ExtResource("19_sa6jd")]
+ script = ExtResource("29_at3vc")
+ controller = NodePath("../GamepieceController")
+ timeline = ExtResource("29_a8sfs")
++metadata/_edit_lock_ = true
+ 
+ [node name="InteractionPopup" parent="Field/Map/Town/Gamepieces/AdoringFan/Interaction" instance=ExtResource("34_qs25x")]
++metadata/_edit_lock_ = true
+ 
+-[node name="RoamingEncounter" type="Node2D" parent="Field/Map/Town/Gamepieces"]
+-position = Vector2(200, 264)
+-
+-[node name="GhostGFX" parent="Field/Map/Town/Gamepieces/RoamingEncounter" instance=ExtResource("36_7n3c5")]
+-
+-[node name="CombatStartTrigger" parent="Field/Map/Town/Gamepieces/RoamingEncounter" instance=ExtResource("39_p2lth")]
++[node name="RoamingEncounter" parent="Field/Map/Town/Gamepieces" instance=ExtResource("39_p2lth")]
+ position = Vector2(200, 264)
++scale = Vector2(1, 1)
+ script = ExtResource("33_0gswb")
+ combat_arena = ExtResource("34_moieg")
++metadata/_edit_group_ = true
+ 
+-[node name="InteractionPopup" parent="Field/Map/Town/Gamepieces/RoamingEncounter/CombatStartTrigger" instance=ExtResource("34_qs25x")]
++[node name="InteractionPopup" parent="Field/Map/Town/Gamepieces/RoamingEncounter" instance=ExtResource("34_qs25x")]
+ emote = 0
+ radius = 64
+ 
++[node name="GhostGFX" parent="Field/Map/Town/Gamepieces/RoamingEncounter" instance=ExtResource("36_7n3c5")]
++scale = Vector2(1, 1)
++
+ [node name="ConversationEncounter" parent="Field/Map/Town/Gamepieces" instance=ExtResource("11_yntrj")]
+ position = Vector2(83.2, 6.39999)
+ animation_scene = ExtResource("36_7n3c5")
+@@ -574,7 +562,7 @@ metadata/_edit_lock_ = true
+ 
+ [node name="Decoration" type="TileMapLayer" parent="Field/Map/House"]
+ y_sort_enabled = true
+-tile_map_data = PackedByteArray("AAAyAAUAAAAKAAYAAAAyAAcAAQAKAAYAAAAzAAcAAQADAAUAAAA0AAUAAAALAAgAAAA1AAIAAQAHAAIAAAA1AAYAAQADAAUAAAA1AAcAAQADAAYAAAA2AAIAAQAHAAIAAAA2AAYAAQADAAUAAAA2AAcAAQAKAAYAAAA3AAIAAQAHAAIAAAA3AAUAAAAIAAMAAAA3AAYAAAAIAAQAAAA3AAcAAAAIAAQAAAA4AAUAAAAJAAYAAAA4AAYAAAALAAoAAAA4AAcAAAAJAAgAAAA5AAUAAAAJAAMAAAA5AAYAAAALAAgAAAA5AAcAAAAJAAgAAAA6AAQAAQAFAAMAAAA6AAUAAQADAAUAAAA6AAYAAQADAAYAAAA6AAcAAAAJAAgAAAA7AAUAAAAJAAMAAAA7AAYAAQADAAUAAAA7AAcAAAAJAAgAAAA=")
++tile_map_data = PackedByteArray("AAAyAAUAAAAKAAYAAAAyAAcAAQAKAAYAAAAzAAcAAQADAAUAAAA0AAUAAAALAAgAAAA1AAIAAQAHAAIAAAA1AAYAAQADAAUAAAA1AAcAAQADAAYAAAA2AAIAAQAHAAIAAAA2AAYAAQADAAUAAAA2AAcAAQAKAAYAAAA3AAIAAQAHAAIAAAA3AAUAAAAIAAMAAAA3AAYAAAAIAAQAAAA3AAcAAAAIAAQAAAA4AAUAAAAJAAYAAAA4AAYAAAALAAoAAAA4AAcAAAAJAAgAAAA5AAUAAAAJAAMAAAA5AAYAAAALAAgAAAA5AAcAAAAJAAgAAAA6AAUAAQADAAUAAAA6AAYAAQADAAYAAAA6AAcAAAAJAAgAAAA7AAUAAAAJAAMAAAA7AAYAAQADAAUAAAA7AAcAAAAJAAgAAAA=")
+ tile_set = ExtResource("7_po5fq")
+ script = ExtResource("55_a8sfs")
+ metadata/_edit_lock_ = true
+@@ -591,43 +579,39 @@ amount = 1
+ y_sort_enabled = true
+ metadata/_edit_lock_ = true
+ 
+-[node name="GreenPedestal" parent="Field/Map/House/Gamepieces/PedestalPuzzle" node_paths=PackedStringArray("spikes_animation") instance=ExtResource("38_n1c7a")]
++[node name="GreenPedestal" parent="Field/Map/House/Gamepieces/PedestalPuzzle" node_paths=PackedStringArray("solved_animation") instance=ExtResource("38_n1c7a")]
+ position = Vector2(856, 40)
+-spikes_animation = NodePath("../Spikes")
++solved_animation = NodePath("../Pedestal/AnimationPlayer")
+ pedestal_requirement = "Green"
+ 
+-[node name="BluePedestal" parent="Field/Map/House/Gamepieces/PedestalPuzzle" node_paths=PackedStringArray("spikes_animation") instance=ExtResource("38_n1c7a")]
++[node name="BluePedestal" parent="Field/Map/House/Gamepieces/PedestalPuzzle" node_paths=PackedStringArray("solved_animation") instance=ExtResource("38_n1c7a")]
+ position = Vector2(872, 40)
+-spikes_animation = NodePath("../Spikes")
++solved_animation = NodePath("../Pedestal/AnimationPlayer")
+ pedestal_requirement = "Blue"
+ 
+-[node name="RedPedestal" parent="Field/Map/House/Gamepieces/PedestalPuzzle" node_paths=PackedStringArray("spikes_animation") instance=ExtResource("38_n1c7a")]
++[node name="RedPedestal" parent="Field/Map/House/Gamepieces/PedestalPuzzle" node_paths=PackedStringArray("solved_animation") instance=ExtResource("38_n1c7a")]
+ position = Vector2(888, 40)
+-spikes_animation = NodePath("../Spikes")
++solved_animation = NodePath("../Pedestal/AnimationPlayer")
+ pedestal_requirement = "Red"
+ 
+-[node name="Spikes" type="AnimationPlayer" parent="Field/Map/House/Gamepieces/PedestalPuzzle"]
+-libraries = {
+-&"": SubResource("AnimationLibrary_jktnn")
+-}
+-
+-[node name="SpikesArea" type="Area2D" parent="Field/Map/House/Gamepieces/PedestalPuzzle/Spikes"]
+-position = Vector2(4680, 360)
+-scale = Vector2(5, 5)
+-collision_layer = 2
+-collision_mask = 0
+-monitoring = false
++[node name="Pedestal" parent="Field/Map/House/Gamepieces/PedestalPuzzle" instance=ExtResource("11_yntrj")]
++position = Vector2(936, 72)
++scale = Vector2(1, 1)
+ metadata/_edit_group_ = true
+ 
+-[node name="Sprite2D" type="Sprite2D" parent="Field/Map/House/Gamepieces/PedestalPuzzle/Spikes/SpikesArea"]
++[node name="Sprite2D" type="Sprite2D" parent="Field/Map/House/Gamepieces/PedestalPuzzle/Pedestal"]
++scale = Vector2(1, 1)
+ texture = ExtResource("9_woa3f")
+ region_enabled = true
+ region_rect = Rect2(85, 51, 16, 16)
+ 
+-[node name="CollisionShape2D" type="CollisionShape2D" parent="Field/Map/House/Gamepieces/PedestalPuzzle/Spikes/SpikesArea"]
+-shape = SubResource("RectangleShape2D_44b32")
++[node name="AnimationPlayer" type="AnimationPlayer" parent="Field/Map/House/Gamepieces/PedestalPuzzle/Pedestal"]
++root_node = NodePath("../..")
++libraries = {
++&"": SubResource("AnimationLibrary_jktnn")
++}
+ 
+-[node name="SpikesClick" type="AudioStreamPlayer" parent="Field/Map/House/Gamepieces/PedestalPuzzle/Spikes"]
++[node name="SpikesClick" type="AudioStreamPlayer" parent="Field/Map/House/Gamepieces/PedestalPuzzle/Pedestal"]
+ bus = &"SFX"
+ 
+ [node name="AreaTransitions" type="Node2D" parent="Field/Map/House"]
+@@ -652,15 +636,18 @@ metadata/_edit_lock_ = true
+ tile_map_data = PackedByteArray("AABHACoAAAAAAAAAAABHACkAAAAAAAAAAABHACgAAAACAAAAAABHACcAAAAAAAAAAABHACYAAAAAAAAAAABHACUAAAAAAAAAAABHACQAAAAAAAAAAABHACMAAAAAAAAAAABHACIAAAACAAAAAABHACEAAAAAAAAAAABHACAAAAAAAAAAAABHAB8AAAAAAAAAAABHAB4AAAAAAAAAAABHAB0AAAAAAAAAAABHABwAAAAAAAAAAABHABsAAAAAAAAAAABHABoAAAAAAAAAAABHABkAAAAAAAAAAABHABgAAAACAAAAAABHABcAAAAAAAAAAABHABYAAAAAAAAAAABHABUAAAAAAAAAAABHABQAAAAAAAAAAABHABMAAAAAAAAAAABHABIAAAAAAAAAAABHABEAAAAAAAAAAABGACoAAAAAAAAAAABGACkAAAAAAAAAAABGACgAAAAAAAAAAABGACcAAAAAAAAAAABGACYAAAAAAAAAAABGACUAAAAAAAAAAABGACQAAAAAAAAAAABGACMAAAAAAAAAAABGACIAAAAAAAAAAABGACEAAAAAAAAAAABGACAAAAAAAAAAAABGAB8AAAAAAAAAAABGAB4AAAAAAAAAAABGAB0AAAACAAAAAABGABwAAAAAAAAAAABGABsAAAAAAAAAAABGABoAAAAAAAAAAABGABkAAAAAAAAAAABGABgAAAAAAAAAAABGABcAAAAAAAAAAABGABYAAAAAAAAAAABGABUAAAAAAAAAAABGABQAAAAAAAAAAABGABMAAAAAAAAAAABGABIAAAAAAAAAAABGABEAAAAAAAAAAABFACoAAAAAAAAAAABFACkAAAAAAAAAAABFACgAAAAAAAAAAABFACcAAAAAAAAAAABFACYAAAAAAAAAAABFACUAAAAAAAAAAABFACQAAAAAAAAAAABFACMAAAAAAAAAAABFACIAAAAAAAAAAABFACEAAAAAAAAAAABFACAAAAAAAAAAAABFAB8AAAAAAAAAAABFAB4AAAAAAAAAAABFAB0AAAAAAAAAAABFABwAAAAAAAAAAABFABsAAAAAAAAAAABFABoAAAAAAAAAAABFABkAAAAAAAAAAABFABgAAAAAAAAAAABFABcAAAAAAAAAAABFABYAAAAAAAAAAABFABUAAAAAAAAAAABFABQAAAAAAAAAAABFABMAAAAAAAAAAABFABIAAAAAAAAAAABFABEAAAAAAAAAAABEACoAAAAAAAAAAABEACkAAAAAAAAAAABEACgAAAAAAAAAAABEACcAAAAAAAAAAABEACYAAAAAAAAAAABEACUAAAAAAAAAAABEACQAAAAAAAAAAABEACMAAAAAAAAAAABEACIAAAAAAAAAAABEACEAAAAAAAAAAABEACAAAAAAAAAAAABEAB8AAAAAAAAAAABEAB4AAAAAAAAAAABEAB0AAAAAAAAAAABEABwAAAAAAAAAAABEABsAAAAAAAAAAABEABoAAAAAAAAAAABEABkAAAAAAAAAAABEABgAAAAAAAAAAABEABcAAAAAAAAAAABEABYAAAAAAAAAAABEABUAAAAAAAAAAABEABQAAAAAAAAAAABEABMAAAAAAAAAAABEABIAAAAAAAAAAABEABEAAAAAAAAAAABDACoAAAAAAAAAAABDACkAAAAAAAAAAABDACgAAAAAAAAAAABDACcAAAAAAAAAAABDACYAAAAAAAAAAABDACUAAAAAAAAAAABDACQAAAAAAAAAAABDACMAAAAAAAAAAABDACIAAAAAAAAAAABDACEAAAAAAAAAAABDACAAAAAAAAAAAABDAB8AAAAAAAAAAABDAB4AAAAAAAAAAABDAB0AAAAAAAAAAABDABwAAAAAAAAAAABDABsAAAAAAAAAAABDABoAAAAAAAAAAABDABkAAAAAAAAAAABDABgAAAAAAAAAAABDABcAAAAAAAAAAABDABYAAAAAAAAAAABDABUAAAAAAAAAAABDABQAAAAAAAAAAABDABMAAAAAAAAAAABDABIAAAAAAAAAAABDABEAAAAAAAAAAABCACoAAAAAAAAAAABCACkAAAAAAAAAAABCACgAAAAAAAAAAABCACcAAAAAAAAAAABCACYAAAAAAAAAAABCACUAAAAAAAAAAABCACQAAAAAAAAAAABCACMAAAAAAAAAAABCACIAAAACAAAAAABCACEAAAAAAAAAAABCACAAAAAAAAAAAABCAB8AAAAAAAAAAABCAB4AAAAAAAAAAABCAB0AAAAAAAAAAABCABwAAAAAAAAAAABCABsAAAABAAAAAABCABoAAAAAAAAAAABCABkAAAAAAAAAAABCABgAAAAAAAAAAABCABcAAAAAAAAAAABCABYAAAAAAAAAAABCABUAAAAAAAAAAABCABQAAAAAAAAAAABCABMAAAAAAAAAAABCABIAAAAAAAAAAABCABEAAAAAAAAAAABBACoAAAAAAAAAAABBACkAAAAAAAAAAABBACgAAAAAAAAAAABBACcAAAABAAAAAABBACYAAAAAAAAAAABBACUAAAAAAAAAAABBACQAAAAAAAAAAABBACMAAAAAAAAAAABBACIAAAAAAAAAAABBACEAAAAAAAAAAABBACAAAAAAAAAAAABBAB8AAAAAAAAAAABBAB4AAAAAAAAAAABBAB0AAAAAAAAAAABBABwAAAAAAAAAAABBABsAAAAAAAAAAABBABoAAAACAAAAAABBABkAAAAAAAAAAABBABgAAAAAAAAAAABBABcAAAAAAAAAAABBABYAAAAAAAAAAABBABUAAAAAAAAAAABBABQAAAAAAAAAAABBABMAAAAAAAAAAABBABIAAAAAAAAAAABBABEAAAAAAAAAAABAACoAAAAAAAAAAABAACkAAAAAAAAAAABAACgAAAAAAAAAAABAACcAAAAAAAAAAABAACYAAAAAAAAAAABAACUAAAAAAAAAAABAACQAAAAAAAAAAABAACMAAAAAAAAAAABAACIAAAAAAAAAAABAACEAAAAAAAAAAABAACAAAAAAAAAAAABAAB8AAAAAAAAAAABAAB4AAAAAAAAAAABAAB0AAAAAAAAAAABAABwAAAAAAAAAAABAABsAAAAAAAAAAABAABoAAAAAAAAAAABAABkAAAAAAAAAAABAABgAAAAAAAAAAABAABcAAAABAAAAAABAABYAAAAAAAAAAABAABUAAAAAAAAAAABAABQAAAAAAAAAAABAABMAAAAAAAAAAABAABIAAAAAAAAAAABAABEAAAAAAAAAAAA/ACoAAAAAAAAAAAA/ACkAAAAAAAAAAAA/ACgAAAACAAAAAAA/ACcAAAAAAAAAAAA/ACYAAAAAAAAAAAA/ACUAAAAAAAAAAAA/ACQAAAAAAAAAAAA/ACMAAAAAAAAAAAA/ACIAAAAAAAAAAAA/ACEAAAAAAAAAAAA/ACAAAAAAAAAAAAA/AB8AAAAAAAAAAAA/AB4AAAABAAAAAAA/AB0AAAAAAAAAAAA/ABwAAAAAAAAAAAA/ABsAAAAAAAAAAAA/ABoAAAACAAAAAAA/ABkAAAAAAAAAAAA/ABgAAAAAAAAAAAA/ABcAAAAAAAAAAAA/ABYAAAAAAAAAAAA/ABUAAAAAAAAAAAA/ABQAAAAAAAAAAAA/ABMAAAAAAAAAAAA/ABIAAAAAAAAAAAA/ABEAAAAAAAAAAAA+ACoAAAAAAAAAAAA+ACkAAAAAAAAAAAA+ACgAAAAAAAAAAAA+ACcAAAACAAAAAAA+ACYAAAAAAAAAAAA+ACUAAAAAAAAAAAA+ACQAAAAAAAAAAAA+ACMAAAAAAAAAAAA+ACIAAAAAAAAAAAA+ACEAAAAAAAAAAAA+ACAAAAAAAAAAAAA+AB8AAAAAAAAAAAA+AB4AAAAAAAAAAAA+AB0AAAAAAAAAAAA+ABwAAAAAAAAAAAA+ABsAAAACAAAAAAA+ABoAAAAAAAAAAAA+ABkAAAAAAAAAAAA+ABgAAAAAAAAAAAA+ABcAAAAAAAAAAAA+ABYAAAAAAAAAAAA+ABUAAAAAAAAAAAA+ABQAAAAAAAAAAAA+ABMAAAAAAAAAAAA+ABIAAAAAAAAAAAA+ABEAAAAAAAAAAAA9ACoAAAAAAAAAAAA9ACkAAAAAAAAAAAA9ACgAAAAAAAAAAAA9ACcAAAAAAAAAAAA9ACYAAAAAAAAAAAA9ACUAAAAAAAAAAAA9ACQAAAAAAAAAAAA9ACMAAAAAAAAAAAA9ACIAAAAAAAAAAAA9ACEAAAAAAAAAAAA9ACAAAAAAAAAAAAA9AB8AAAAAAAAAAAA9AB4AAAAAAAAAAAA9AB0AAAAAAAAAAAA9ABwAAAAAAAAAAAA9ABsAAAAAAAAAAAA9ABoAAAAAAAAAAAA9ABkAAAAAAAAAAAA9ABgAAAAAAAAAAAA9ABcAAAAAAAAAAAA9ABYAAAAAAAAAAAA9ABUAAAAAAAAAAAA9ABQAAAAAAAAAAAA9ABMAAAAAAAAAAAA9ABIAAAAAAAAAAAA9ABEAAAAAAAAAAAA8ACoAAAAAAAAAAAA8ACkAAAAAAAAAAAA8ACgAAAAAAAAAAAA8ACcAAAAAAAAAAAA8ACYAAAAAAAAAAAA8ACUAAAAAAAAAAAA8ACQAAAAAAAAAAAA8ACMAAAAAAAAAAAA8ACIAAAAAAAAAAAA8ACEAAAAAAAAAAAA8ACAAAAAAAAAAAAA8AB8AAAAAAAAAAAA8AB4AAAAAAAAAAAA8AB0AAAAAAAAAAAA8ABwAAAAAAAAAAAA8ABsAAAAAAAAAAAA8ABoAAAAAAAAAAAA8ABkAAAAAAAAAAAA8ABgAAAAAAAAAAAA8ABcAAAAAAAAAAAA8ABYAAAAAAAAAAAA8ABUAAAAAAAAAAAA8ABQAAAAAAAAAAAA8ABMAAAAAAAAAAAA8ABIAAAAAAAAAAAA8ABEAAAAAAAAAAAA7ACoAAAAAAAAAAAA7ACkAAAAAAAAAAAA7ACgAAAAAAAAAAAA7ACcAAAAAAAAAAAA7ACYAAAAAAAAAAAA7ACUAAAAAAAAAAAA7ACQAAAAAAAAAAAA7ACMAAAAAAAAAAAA7ACIAAAAAAAAAAAA7ACEAAAAAAAAAAAA7ACAAAAACAAAAAAA7AB8AAAAAAAAAAAA7AB4AAAAAAAAAAAA7AB0AAAAAAAAAAAA7ABwAAAACAAAAAAA7ABsAAAAAAAAAAAA7ABoAAAAAAAAAAAA7ABkAAAAAAAAAAAA7ABgAAAAAAAAAAAA7ABcAAAAAAAAAAAA7ABYAAAAAAAAAAAA7ABUAAAAAAAAAAAA7ABQAAAAAAAAAAAA7ABMAAAAAAAAAAAA7ABIAAAAAAAAAAAA7ABEAAAAAAAAAAAA6ACoAAAAAAAAAAAA6ACkAAAAAAAAAAAA6ACgAAAAAAAAAAAA6ACcAAAAAAAAAAAA6ACYAAAAAAAAAAAA6ACUAAAAAAAAAAAA6ACQAAAAAAAAAAAA6ACMAAAABAAAAAAA6ACIAAAAAAAAAAAA6ACEAAAAAAAAAAAA6ACAAAAAAAAAAAAA6AB8AAAAAAAAAAAA6AB4AAAAAAAAAAAA6AB0AAAAAAAAAAAA6ABwAAAAAAAAAAAA6ABsAAAAAAAAAAAA6ABoAAAAAAAAAAAA6ABkAAAAAAAAAAAA6ABgAAAAAAAAAAAA6ABcAAAACAAAAAAA6ABYAAAAAAAAAAAA6ABUAAAAAAAAAAAA6ABQAAAAAAAAAAAA6ABMAAAAAAAAAAAA6ABIAAAAAAAAAAAA6ABEAAAAAAAAAAAA5ACoAAAAAAAAAAAA5ACkAAAAAAAAAAAA5ACgAAAAAAAAAAAA5ACcAAAAAAAAAAAA5ACYAAAAAAAAAAAA5ACUAAAAAAAAAAAA5ACQAAAAAAAAAAAA5ACMAAAABAAAAAAA5ACIAAAAAAAAAAAA5ACEAAAAAAAAAAAA5ACAAAAAAAAAAAAA5AB8AAAAAAAAAAAA5AB4AAAAAAAAAAAA5AB0AAAABAAAAAAA5ABwAAAAAAAAAAAA5ABsAAAAAAAAAAAA5ABoAAAAAAAAAAAA5ABkAAAAAAAAAAAA5ABgAAAABAAAAAAA5ABcAAAAAAAAAAAA5ABYAAAAAAAAAAAA5ABUAAAAAAAAAAAA5ABQAAAAAAAAAAAA5ABMAAAAAAAAAAAA5ABIAAAAAAAAAAAA5ABEAAAAAAAAAAAA4ACoAAAAAAAAAAAA4ACkAAAAAAAAAAAA4ACgAAAAAAAAAAAA4ACcAAAAAAAAAAAA4ACYAAAAAAAAAAAA4ACUAAAAAAAAAAAA4ACQAAAAAAAAAAAA4ACMAAAAAAAAAAAA4ACIAAAAAAAAAAAA4ACEAAAAAAAAAAAA4ACAAAAAAAAAAAAA4AB8AAAAAAAAAAAA4AB4AAAAAAAAAAAA4AB0AAAAAAAAAAAA4ABwAAAAAAAAAAAA4ABsAAAACAAAAAAA4ABoAAAAAAAAAAAA4ABkAAAAAAAAAAAA4ABgAAAAAAAAAAAA4ABcAAAAAAAAAAAA4ABYAAAAAAAAAAAA4ABUAAAAAAAAAAAA4ABQAAAAAAAAAAAA4ABMAAAAAAAAAAAA4ABIAAAAAAAAAAAA4ABEAAAAAAAAAAAA3ACoAAAAAAAAAAAA3ACkAAAACAAAAAAA3ACgAAAACAAAAAAA3ACcAAAAAAAAAAAA3ACYAAAAAAAAAAAA3ACUAAAAAAAAAAAA3ACQAAAAAAAAAAAA3ACMAAAAAAAAAAAA3ACIAAAAAAAAAAAA3ACEAAAAAAAAAAAA3ACAAAAABAAAAAAA3AB8AAAAAAAAAAAA3AB4AAAAAAAAAAAA3AB0AAAAAAAAAAAA3ABwAAAAAAAAAAAA3ABsAAAAAAAAAAAA3ABoAAAAAAAAAAAA3ABkAAAAAAAAAAAA3ABgAAAAAAAAAAAA3ABcAAAAAAAAAAAA3ABYAAAAAAAAAAAA3ABUAAAAAAAAAAAA3ABQAAAAAAAAAAAA3ABMAAAAAAAAAAAA3ABIAAAAAAAAAAAA3ABEAAAAAAAAAAAA2ACoAAAAAAAAAAAA2ACkAAAAAAAAAAAA2ACgAAAAAAAAAAAA2ACcAAAAAAAAAAAA2ACYAAAAAAAAAAAA2ACUAAAACAAAAAAA2ACQAAAAAAAAAAAA2ACMAAAAAAAAAAAA2ACIAAAAAAAAAAAA2ACEAAAAAAAAAAAA2ACAAAAAAAAAAAAA2AB8AAAAAAAAAAAA2AB4AAAAAAAAAAAA2AB0AAAAAAAAAAAA2ABwAAAAAAAAAAAA2ABsAAAAAAAAAAAA2ABoAAAAAAAAAAAA2ABkAAAAAAAAAAAA2ABgAAAAAAAAAAAA2ABcAAAAAAAAAAAA2ABYAAAAAAAAAAAA2ABUAAAAAAAAAAAA2ABQAAAAAAAAAAAA2ABMAAAAAAAAAAAA2ABIAAAAAAAAAAAA2ABEAAAAAAAAAAAA1ACoAAAAAAAAAAAA1ACkAAAAAAAAAAAA1ACgAAAAAAAAAAAA1ACcAAAAAAAAAAAA1ACYAAAAAAAAAAAA1ACUAAAAAAAAAAAA1ACQAAAAAAAAAAAA1ACMAAAAAAAAAAAA1ACIAAAAAAAAAAAA1ACEAAAAAAAAAAAA1ACAAAAAAAAAAAAA1AB8AAAAAAAAAAAA1AB4AAAAAAAAAAAA1AB0AAAAAAAAAAAA1ABwAAAAAAAAAAAA1ABsAAAAAAAAAAAA1ABoAAAABAAAAAAA1ABkAAAAAAAAAAAA1ABgAAAABAAAAAAA1ABcAAAAAAAAAAAA1ABYAAAAAAAAAAAA1ABUAAAAAAAAAAAA1ABQAAAAAAAAAAAA1ABMAAAAAAAAAAAA1ABIAAAACAAAAAAA1ABEAAAAAAAAAAAA0ACoAAAAAAAAAAAA0ACkAAAABAAAAAAA0ACgAAAAAAAAAAAA0ACcAAAAAAAAAAAA0ACYAAAAAAAAAAAA0ACUAAAAAAAAAAAA0ACQAAAAAAAAAAAA0ACMAAAAAAAAAAAA0ACIAAAAAAAAAAAA0ACEAAAAAAAAAAAA0ACAAAAACAAAAAAA0AB8AAAAAAAAAAAA0AB4AAAAAAAAAAAA0AB0AAAAAAAAAAAA0ABwAAAAAAAAAAAA0ABsAAAAAAAAAAAA0ABoAAAAAAAAAAAA0ABkAAAAAAAAAAAA0ABgAAAAAAAAAAAA0ABcAAAAAAAAAAAA0ABYAAAAAAAAAAAA0ABUAAAACAAAAAAA0ABQAAAAAAAAAAAA0ABMAAAACAAAAAAA0ABIAAAAAAAAAAAA0ABEAAAAAAAAAAAAzACoAAAAAAAAAAAAzACkAAAAAAAAAAAAzACgAAAAAAAAAAAAzACcAAAAAAAAAAAAzACYAAAAAAAAAAAAzACUAAAAAAAAAAAAzACQAAAAAAAAAAAAzACMAAAAAAAAAAAAzACIAAAAAAAAAAAAzACEAAAAAAAAAAAAzACAAAAAAAAAAAAAzAB8AAAACAAAAAAAzAB4AAAAAAAAAAAAzAB0AAAAAAAAAAAAzABwAAAAAAAAAAAAzABsAAAAAAAAAAAAzABoAAAAAAAAAAAAzABkAAAAAAAAAAAAzABgAAAAAAAAAAAAzABcAAAAAAAAAAAAzABYAAAAAAAAAAAAzABUAAAAAAAAAAAAzABQAAAAAAAAAAAAzABMAAAAAAAAAAAAzABIAAAAAAAAAAAAzABEAAAAAAAAAAAAyACoAAAAAAAAAAAAyACkAAAACAAAAAAAyACgAAAAAAAAAAAAyACcAAAAAAAAAAAAyACYAAAAAAAAAAAAyACUAAAAAAAAAAAAyACQAAAAAAAAAAAAyACMAAAAAAAAAAAAyACIAAAAAAAAAAAAyACEAAAAAAAAAAAAyACAAAAAAAAAAAAAyAB8AAAAAAAAAAAAyAB4AAAAAAAAAAAAyAB0AAAAAAAAAAAAyABwAAAAAAAAAAAAyABsAAAAAAAAAAAAyABoAAAAAAAAAAAAyABkAAAAAAAAAAAAyABgAAAAAAAAAAAAyABcAAAAAAAAAAAAyABYAAAAAAAAAAAAyABUAAAAAAAAAAAAyABQAAAAAAAAAAAAyABMAAAAAAAAAAAAyABIAAAAAAAAAAAAyABEAAAAAAAAAAAAxACoAAAAAAAAAAAAxACkAAAAAAAAAAAAxACgAAAAAAAAAAAAxACcAAAAAAAAAAAAxACYAAAAAAAAAAAAxACUAAAAAAAAAAAAxACQAAAAAAAAAAAAxACMAAAABAAAAAAAxACIAAAAAAAAAAAAxACEAAAAAAAAAAAAxACAAAAAAAAAAAAAxAB8AAAAAAAAAAAAxAB4AAAAAAAAAAAAxAB0AAAAAAAAAAAAxABwAAAAAAAAAAAAxABsAAAAAAAAAAAAxABoAAAAAAAAAAAAxABkAAAABAAAAAAAxABgAAAAAAAAAAAAxABcAAAAAAAAAAAAxABYAAAAAAAAAAAAxABUAAAAAAAAAAAAxABQAAAAAAAAAAAAxABMAAAAAAAAAAAAxABIAAAAAAAAAAAAxABEAAAAAAAAAAAAwACoAAAAAAAAAAAAwACkAAAAAAAAAAAAwACgAAAAAAAAAAAAwACcAAAAAAAAAAAAwACYAAAAAAAAAAAAwACUAAAAAAAAAAAAwACQAAAAAAAAAAAAwACMAAAAAAAAAAAAwACIAAAAAAAAAAAAwACEAAAAAAAAAAAAwACAAAAAAAAAAAAAwAB8AAAAAAAAAAAAwAB4AAAAAAAAAAAAwAB0AAAAAAAAAAAAwABwAAAAAAAAAAAAwABsAAAAAAAAAAAAwABoAAAAAAAAAAAAwABkAAAAAAAAAAAAwABgAAAAAAAAAAAAwABcAAAAAAAAAAAAwABYAAAAAAAAAAAAwABUAAAAAAAAAAAAwABQAAAAAAAAAAAAwABMAAAAAAAAAAAAwABIAAAAAAAAAAAAwABEAAAAAAAAAAAAvACoAAAAAAAAAAAAvACkAAAAAAAAAAAAvACgAAAAAAAAAAAAvACcAAAAAAAAAAAAvACYAAAAAAAAAAAAvACUAAAAAAAAAAAAvACQAAAAAAAAAAAAvACMAAAAAAAAAAAAvACIAAAAAAAAAAAAvACEAAAAAAAAAAAAvACAAAAAAAAAAAAAvAB8AAAAAAAAAAAAvAB4AAAAAAAAAAAAvAB0AAAAAAAAAAAAvABwAAAAAAAAAAAAvABsAAAABAAAAAAAvABoAAAAAAAAAAAAvABkAAAAAAAAAAAAvABgAAAAAAAAAAAAvABcAAAAAAAAAAAAvABYAAAAAAAAAAAAvABUAAAAAAAAAAAAvABQAAAACAAAAAAAvABMAAAAAAAAAAAAvABIAAAAAAAAAAAAvABEAAAAAAAAAAAAuACoAAAAAAAAAAAAuACkAAAACAAAAAAAuACgAAAAAAAAAAAAuACcAAAAAAAAAAAAuACYAAAAAAAAAAAAuACUAAAAAAAAAAAAuACQAAAAAAAAAAAAuACMAAAAAAAAAAAAuACIAAAAAAAAAAAAuACEAAAAAAAAAAAAuACAAAAAAAAAAAAAuAB8AAAACAAAAAAAuAB4AAAAAAAAAAAAuAB0AAAAAAAAAAAAuABwAAAAAAAAAAAAuABsAAAAAAAAAAAAuABoAAAAAAAAAAAAuABkAAAAAAAAAAAAuABgAAAAAAAAAAAAuABcAAAAAAAAAAAAuABYAAAAAAAAAAAAuABUAAAAAAAAAAAAuABQAAAAAAAAAAAAuABMAAAAAAAAAAAAuABIAAAAAAAAAAAAuABEAAAACAAAAAAAtACoAAAAAAAAAAAAtACkAAAAAAAAAAAAtACgAAAAAAAAAAAAtACcAAAAAAAAAAAAtACYAAAAAAAAAAAAtACUAAAAAAAAAAAAtACQAAAAAAAAAAAAtACMAAAAAAAAAAAAtACIAAAAAAAAAAAAtACEAAAAAAAAAAAAtACAAAAAAAAAAAAAtAB8AAAAAAAAAAAAtAB4AAAAAAAAAAAAtAB0AAAAAAAAAAAAtABwAAAAAAAAAAAAtABsAAAAAAAAAAAAtABoAAAAAAAAAAAAtABkAAAAAAAAAAAAtABgAAAAAAAAAAAAtABcAAAAAAAAAAAAtABYAAAAAAAAAAAAtABUAAAAAAAAAAAAtABQAAAAAAAAAAAAtABMAAAAAAAAAAAAtABIAAAAAAAAAAAAtABEAAAAAAAAAAAAsACoAAAAAAAAAAAAsACkAAAAAAAAAAAAsACgAAAAAAAAAAAAsACcAAAAAAAAAAAAsACYAAAAAAAAAAAAsACUAAAAAAAAAAAAsACQAAAAAAAAAAAAsACMAAAAAAAAAAAAsACIAAAAAAAAAAAAsACEAAAAAAAAAAAAsACAAAAAAAAAAAAAsAB8AAAAAAAAAAAAsAB4AAAAAAAAAAAAsAB0AAAAAAAAAAAAsABwAAAAAAAAAAAAsABsAAAAAAAAAAAAsABoAAAAAAAAAAAAsABkAAAAAAAAAAAAsABgAAAAAAAAAAAAsABcAAAAAAAAAAAAsABYAAAAAAAAAAAAsABUAAAAAAAAAAAAsABQAAAAAAAAAAAAsABMAAAABAAAAAAAsABIAAAAAAAAAAAAsABEAAAAAAAAAAAArACoAAAAAAAAAAAArACkAAAAAAAAAAAArACgAAAAAAAAAAAArACcAAAAAAAAAAAArACYAAAAAAAAAAAArACUAAAAAAAAAAAArACQAAAAAAAAAAAArACMAAAAAAAAAAAArACIAAAAAAAAAAAArACEAAAAAAAAAAAArACAAAAAAAAAAAAArAB8AAAAAAAAAAAArAB4AAAAAAAAAAAArAB0AAAAAAAAAAAArABwAAAAAAAAAAAArABsAAAAAAAAAAAArABoAAAAAAAAAAAArABkAAAAAAAAAAAArABgAAAAAAAAAAAArABcAAAAAAAAAAAArABYAAAAAAAAAAAArABUAAAAAAAAAAAArABQAAAAAAAAAAAArABMAAAAAAAAAAAArABIAAAAAAAAAAAArABEAAAAAAAAAAAAqACoAAAAAAAAAAAAqACkAAAAAAAAAAAAqACgAAAAAAAAAAAAqACcAAAAAAAAAAAAqACYAAAAAAAAAAAAqACUAAAAAAAAAAAAqACQAAAAAAAAAAAAqACMAAAAAAAAAAAAqACIAAAAAAAAAAAAqACEAAAAAAAAAAAAqACAAAAAAAAAAAAAqAB8AAAABAAAAAAAqAB4AAAAAAAAAAAAqAB0AAAAAAAAAAAAqABwAAAAAAAAAAAAqABsAAAAAAAAAAAAqABoAAAAAAAAAAAAqABkAAAAAAAAAAAAqABgAAAAAAAAAAAAqABcAAAAAAAAAAAAqABYAAAAAAAAAAAAqABUAAAAAAAAAAAAqABQAAAAAAAAAAAAqABMAAAAAAAAAAAAqABIAAAAAAAAAAAAqABEAAAAAAAAAAAApACoAAAAAAAAAAAApACkAAAABAAAAAAApACgAAAAAAAAAAAApACcAAAAAAAAAAAApACYAAAAAAAAAAAApACUAAAAAAAAAAAApACQAAAAAAAAAAAApACMAAAAAAAAAAAApACIAAAAAAAAAAAApACEAAAAAAAAAAAApACAAAAAAAAAAAAApAB8AAAAAAAAAAAApAB4AAAAAAAAAAAApAB0AAAACAAAAAAApABwAAAAAAAAAAAApABsAAAAAAAAAAAApABoAAAAAAAAAAAApABkAAAAAAAAAAAApABgAAAAAAAAAAAApABcAAAAAAAAAAAApABYAAAAAAAAAAAApABUAAAAAAAAAAAApABQAAAAAAAAAAAApABMAAAAAAAAAAAApABIAAAAAAAAAAAApABEAAAAAAAAAAAAoACoAAAAAAAAAAAAoACkAAAAAAAAAAAAoACgAAAAAAAAAAAAoACcAAAACAAAAAAAoACYAAAAAAAAAAAAoACUAAAAAAAAAAAAoACQAAAAAAAAAAAAoACMAAAAAAAAAAAAoACIAAAAAAAAAAAAoACEAAAAAAAAAAAAoACAAAAAAAAAAAAAoAB8AAAAAAAAAAAAoAB4AAAAAAAAAAAAoAB0AAAAAAAAAAAAoABwAAAAAAAAAAAAoABsAAAAAAAAAAAAoABoAAAAAAAAAAAAoABkAAAAAAAAAAAAoABgAAAAAAAAAAAAoABcAAAAAAAAAAAAoABYAAAAAAAAAAAAoABUAAAAAAAAAAAAoABQAAAAAAAAAAAAoABMAAAAAAAAAAAAoABIAAAAAAAAAAAAoABEAAAAAAAAAAAAnACoAAAAAAAAAAAAnACkAAAAAAAAAAAAnACgAAAAAAAAAAAAnACcAAAAAAAAAAAAnACYAAAAAAAAAAAAnACUAAAAAAAAAAAAnACQAAAAAAAAAAAAnACMAAAAAAAAAAAAnACIAAAAAAAAAAAAnACEAAAAAAAAAAAAnACAAAAAAAAAAAAAnAB8AAAAAAAAAAAAnAB4AAAACAAAAAAAnAB0AAAAAAAAAAAAnABwAAAAAAAAAAAAnABsAAAAAAAAAAAAnABoAAAAAAAAAAAAnABkAAAAAAAAAAAAnABgAAAAAAAAAAAAnABcAAAAAAAAAAAAnABYAAAACAAAAAAAnABUAAAAAAAAAAAAnABQAAAAAAAAAAAAnABMAAAAAAAAAAAAnABIAAAAAAAAAAAAnABEAAAAAAAAAAAAmACoAAAAAAAAAAAAmACkAAAAAAAAAAAAmACgAAAAAAAAAAAAmACcAAAAAAAAAAAAmACYAAAAAAAAAAAAmACUAAAAAAAAAAAAmACQAAAAAAAAAAAAmACMAAAACAAAAAAAmACIAAAAAAAAAAAAmACEAAAAAAAAAAAAmACAAAAAAAAAAAAAmAB8AAAAAAAAAAAAmAB4AAAAAAAAAAAAmAB0AAAAAAAAAAAAmABwAAAAAAAAAAAAmABsAAAABAAAAAAAmABoAAAAAAAAAAAAmABkAAAAAAAAAAAAmABgAAAAAAAAAAAAmABcAAAAAAAAAAAAmABYAAAAAAAAAAAAmABUAAAAAAAAAAAAmABQAAAAAAAAAAAAmABMAAAAAAAAAAAAmABIAAAAAAAAAAAAmABEAAAAAAAAAAAAlACoAAAAAAAAAAAAlACkAAAAAAAAAAAAlACgAAAAAAAAAAAAlACcAAAAAAAAAAAAlACYAAAAAAAAAAAAlACUAAAAAAAAAAAAlACQAAAAAAAAAAAAlACMAAAAAAAAAAAAlACIAAAAAAAAAAAAlACEAAAAAAAAAAAAlACAAAAAAAAAAAAAlAB8AAAAAAAAAAAAlAB4AAAAAAAAAAAAlAB0AAAAAAAAAAAAlABwAAAAAAAAAAAAlABsAAAAAAAAAAAAlABoAAAAAAAAAAAAlABkAAAAAAAAAAAAlABgAAAAAAAAAAAAlABcAAAAAAAAAAAAlABYAAAAAAAAAAAAlABUAAAAAAAAAAAAlABQAAAAAAAAAAAAlABMAAAAAAAAAAAAlABIAAAAAAAAAAAAlABEAAAAAAAAAAAAkACoAAAAAAAAAAAAkACkAAAAAAAAAAAAkACgAAAAAAAAAAAAkACcAAAAAAAAAAAAkACYAAAAAAAAAAAAkACUAAAAAAAAAAAAkACQAAAAAAAAAAAAkACMAAAAAAAAAAAAkACIAAAAAAAAAAAAkACEAAAAAAAAAAAAkACAAAAAAAAAAAAAkAB8AAAAAAAAAAAAkAB4AAAAAAAAAAAAkAB0AAAAAAAAAAAAkABwAAAAAAAAAAAAkABsAAAAAAAAAAAAkABoAAAAAAAAAAAAkABkAAAAAAAAAAAAkABgAAAAAAAAAAAAkABcAAAAAAAAAAAAkABYAAAAAAAAAAAAkABUAAAAAAAAAAAAkABQAAAAAAAAAAAAkABMAAAACAAAAAAAkABIAAAAAAAAAAAAkABEAAAAAAAAAAAAjACoAAAAAAAAAAAAjACkAAAAAAAAAAAAjACgAAAAAAAAAAAAjACcAAAAAAAAAAAAjACYAAAABAAAAAAAjACUAAAAAAAAAAAAjACQAAAAAAAAAAAAjACMAAAAAAAAAAAAjACIAAAAAAAAAAAAjACEAAAAAAAAAAAAjACAAAAAAAAAAAAAjAB8AAAAAAAAAAAAjAB4AAAAAAAAAAAAjAB0AAAAAAAAAAAAjABwAAAAAAAAAAAAjABsAAAAAAAAAAAAjABoAAAAAAAAAAAAjABkAAAAAAAAAAAAjABgAAAAAAAAAAAAjABcAAAAAAAAAAAAjABYAAAAAAAAAAAAjABUAAAAAAAAAAAAjABQAAAAAAAAAAAAjABMAAAAAAAAAAAAjABIAAAAAAAAAAAAjABEAAAABAAAAAAAiACoAAAAAAAAAAAAiACkAAAAAAAAAAAAiACgAAAAAAAAAAAAiACcAAAAAAAAAAAAiACYAAAAAAAAAAAAiACUAAAAAAAAAAAAiACQAAAAAAAAAAAAiACMAAAAAAAAAAAAiACIAAAAAAAAAAAAiACEAAAAAAAAAAAAiACAAAAAAAAAAAAAiAB8AAAAAAAAAAAAiAB4AAAAAAAAAAAAiAB0AAAAAAAAAAAAiABwAAAAAAAAAAAAiABsAAAAAAAAAAAAiABoAAAAAAAAAAAAiABkAAAAAAAAAAAAiABgAAAAAAAAAAAAiABcAAAAAAAAAAAAiABYAAAAAAAAAAAAiABUAAAAAAAAAAAAiABQAAAAAAAAAAAAiABMAAAAAAAAAAAAiABIAAAAAAAAAAAAiABEAAAAAAAAAAAAhACoAAAAAAAAAAAAhACkAAAAAAAAAAAAhACgAAAAAAAAAAAAhACcAAAAAAAAAAAAhACYAAAAAAAAAAAAhACUAAAAAAAAAAAAhACQAAAAAAAAAAAAhACMAAAAAAAAAAAAhACIAAAAAAAAAAAAhACEAAAAAAAAAAAAhACAAAAAAAAAAAAAhAB8AAAABAAAAAAAhAB4AAAAAAAAAAAAhAB0AAAAAAAAAAAAhABwAAAAAAAAAAAAhABsAAAAAAAAAAAAhABoAAAAAAAAAAAAhABkAAAAAAAAAAAAhABgAAAAAAAAAAAAhABcAAAAAAAAAAAAhABYAAAAAAAAAAAAhABUAAAAAAAAAAAAhABQAAAAAAAAAAAAhABMAAAAAAAAAAAAhABIAAAAAAAAAAAAhABEAAAAAAAAAAAAgACoAAAAAAAAAAAAgACkAAAAAAAAAAAAgACgAAAAAAAAAAAAgACcAAAAAAAAAAAAgACYAAAAAAAAAAAAgACUAAAAAAAAAAAAgACQAAAABAAAAAAAgACMAAAAAAAAAAAAgACIAAAAAAAAAAAAgACEAAAAAAAAAAAAgACAAAAAAAAAAAAAgAB8AAAAAAAAAAAAgAB4AAAAAAAAAAAAgAB0AAAAAAAAAAAAgABwAAAAAAAAAAAAgABsAAAAAAAAAAAAgABoAAAAAAAAAAAAgABkAAAAAAAAAAAAgABgAAAAAAAAAAAAgABcAAAAAAAAAAAAgABYAAAABAAAAAAAgABUAAAAAAAAAAAAgABQAAAAAAAAAAAAgABMAAAAAAAAAAAAgABIAAAAAAAAAAAAgABEAAAAAAAAAAAAfACoAAAAAAAAAAAAfACkAAAAAAAAAAAAfACgAAAAAAAAAAAAfACcAAAAAAAAAAAAfACYAAAAAAAAAAAAfACUAAAAAAAAAAAAfACQAAAAAAAAAAAAfACMAAAAAAAAAAAAfACIAAAAAAAAAAAAfACEAAAAAAAAAAAAfACAAAAAAAAAAAAAfAB8AAAAAAAAAAAAfAB4AAAAAAAAAAAAfAB0AAAAAAAAAAAAfABwAAAAAAAAAAAAfABsAAAAAAAAAAAAfABoAAAAAAAAAAAAfABkAAAACAAAAAAAfABgAAAAAAAAAAAAfABcAAAAAAAAAAAAfABYAAAAAAAAAAAAfABUAAAAAAAAAAAAfABQAAAAAAAAAAAAfABMAAAAAAAAAAAAfABIAAAAAAAAAAAAfABEAAAAAAAAAAAAeACoAAAAAAAAAAAAeACkAAAAAAAAAAAAeACgAAAAAAAAAAAAeACcAAAAAAAAAAAAeACYAAAAAAAAAAAAeACUAAAAAAAAAAAAeACQAAAAAAAAAAAAeACMAAAAAAAAAAAAeACIAAAAAAAAAAAAeACEAAAAAAAAAAAAeACAAAAAAAAAAAAAeAB8AAAAAAAAAAAAeAB4AAAAAAAAAAAAeAB0AAAAAAAAAAAAeABwAAAAAAAAAAAAeABsAAAAAAAAAAAAeABoAAAAAAAAAAAAeABkAAAAAAAAAAAAeABgAAAAAAAAAAAAeABcAAAAAAAAAAAAeABYAAAAAAAAAAAAeABUAAAAAAAAAAAAeABQAAAAAAAAAAAAeABMAAAAAAAAAAAAeABIAAAAAAAAAAAAeABEAAAAAAAAAAAAdACoAAAAAAAAAAAAdACkAAAAAAAAAAAAdACgAAAAAAAAAAAAdACcAAAAAAAAAAAAdACYAAAAAAAAAAAAdACUAAAAAAAAAAAAdACQAAAAAAAAAAAAdACMAAAAAAAAAAAAdACIAAAAAAAAAAAAdACEAAAAAAAAAAAAdACAAAAAAAAAAAAAdAB8AAAAAAAAAAAAdAB4AAAAAAAAAAAAdAB0AAAAAAAAAAAAdABwAAAAAAAAAAAAdABsAAAAAAAAAAAAdABoAAAAAAAAAAAAdABkAAAAAAAAAAAAdABgAAAABAAAAAAAdABcAAAAAAAAAAAAdABYAAAAAAAAAAAAdABUAAAAAAAAAAAAdABQAAAAAAAAAAAAdABMAAAAAAAAAAAAdABIAAAAAAAAAAAAdABEAAAAAAAAAAAAcACoAAAAAAAAAAAAcACkAAAAAAAAAAAAcACgAAAAAAAAAAAAcACcAAAAAAAAAAAAcACYAAAAAAAAAAAAcACUAAAAAAAAAAAAcACQAAAAAAAAAAAAcACMAAAAAAAAAAAAcACIAAAAAAAAAAAAcACEAAAAAAAAAAAAcACAAAAAAAAAAAAAcAB8AAAAAAAAAAAAcAB4AAAAAAAAAAAAcAB0AAAAAAAAAAAAcABwAAAAAAAAAAAAcABsAAAAAAAAAAAAcABoAAAAAAAAAAAAcABkAAAAAAAAAAAAcABgAAAAAAAAAAAAcABcAAAAAAAAAAAAcABYAAAAAAAAAAAAcABUAAAAAAAAAAAAcABQAAAAAAAAAAAAcABMAAAAAAAAAAAAcABIAAAAAAAAAAAAcABEAAAAAAAAAAAAbACoAAAAAAAAAAAAbACkAAAAAAAAAAAAbACgAAAAAAAAAAAAbACcAAAAAAAAAAAAbACYAAAAAAAAAAAAbACUAAAAAAAAAAAAbACQAAAAAAAAAAAAbACMAAAAAAAAAAAAbACIAAAAAAAAAAAAbACEAAAAAAAAAAAAbACAAAAAAAAAAAAAbAB8AAAAAAAAAAAAbAB4AAAAAAAAAAAAbAB0AAAAAAAAAAAAbABwAAAABAAAAAAAbABsAAAAAAAAAAAAbABoAAAAAAAAAAAAbABkAAAAAAAAAAAAbABgAAAAAAAAAAAAbABcAAAAAAAAAAAAbABYAAAAAAAAAAAAbABUAAAACAAAAAAAbABQAAAAAAAAAAAAbABMAAAAAAAAAAAAbABIAAAAAAAAAAAAbABEAAAACAAAAAAAaACoAAAAAAAAAAAAaACkAAAAAAAAAAAAaACgAAAABAAAAAAAaACcAAAAAAAAAAAAaACYAAAAAAAAAAAAaACUAAAAAAAAAAAAaACQAAAAAAAAAAAAaACMAAAAAAAAAAAAaACIAAAAAAAAAAAAaACEAAAAAAAAAAAAaACAAAAAAAAAAAAAaAB8AAAAAAAAAAAAaAB4AAAAAAAAAAAAaAB0AAAAAAAAAAAAaABwAAAABAAAAAAAaABsAAAAAAAAAAAAaABoAAAAAAAAAAAAaABkAAAAAAAAAAAAaABgAAAAAAAAAAAAaABcAAAAAAAAAAAAaABYAAAAAAAAAAAAaABUAAAAAAAAAAAAaABQAAAAAAAAAAAAaABMAAAAAAAAAAAAaABIAAAAAAAAAAAAaABEAAAAAAAAAAAAZACoAAAAAAAAAAAAZACkAAAAAAAAAAAAZACgAAAAAAAAAAAAZACcAAAAAAAAAAAAZACYAAAAAAAAAAAAZACUAAAAAAAAAAAAZACQAAAAAAAAAAAAZACMAAAAAAAAAAAAZACIAAAAAAAAAAAAZACEAAAAAAAAAAAAZACAAAAAAAAAAAAAZAB8AAAAAAAAAAAAZAB4AAAAAAAAAAAAZAB0AAAAAAAAAAAAZABwAAAAAAAAAAAAZABsAAAAAAAAAAAAZABoAAAAAAAAAAAAZABkAAAAAAAAAAAAZABgAAAAAAAAAAAAZABcAAAAAAAAAAAAZABYAAAAAAAAAAAAZABUAAAAAAAAAAAAZABQAAAAAAAAAAAAZABMAAAAAAAAAAAAZABIAAAAAAAAAAAAZABEAAAAAAAAAAAAYACoAAAAAAAAAAAAYACkAAAAAAAAAAAAYACgAAAAAAAAAAAAYACcAAAAAAAAAAAAYACYAAAAAAAAAAAAYACUAAAAAAAAAAAAYACQAAAAAAAAAAAAYACMAAAAAAAAAAAAYACIAAAAAAAAAAAAYACEAAAACAAAAAAAYACAAAAAAAAAAAAAYAB8AAAAAAAAAAAAYAB4AAAAAAAAAAAAYAB0AAAAAAAAAAAAYABwAAAAAAAAAAAAYABsAAAAAAAAAAAAYABoAAAAAAAAAAAAYABkAAAAAAAAAAAAYABgAAAAAAAAAAAAYABcAAAAAAAAAAAAYABYAAAAAAAAAAAAYABUAAAAAAAAAAAAYABQAAAAAAAAAAAAYABMAAAAAAAAAAAAYABIAAAAAAAAAAAAYABEAAAACAAAAAAAXACoAAAAAAAAAAAAXACkAAAAAAAAAAAAXACgAAAAAAAAAAAAXACcAAAAAAAAAAAAXACYAAAAAAAAAAAAXACUAAAAAAAAAAAAXACQAAAAAAAAAAAAXACMAAAAAAAAAAAAXACIAAAAAAAAAAAAXACEAAAAAAAAAAAAXACAAAAAAAAAAAAAXAB8AAAAAAAAAAAAXAB4AAAAAAAAAAAAXAB0AAAAAAAAAAAAXABwAAAAAAAAAAAAXABsAAAAAAAAAAAAXABoAAAAAAAAAAAAXABkAAAAAAAAAAAAXABgAAAAAAAAAAAAXABcAAAAAAAAAAAAXABYAAAAAAAAAAAAXABUAAAAAAAAAAAAXABQAAAAAAAAAAAAXABMAAAAAAAAAAAAXABIAAAAAAAAAAAAXABEAAAAAAAAAAAA=")
+ tile_set = ExtResource("7_po5fq")
+ script = ExtResource("55_a8sfs")
++metadata/_edit_lock_ = true
+ 
+ [node name="Trees" type="TileMapLayer" parent="Field/Map/Forest"]
+ tile_map_data = PackedByteArray("AAAXABEAAAAHAAEAAAAXABIAAAAHAAEAAAAXABMAAAAHAAEAAAAXABQAAAAHAAEAAAAXABUAAAAHAAEAAAAXABYAAAAHAAEAAAAXABcAAAAHAAEAAAAXABgAAAAHAAEAAAAXABkAAAAHAAEAAAAXABoAAAAHAAEAAAAXABsAAAAHAAEAAAAXABwAAAAHAAEAAAAXAB0AAAAHAAEAAAAXAB4AAAAHAAEAAAAXAB8AAAAHAAEAAAAXACAAAAAHAAEAAAAXACEAAAAHAAEAAAAXACIAAAAHAAEAAAAXACMAAAAHAAEAAAAXACQAAAAHAAEAAAAXACUAAAAHAAEAAAAXACYAAAAHAAEAAAAXACcAAAAHAAEAAAAXACgAAAAHAAEAAAAXACkAAAAHAAEAAAAXACoAAAAGAAIAAAAYABEAAAAHAAEAAAAYABIAAAAHAAEAAAAYABMAAAAHAAEAAAAYABQAAAAHAAEAAAAYABUAAAAHAAEAAAAYABYAAAAHAAEAAAAYABcAAAAHAAEAAAAYABgAAAAHAAEAAAAYABkAAAAHAAEAAAAYABoAAAAHAAEAAAAYABsAAAAHAAEAAAAYABwAAAAHAAEAAAAYAB0AAAAHAAEAAAAYAB4AAAAHAAEAAAAYAB8AAAAHAAEAAAAYACAAAAAHAAEAAAAYACEAAAAHAAEAAAAYACIAAAAHAAEAAAAYACMAAAAHAAEAAAAYACQAAAAHAAEAAAAYACUAAAAHAAEAAAAYACYAAAAHAAEAAAAYACcAAAAHAAEAAAAYACgAAAAHAAEAAAAYACkAAAAHAAEAAAAYACoAAAAHAAEAAAAZABEAAAAHAAEAAAAZABIAAAAHAAEAAAAZABMAAAAHAAEAAAAZABQAAAAHAAEAAAAZABUAAAAHAAEAAAAZABYAAAAHAAEAAAAZABcAAAAHAAEAAAAZABgAAAAHAAEAAAAZABkAAAAHAAEAAAAZABoAAAAHAAEAAAAZABsAAAAHAAEAAAAZABwAAAAHAAEAAAAZAB0AAAAHAAEAAAAZAB4AAAAHAAEAAAAZAB8AAAAHAAEAAAAZACAAAAAHAAEAAAAZACEAAAAHAAEAAAAZACIAAAAHAAEAAAAZACMAAAAHAAEAAAAZACQAAAAHAAEAAAAZACUAAAAHAAEAAAAZACYAAAAHAAEAAAAZACcAAAAHAAEAAAAZACgAAAAHAAEAAAAZACkAAAAHAAEAAAAZACoAAAAHAAEAAAAaABEAAAAHAAEAAAAaABIAAAAHAAEAAAAaABMAAAAHAAEAAAAaABQAAAAHAAEAAAAaABUAAAAHAAEAAAAaABYAAAAHAAEAAAAaABcAAAAHAAEAAAAaABgAAAAHAAEAAAAaABkAAAAHAAEAAAAaABoAAAAHAAEAAAAaABsAAAAHAAEAAAAaABwAAAAHAAEAAAAaAB0AAAAHAAEAAAAaAB4AAAAHAAEAAAAaAB8AAAAHAAEAAAAaACAAAAAHAAEAAAAaACEAAAAHAAEAAAAaACIAAAAHAAEAAAAaACMAAAAHAAEAAAAaACQAAAAHAAEAAAAaACUAAAAHAAEAAAAaACYAAAAHAAEAAAAaACcAAAAHAAEAAAAaACgAAAAHAAEAAAAaACkAAAAHAAEAAAAaACoAAAAHAAEAAAAbABEAAAAHAAEAAAAbABIAAAAHAAEAAAAbABMAAAAHAAEAAAAbABQAAAAHAAEAAAAbABUAAAAHAAEAAAAbABYAAAAHAAEAAAAbABcAAAAHAAEAAAAbABgAAAAHAAEAAAAbABkAAAAHAAEAAAAbABoAAAAHAAEAAAAbABsAAAAHAAEAAAAbABwAAAAHAAEAAAAbAB0AAAAHAAEAAAAbAB4AAAAHAAEAAAAbAB8AAAAHAAEAAAAbACAAAAAHAAEAAAAbACEAAAAHAAEAAAAbACIAAAAHAAEAAAAbACMAAAAHAAEAAAAbACQAAAAHAAEAAAAbACUAAAAHAAEAAAAbACYAAAAHAAEAAAAbACcAAAAHAAEAAAAbACgAAAAHAAEAAAAbACkAAAAHAAEAAAAbACoAAAAHAAEAAAAcABEAAAAHAAEAAAAcABIAAAAHAAEAAAAcABMAAAAHAAEAAAAcABQAAAAHAAEAAAAcABUAAAAHAAEAAAAcABYAAAAHAAEAAAAcABcAAAAHAAEAAAAcABgAAAAHAAEAAAAcABkAAAAHAAEAAAAcABoAAAAHAAEAAAAcABsAAAAHAAEAAAAcABwAAAAHAAEAAAAcAB0AAAAHAAEAAAAcAB4AAAAHAAEAAAAcAB8AAAAHAAEAAAAcACAAAAAHAAEAAAAcACEAAAAHAAEAAAAcACIAAAAHAAEAAAAcACMAAAAHAAEAAAAcACQAAAAHAAEAAAAcACUAAAAHAAEAAAAcACYAAAAHAAEAAAAcACcAAAAHAAEAAAAcACgAAAAHAAEAAAAcACkAAAAHAAEAAAAcACoAAAAHAAEAAAAdABEAAAAHAAEAAAAdABIAAAAHAAEAAAAdABMAAAAHAAEAAAAdABQAAAAHAAEAAAAdABUAAAAHAAEAAAAdABYAAAAHAAEAAAAdABcAAAAHAAEAAAAdABgAAAAHAAEAAAAdABkAAAAHAAEAAAAdABoAAAAHAAEAAAAdABsAAAAHAAEAAAAdABwAAAAHAAEAAAAdAB0AAAAHAAEAAAAdAB4AAAAHAAEAAAAdAB8AAAAHAAEAAAAdACAAAAAHAAEAAAAdACEAAAAHAAEAAAAdACIAAAAHAAEAAAAdACMAAAAHAAEAAAAdACQAAAAHAAEAAAAdACUAAAAHAAEAAAAdACYAAAAHAAEAAAAdACcAAAAHAAEAAAAdACgAAAAHAAEAAAAdACkAAAAHAAEAAAAdACoAAAAHAAEAAAAeABEAAAAHAAEAAAAeABIAAAAHAAEAAAAeABMAAAAHAAEAAAAeABQAAAAHAAEAAAAeABUAAAAHAAEAAAAeABYAAAAHAAEAAAAeABcAAAAHAAEAAAAeABgAAAAHAAEAAAAeABkAAAAHAAEAAAAeABoAAAAHAAEAAAAeABsAAAAHAAEAAAAeABwAAAAHAAEAAAAeAB0AAAAHAAEAAAAeAB4AAAAHAAEAAAAeAB8AAAAHAAEAAAAeACAAAAAHAAEAAAAeACEAAAAHAAEAAAAeACIAAAAHAAEAAAAeACMAAAAHAAEAAAAeACQAAAAHAAEAAAAeACUAAAAHAAEAAAAeACYAAAAHAAEAAAAeACcAAAAHAAEAAAAeACgAAAAHAAEAAAAeACkAAAAHAAEAAAAeACoAAAAHAAEAAAAfABEAAAAHAAEAAAAfABIAAAAHAAEAAAAfABMAAAAHAAEAAAAfABQAAAAHAAEAAAAfABUAAAAHAAEAAAAfABYAAAAHAAEAAAAfABcAAAAHAAEAAAAfABgAAAAHAAEAAAAfABkAAAAHAAEAAAAfABoAAAAHAAEAAAAfABsAAAAHAAEAAAAfABwAAAAHAAEAAAAfAB0AAAAHAAEAAAAfAB4AAAAHAAEAAAAfAB8AAAAHAAEAAAAfACAAAAAHAAEAAAAfACEAAAAHAAEAAAAfACIAAAAHAAEAAAAfACMAAAAHAAEAAAAfACQAAAAHAAEAAAAfACUAAAAHAAEAAAAfACYAAAAHAAEAAAAfACcAAAAHAAEAAAAfACgAAAAHAAEAAAAfACkAAAAHAAEAAAAfACoAAAAHAAEAAAAgABEAAAAHAAEAAAAgABIAAAAHAAEAAAAgABMAAAAHAAEAAAAgABQAAAAHAAEAAAAgABUAAAAHAAEAAAAgABYAAAAHAAEAAAAgABcAAAAHAAEAAAAgABgAAAAHAAEAAAAgABkAAAAHAAEAAAAgABoAAAAHAAEAAAAgABsAAAAHAAEAAAAgABwAAAAHAAEAAAAgAB0AAAAHAAEAAAAgAB4AAAAHAAEAAAAgAB8AAAAHAAEAAAAgACAAAAAHAAEAAAAgACEAAAAHAAEAAAAgACIAAAAHAAEAAAAgACMAAAAHAAEAAAAgACQAAAAHAAEAAAAgACUAAAAHAAEAAAAgACYAAAAHAAEAAAAgACcAAAAHAAEAAAAgACgAAAAHAAEAAAAgACkAAAAHAAEAAAAgACoAAAAHAAEAAAAhABEAAAAHAAEAAAAhABIAAAAHAAEAAAAhABMAAAAHAAEAAAAhABQAAAAHAAEAAAAhABUAAAAHAAEAAAAhABYAAAAHAAEAAAAhABcAAAAHAAEAAAAhABgAAAAHAAEAAAAhABkAAAAHAAEAAAAhABoAAAAHAAEAAAAhABsAAAAHAAEAAAAhABwAAAAHAAEAAAAhAB0AAAAHAAEAAAAhAB4AAAAHAAEAAAAhAB8AAAAHAAEAAAAhACAAAAAHAAEAAAAhACEAAAAHAAEAAAAhACIAAAAHAAEAAAAhACMAAAAHAAEAAAAhACQAAAAHAAEAAAAhACUAAAAHAAEAAAAhACYAAAAHAAEAAAAhACcAAAAHAAEAAAAhACgAAAAHAAEAAAAhACkAAAAHAAEAAAAhACoAAAAHAAEAAAAiABEAAAAHAAEAAAAiABIAAAAHAAEAAAAiABMAAAAHAAEAAAAiABQAAAAHAAEAAAAiABUAAAAHAAEAAAAiABYAAAAHAAEAAAAiABcAAAAHAAEAAAAiABgAAAAHAAEAAAAiABkAAAAHAAEAAAAiABoAAAAHAAEAAAAiABsAAAAHAAEAAAAiABwAAAAHAAEAAAAiAB0AAAAHAAEAAAAiAB4AAAAHAAEAAAAiAB8AAAAHAAEAAAAiACAAAAAHAAEAAAAiACEAAAAHAAEAAAAiACIAAAAHAAEAAAAiACMAAAAHAAEAAAAiACQAAAAHAAEAAAAiACUAAAAHAAEAAAAiACYAAAAHAAEAAAAiACcAAAAHAAEAAAAiACgAAAAHAAEAAAAiACkAAAAHAAEAAAAiACoAAAAHAAEAAAAjABEAAAAHAAEAAAAjABIAAAAHAAEAAAAjABMAAAAHAAEAAAAjABQAAAAHAAEAAAAjABUAAAAHAAEAAAAjABYAAAAHAAEAAAAjABcAAAAHAAEAAAAjABgAAAAHAAEAAAAjABkAAAAHAAEAAAAjABoAAAAHAAEAAAAjABsAAAAHAAEAAAAjABwAAAAHAAEAAAAjAB0AAAAHAAEAAAAjAB4AAAAHAAEAAAAjAB8AAAAHAAEAAAAjACAAAAAHAAEAAAAjACEAAAAHAAEAAAAjACIAAAAHAAEAAAAjACMAAAAHAAEAAAAjACQAAAAHAAEAAAAjACUAAAAHAAEAAAAjACYAAAAHAAEAAAAjACcAAAAHAAEAAAAjACgAAAAHAAEAAAAjACkAAAAHAAEAAAAjACoAAAAHAAEAAAAkABEAAAAHAAEAAAAkABIAAAAHAAEAAAAkABMAAAAHAAEAAAAkABQAAAAHAAEAAAAkABUAAAAHAAEAAAAkABYAAAAHAAEAAAAkABcAAAAHAAEAAAAkABgAAAAHAAEAAAAkABkAAAAHAAEAAAAkABoAAAAHAAEAAAAkABsAAAAHAAEAAAAkABwAAAAHAAEAAAAkAB0AAAAHAAEAAAAkAB4AAAAHAAEAAAAkAB8AAAAHAAEAAAAkACAAAAAHAAEAAAAkACEAAAAHAAEAAAAkACIAAAAHAAEAAAAkACMAAAAHAAEAAAAkACQAAAAHAAEAAAAkACUAAAAHAAEAAAAkACYAAAAHAAEAAAAkACcAAAAHAAEAAAAkACgAAAAHAAEAAAAkACkAAAAHAAEAAAAkACoAAAAHAAEAAAAlABEAAAAHAAEAAAAlABIAAAAIAAIAAAAlABMAAAAIAAEAAAAlABQAAAAIAAEAAAAlABUAAAAIAAEAAAAlABYAAAAIAAAAAAAlABcAAAAHAAEAAAAlABgAAAAHAAEAAAAlABkAAAAHAAEAAAAlABoAAAAIAAIAAAAlABsAAAAIAAAAAAAlABwAAAAHAAEAAAAlAB0AAAAHAAEAAAAlAB4AAAAHAAEAAAAlAB8AAAAHAAEAAAAlACAAAAAIAAIAAAAlACEAAAAIAAAAAAAlACIAAAAHAAEAAAAlACMAAAAHAAEAAAAlACQAAAAHAAEAAAAlACUAAAAHAAEAAAAlACYAAAAHAAEAAAAlACcAAAAHAAEAAAAlACgAAAAHAAEAAAAlACkAAAAHAAEAAAAlACoAAAAHAAEAAAAmABEAAAAIAAIAAAAmABMAAAAGAAAAAAAmABQAAAAGAAIAAAAmABcAAAAIAAEAAAAmABgAAAAIAAAAAAAmABkAAAAIAAIAAAAmABwAAAAIAAAAAAAmAB0AAAAHAAEAAAAmAB4AAAAHAAEAAAAmAB8AAAAHAAEAAAAmACAAAAAHAAIAAAAmACEAAAAEAAIAAAAmACIAAAAIAAAAAAAmACMAAAAHAAEAAAAmACQAAAAHAAEAAAAmACUAAAAHAAEAAAAmACYAAAAHAAEAAAAmACcAAAAHAAEAAAAmACgAAAAHAAEAAAAmACkAAAAHAAEAAAAmACoAAAAHAAEAAAAnABIAAAAGAAAAAAAnABMAAAAHAAEAAAAnABQAAAAHAAEAAAAnABUAAAAGAAIAAAAnAB0AAAAIAAEAAAAnAB4AAAAIAAAAAAAnAB8AAAAIAAIAAAAnACAAAAAGAAAAAAAnACEAAAAGAAIAAAAnACIAAAAGAAAAAAAnACMAAAAHAAEAAAAnACQAAAAHAAEAAAAnACUAAAAHAAEAAAAnACYAAAAHAAEAAAAnACcAAAAHAAEAAAAnACgAAAAHAAEAAAAnACkAAAAHAAEAAAAnACoAAAAHAAEAAAAoABEAAAAGAAEAAAAoABIAAAAHAAEAAAAoABMAAAAHAAEAAAAoABQAAAAHAAEAAAAoABUAAAAHAAEAAAAoABYAAAAGAAIAAAAoABcAAAAGAAAAAAAoABgAAAAGAAIAAAAoABkAAAAGAAEAAAAoABoAAAAHAAAAAAAoABsAAAAGAAIAAAAoAB8AAAAGAAAAAAAoACAAAAAHAAEAAAAoACEAAAAHAAEAAAAoACIAAAAHAAEAAAAoACMAAAAHAAEAAAAoACQAAAAHAAEAAAAoACUAAAAHAAEAAAAoACYAAAAHAAEAAAAoACcAAAAHAAEAAAAoACgAAAAHAAEAAAAoACkAAAAHAAEAAAAoACoAAAAHAAEAAAApABEAAAAHAAEAAAApABIAAAAHAAEAAAApABMAAAAHAAEAAAApABQAAAAHAAEAAAApABUAAAAHAAEAAAApABYAAAAHAAEAAAApABcAAAAHAAEAAAApABgAAAAHAAEAAAApABkAAAAHAAEAAAApABoAAAAGAAIAAAApABsAAAAIAAAAAAApABwAAAAHAAIAAAApAB8AAAAIAAAAAAApACAAAAAHAAEAAAApACEAAAAHAAEAAAApACIAAAAHAAEAAAApACMAAAAHAAEAAAApACQAAAAHAAEAAAApACUAAAAHAAEAAAApACYAAAAHAAEAAAApACcAAAAHAAEAAAApACgAAAAHAAEAAAApACkAAAAHAAEAAAApACoAAAAHAAEAAAAqABEAAAAHAAEAAAAqABIAAAAHAAEAAAAqABMAAAAHAAEAAAAqABQAAAAHAAEAAAAqABUAAAAHAAEAAAAqABYAAAAHAAEAAAAqABcAAAAHAAEAAAAqABgAAAAHAAEAAAAqABkAAAAIAAIAAAAqABoAAAAIAAAAAAAqABsAAAAHAAIAAAAqAB4AAAAFAAAAAAAqAB8AAAAHAAAAAAAqACAAAAAHAAEAAAAqACEAAAAHAAEAAAAqACIAAAAHAAEAAAAqACMAAAAHAAEAAAAqACQAAAAHAAEAAAAqACUAAAAHAAEAAAAqACYAAAAHAAEAAAAqACcAAAAHAAEAAAAqACgAAAAHAAEAAAAqACkAAAAHAAEAAAAqACoAAAAHAAEAAAArABEAAAAHAAEAAAArABIAAAAHAAEAAAArABMAAAAHAAEAAAArABQAAAAHAAEAAAArABUAAAAHAAEAAAArABYAAAAHAAEAAAArABcAAAAHAAEAAAArABgAAAAIAAIAAAArABsAAAAEAAIAAAArACAAAAAIAAAAAAArACEAAAAHAAEAAAArACIAAAAHAAEAAAArACMAAAAHAAEAAAArACQAAAAHAAEAAAArACUAAAAHAAEAAAArACYAAAAHAAEAAAArACcAAAAHAAEAAAArACgAAAAHAAEAAAArACkAAAAHAAEAAAArACoAAAAHAAEAAAAsABEAAAAHAAEAAAAsABIAAAAHAAEAAAAsABMAAAAHAAEAAAAsABQAAAAHAAEAAAAsABUAAAAHAAEAAAAsABYAAAAHAAEAAAAsABcAAAAHAAEAAAAsABgAAAAGAAIAAAAsABoAAAAFAAAAAAAsABsAAAAFAAAAAAAsAB0AAAAGAAEAAAAsACEAAAAIAAAAAAAsACIAAAAHAAEAAAAsACMAAAAHAAEAAAAsACQAAAAHAAEAAAAsACUAAAAHAAEAAAAsACYAAAAHAAEAAAAsACcAAAAHAAEAAAAsACgAAAAHAAEAAAAsACkAAAAHAAEAAAAsACoAAAAHAAEAAAAtABEAAAAHAAEAAAAtABIAAAAHAAEAAAAtABMAAAAHAAEAAAAtABQAAAAHAAEAAAAtABUAAAAHAAEAAAAtABYAAAAHAAEAAAAtABcAAAAHAAEAAAAtABgAAAAHAAEAAAAtABkAAAAGAAIAAAAtABoAAAAGAAEAAAAtABsAAAAGAAAAAAAtABwAAAAGAAIAAAAtAB0AAAAHAAEAAAAtAB4AAAAGAAIAAAAtACIAAAAIAAAAAAAtACMAAAAHAAEAAAAtACQAAAAHAAEAAAAtACUAAAAHAAEAAAAtACYAAAAHAAEAAAAtACcAAAAHAAEAAAAtACgAAAAHAAEAAAAtACkAAAAHAAEAAAAtACoAAAAHAAEAAAAuABEAAAAHAAEAAAAuABIAAAAHAAEAAAAuABMAAAAHAAEAAAAuABQAAAAHAAEAAAAuABUAAAAHAAEAAAAuABYAAAAHAAEAAAAuABcAAAAHAAEAAAAuABgAAAAHAAEAAAAuABkAAAAHAAEAAAAuABoAAAAIAAIAAAAuABsAAAAIAAAAAAAuABwAAAAIAAIAAAAuAB0AAAAIAAAAAAAuAB4AAAAIAAIAAAAuACIAAAAHAAAAAAAuACMAAAAHAAEAAAAuACQAAAAHAAEAAAAuACUAAAAHAAEAAAAuACYAAAAHAAEAAAAuACcAAAAHAAEAAAAuACgAAAAHAAEAAAAuACkAAAAHAAEAAAAuACoAAAAHAAEAAAAvABEAAAAHAAEAAAAvABIAAAAHAAEAAAAvABMAAAAHAAEAAAAvABQAAAAHAAEAAAAvABUAAAAHAAEAAAAvABYAAAAHAAEAAAAvABcAAAAHAAEAAAAvABgAAAAHAAEAAAAvABkAAAAHAAEAAAAvABoAAAAIAAIAAAAvACIAAAAGAAAAAAAvACMAAAAHAAEAAAAvACQAAAAHAAEAAAAvACUAAAAHAAEAAAAvACYAAAAHAAEAAAAvACcAAAAHAAEAAAAvACgAAAAHAAEAAAAvACkAAAAHAAEAAAAvACoAAAAHAAEAAAAwABEAAAAHAAEAAAAwABIAAAAHAAEAAAAwABMAAAAHAAEAAAAwABQAAAAHAAEAAAAwABUAAAAHAAEAAAAwABYAAAAHAAEAAAAwABcAAAAHAAEAAAAwABgAAAAIAAIAAAAwABkAAAAIAAEAAAAwABwAAAAGAAEAAAAwAB0AAAAGAAEAAAAwAB4AAAAGAAEAAAAwACIAAAAIAAAAAAAwACMAAAAHAAEAAAAwACQAAAAHAAEAAAAwACUAAAAHAAEAAAAwACYAAAAHAAEAAAAwACcAAAAHAAEAAAAwACgAAAAHAAEAAAAwACkAAAAHAAEAAAAwACoAAAAHAAEAAAAxABEAAAAHAAEAAAAxABIAAAAHAAEAAAAxABMAAAAHAAEAAAAxABQAAAAHAAEAAAAxABUAAAAHAAEAAAAxABYAAAAHAAEAAAAxABcAAAAHAAEAAAAxABgAAAAGAAIAAAAxABkAAAAGAAEAAAAxABoAAAAGAAEAAAAxABsAAAAGAAAAAAAxABwAAAAHAAEAAAAxAB0AAAAHAAEAAAAxAB4AAAAHAAEAAAAxAB8AAAAGAAIAAAAxACAAAAAGAAIAAAAxACEAAAAEAAIAAAAxACIAAAAHAAAAAAAxACMAAAAHAAEAAAAxACQAAAAHAAEAAAAxACUAAAAHAAEAAAAxACYAAAAHAAEAAAAxACcAAAAHAAEAAAAxACgAAAAHAAEAAAAxACkAAAAHAAEAAAAxACoAAAAHAAEAAAAyABEAAAAHAAEAAAAyABIAAAAHAAEAAAAyABMAAAAHAAEAAAAyABQAAAAHAAEAAAAyABUAAAAHAAEAAAAyABYAAAAHAAEAAAAyABcAAAAHAAEAAAAyABgAAAAHAAEAAAAyABkAAAAHAAEAAAAyABoAAAAHAAEAAAAyABsAAAAHAAEAAAAyABwAAAAHAAEAAAAyAB0AAAAHAAEAAAAyAB4AAAAHAAEAAAAyAB8AAAAIAAIAAAAyACAAAAAIAAAAAAAyACEAAAAGAAIAAAAyACIAAAAGAAAAAAAyACMAAAAHAAEAAAAyACQAAAAHAAEAAAAyACUAAAAHAAEAAAAyACYAAAAHAAEAAAAyACcAAAAHAAEAAAAyACgAAAAHAAEAAAAyACkAAAAHAAEAAAAyACoAAAAHAAEAAAAzABEAAAAHAAEAAAAzABIAAAAHAAEAAAAzABMAAAAHAAEAAAAzABQAAAAHAAEAAAAzABUAAAAHAAEAAAAzABYAAAAHAAEAAAAzABcAAAAHAAEAAAAzABgAAAAHAAEAAAAzABkAAAAHAAEAAAAzABoAAAAHAAEAAAAzABsAAAAIAAIAAAAzABwAAAAIAAEAAAAzAB0AAAAIAAEAAAAzAB4AAAAIAAEAAAAzAB8AAAAEAAIAAAAzACAAAAAEAAIAAAAzACEAAAAIAAAAAAAzACIAAAAHAAEAAAAzACMAAAAHAAEAAAAzACQAAAAHAAEAAAAzACUAAAAHAAEAAAAzACYAAAAHAAEAAAAzACcAAAAHAAEAAAAzACgAAAAHAAEAAAAzACkAAAAHAAEAAAAzACoAAAAHAAEAAAA0ABEAAAAHAAEAAAA0ABIAAAAHAAEAAAA0ABMAAAAHAAEAAAA0ABQAAAAHAAEAAAA0ABUAAAAHAAEAAAA0ABYAAAAHAAEAAAA0ABcAAAAHAAEAAAA0ABgAAAAHAAEAAAA0ABkAAAAHAAEAAAA0ABoAAAAIAAIAAAA0ACAAAAAFAAAAAAA0ACEAAAAEAAIAAAA0ACIAAAAIAAAAAAA0ACMAAAAHAAEAAAA0ACQAAAAHAAEAAAA0ACUAAAAHAAEAAAA0ACYAAAAHAAEAAAA0ACcAAAAHAAEAAAA0ACgAAAAHAAEAAAA0ACkAAAAHAAEAAAA0ACoAAAAHAAEAAAA1ABEAAAAHAAEAAAA1ABIAAAAHAAEAAAA1ABMAAAAHAAEAAAA1ABQAAAAHAAEAAAA1ABUAAAAHAAEAAAA1ABYAAAAHAAEAAAA1ABcAAAAHAAEAAAA1ABgAAAAHAAEAAAA1ABkAAAAHAAEAAAA1ABoAAAAGAAIAAAA1ABsAAAAEAAIAAAA1ACIAAAAHAAAAAAA1ACMAAAAHAAEAAAA1ACQAAAAHAAEAAAA1ACUAAAAHAAEAAAA1ACYAAAAHAAEAAAA1ACcAAAAHAAEAAAA1ACgAAAAHAAEAAAA1ACkAAAAHAAEAAAA1ACoAAAAHAAEAAAA2ABEAAAAHAAEAAAA2ABIAAAAHAAEAAAA2ABMAAAAHAAEAAAA2ABQAAAAHAAEAAAA2ABUAAAAHAAEAAAA2ABYAAAAHAAEAAAA2ABcAAAAHAAEAAAA2ABgAAAAHAAEAAAA2ABkAAAAHAAEAAAA2ABoAAAAHAAEAAAA2ABsAAAAGAAIAAAA2ACEAAAAFAAAAAAA2ACIAAAAHAAAAAAA2ACMAAAAHAAEAAAA2ACQAAAAHAAEAAAA2ACUAAAAHAAEAAAA2ACYAAAAHAAEAAAA2ACcAAAAHAAEAAAA2ACgAAAAHAAEAAAA2ACkAAAAHAAEAAAA2ACoAAAAHAAEAAAA3ABEAAAAHAAEAAAA3ABIAAAAHAAEAAAA3ABMAAAAHAAEAAAA3ABQAAAAHAAEAAAA3ABUAAAAHAAEAAAA3ABYAAAAHAAEAAAA3ABcAAAAHAAEAAAA3ABgAAAAHAAEAAAA3ABkAAAAHAAEAAAA3ABoAAAAHAAEAAAA3ABsAAAAHAAEAAAA3ABwAAAAHAAIAAAA3ACAAAAAGAAAAAAA3ACEAAAAGAAIAAAA3ACIAAAAGAAAAAAA3ACMAAAAHAAEAAAA3ACQAAAAHAAEAAAA3ACUAAAAHAAEAAAA3ACYAAAAHAAEAAAA3ACcAAAAHAAEAAAA3ACgAAAAHAAEAAAA3ACkAAAAHAAEAAAA3ACoAAAAHAAEAAAA4ABEAAAAHAAEAAAA4ABIAAAAHAAEAAAA4ABMAAAAHAAEAAAA4ABQAAAAHAAEAAAA4ABUAAAAHAAEAAAA4ABYAAAAHAAEAAAA4ABcAAAAHAAEAAAA4ABgAAAAHAAEAAAA4ABkAAAAIAAIAAAA4ABoAAAAIAAAAAAA4ABsAAAAIAAIAAAA4AB8AAAAGAAAAAAA4ACAAAAAHAAEAAAA4ACEAAAAHAAEAAAA4ACIAAAAHAAEAAAA4ACMAAAAHAAEAAAA4ACQAAAAHAAEAAAA4ACUAAAAHAAEAAAA4ACYAAAAHAAEAAAA4ACcAAAAHAAEAAAA4ACgAAAAHAAEAAAA4ACkAAAAHAAEAAAA4ACoAAAAHAAEAAAA5ABEAAAAHAAEAAAA5ABIAAAAHAAEAAAA5ABMAAAAHAAEAAAA5ABQAAAAHAAEAAAA5ABUAAAAHAAEAAAA5ABYAAAAHAAEAAAA5ABcAAAAHAAEAAAA5ABgAAAAHAAEAAAA5ABkAAAAGAAIAAAA5ABoAAAAFAAAAAAA5AB0AAAAGAAEAAAA5AB4AAAAGAAAAAAA5AB8AAAAHAAEAAAA5ACAAAAAHAAEAAAA5ACEAAAAHAAEAAAA5ACIAAAAHAAEAAAA5ACMAAAAHAAEAAAA5ACQAAAAHAAEAAAA5ACUAAAAHAAEAAAA5ACYAAAAHAAEAAAA5ACcAAAAHAAEAAAA5ACgAAAAHAAEAAAA5ACkAAAAHAAEAAAA5ACoAAAAHAAEAAAA6ABEAAAAHAAEAAAA6ABIAAAAHAAEAAAA6ABMAAAAHAAEAAAA6ABQAAAAHAAEAAAA6ABUAAAAHAAEAAAA6ABYAAAAHAAEAAAA6ABcAAAAHAAEAAAA6ABgAAAAHAAEAAAA6ABkAAAAHAAEAAAA6ABoAAAAGAAIAAAA6ABwAAAAGAAEAAAA6AB0AAAAIAAAAAAA6AB4AAAAHAAEAAAA6AB8AAAAHAAEAAAA6ACAAAAAHAAEAAAA6ACEAAAAHAAEAAAA6ACIAAAAHAAEAAAA6ACMAAAAHAAEAAAA6ACQAAAAHAAEAAAA6ACUAAAAHAAEAAAA6ACYAAAAHAAEAAAA6ACcAAAAHAAEAAAA6ACgAAAAHAAEAAAA6ACkAAAAHAAEAAAA6ACoAAAAHAAEAAAA7ABEAAAAHAAEAAAA7ABIAAAAHAAEAAAA7ABMAAAAHAAEAAAA7ABQAAAAHAAEAAAA7ABUAAAAHAAEAAAA7ABYAAAAHAAEAAAA7ABcAAAAHAAEAAAA7ABgAAAAHAAEAAAA7ABkAAAAHAAEAAAA7ABoAAAAHAAEAAAA7ABwAAAAIAAAAAAA7AB0AAAAHAAIAAAA7AB4AAAAIAAAAAAA7AB8AAAAHAAEAAAA7ACAAAAAHAAEAAAA7ACEAAAAHAAEAAAA7ACIAAAAHAAEAAAA7ACMAAAAHAAEAAAA7ACQAAAAHAAEAAAA7ACUAAAAHAAEAAAA7ACYAAAAHAAEAAAA7ACcAAAAHAAEAAAA7ACgAAAAHAAEAAAA7ACkAAAAHAAEAAAA7ACoAAAAHAAEAAAA8ABEAAAAHAAEAAAA8ABIAAAAHAAEAAAA8ABMAAAAHAAEAAAA8ABQAAAAHAAEAAAA8ABUAAAAHAAEAAAA8ABYAAAAHAAEAAAA8ABcAAAAHAAEAAAA8ABgAAAAHAAEAAAA8ABkAAAAHAAEAAAA8ABoAAAAIAAIAAAA8ABwAAAAHAAEAAAA8AB0AAAAGAAIAAAA8AB4AAAAGAAAAAAA8AB8AAAAHAAEAAAA8ACAAAAAHAAEAAAA8ACEAAAAHAAEAAAA8ACIAAAAHAAEAAAA8ACMAAAAHAAEAAAA8ACQAAAAHAAEAAAA8ACUAAAAHAAEAAAA8ACYAAAAHAAEAAAA8ACcAAAAHAAEAAAA8ACgAAAAHAAEAAAA8ACkAAAAHAAEAAAA8ACoAAAAHAAEAAAA9ABEAAAAHAAEAAAA9ABIAAAAHAAEAAAA9ABMAAAAHAAEAAAA9ABQAAAAHAAEAAAA9ABUAAAAHAAEAAAA9ABYAAAAHAAEAAAA9ABcAAAAHAAEAAAA9ABgAAAAHAAEAAAA9ABkAAAAIAAIAAAA9ABwAAAAHAAEAAAA9AB0AAAAHAAEAAAA9AB4AAAAHAAEAAAA9AB8AAAAHAAEAAAA9ACAAAAAHAAEAAAA9ACEAAAAHAAEAAAA9ACIAAAAHAAEAAAA9ACMAAAAHAAEAAAA9ACQAAAAHAAEAAAA9ACUAAAAHAAEAAAA9ACYAAAAHAAEAAAA9ACcAAAAHAAEAAAA9ACgAAAAHAAEAAAA9ACkAAAAHAAEAAAA9ACoAAAAHAAEAAAA+ABEAAAAHAAEAAAA+ABIAAAAHAAEAAAA+ABMAAAAHAAEAAAA+ABQAAAAHAAEAAAA+ABUAAAAHAAEAAAA+ABYAAAAHAAEAAAA+ABcAAAAIAAIAAAA+ABgAAAAIAAEAAAA+ABsAAAAHAAEAAAA+ABwAAAAHAAEAAAA+AB0AAAAHAAEAAAA+AB4AAAAHAAEAAAA+AB8AAAAHAAEAAAA+ACAAAAAHAAEAAAA+ACEAAAAHAAEAAAA+ACIAAAAHAAEAAAA+ACMAAAAHAAEAAAA+ACQAAAAHAAEAAAA+ACUAAAAHAAEAAAA+ACYAAAAHAAEAAAA+ACcAAAAHAAEAAAA+ACgAAAAHAAEAAAA+ACkAAAAHAAEAAAA+ACoAAAAHAAEAAAA/ABEAAAAHAAEAAAA/ABIAAAAHAAEAAAA/ABMAAAAHAAEAAAA/ABQAAAAHAAEAAAA/ABUAAAAHAAEAAAA/ABYAAAAHAAEAAAA/ABcAAAAHAAIAAAA/ABoAAAAHAAEAAAA/ABsAAAAHAAEAAAA/ABwAAAAHAAEAAAA/AB0AAAAHAAEAAAA/AB4AAAAHAAEAAAA/AB8AAAAHAAEAAAA/ACAAAAAHAAEAAAA/ACEAAAAHAAEAAAA/ACIAAAAHAAEAAAA/ACMAAAAHAAEAAAA/ACQAAAAHAAEAAAA/ACUAAAAHAAEAAAA/ACYAAAAHAAEAAAA/ACcAAAAHAAEAAAA/ACgAAAAHAAEAAAA/ACkAAAAHAAEAAAA/ACoAAAAHAAEAAABAABEAAAAHAAEAAABAABIAAAAHAAEAAABAABMAAAAHAAEAAABAABQAAAAHAAEAAABAABUAAAAHAAEAAABAABYAAAAHAAEAAABAABcAAAAHAAIAAABAABkAAAAHAAEAAABAABoAAAAHAAEAAABAABsAAAAHAAEAAABAABwAAAAHAAEAAABAAB0AAAAHAAEAAABAAB4AAAAHAAEAAABAAB8AAAAHAAEAAABAACAAAAAHAAEAAABAACEAAAAHAAEAAABAACIAAAAHAAEAAABAACMAAAAHAAEAAABAACQAAAAHAAEAAABAACUAAAAHAAEAAABAACYAAAAHAAEAAABAACcAAAAHAAEAAABAACgAAAAHAAEAAABAACkAAAAHAAEAAABAACoAAAAHAAEAAABBABEAAAAHAAEAAABBABIAAAAHAAEAAABBABMAAAAHAAEAAABBABQAAAAHAAEAAABBABUAAAAHAAEAAABBABYAAAAIAAIAAABBABkAAAAHAAEAAABBABoAAAAHAAEAAABBABsAAAAHAAEAAABBABwAAAAHAAEAAABBAB0AAAAHAAEAAABBAB4AAAAHAAEAAABBAB8AAAAHAAEAAABBACAAAAAHAAEAAABBACEAAAAHAAEAAABBACIAAAAHAAEAAABBACMAAAAHAAEAAABBACQAAAAHAAEAAABBACUAAAAHAAEAAABBACYAAAAHAAEAAABBACcAAAAHAAEAAABBACgAAAAHAAEAAABBACkAAAAHAAEAAABBACoAAAAHAAEAAABCABEAAAAHAAEAAABCABIAAAAHAAEAAABCABMAAAAHAAEAAABCABQAAAAHAAEAAABCABUAAAAIAAIAAABCABgAAAAHAAEAAABCABkAAAAHAAEAAABCABoAAAAHAAEAAABCABsAAAAHAAEAAABCABwAAAAHAAEAAABCAB0AAAAHAAEAAABCAB4AAAAHAAEAAABCAB8AAAAHAAEAAABCACAAAAAHAAEAAABCACEAAAAHAAEAAABCACIAAAAHAAEAAABCACMAAAAHAAEAAABCACQAAAAHAAEAAABCACUAAAAHAAEAAABCACYAAAAHAAEAAABCACcAAAAHAAEAAABCACgAAAAHAAEAAABCACkAAAAHAAEAAABCACoAAAAHAAEAAABDABEAAAAHAAEAAABDABIAAAAHAAEAAABDABMAAAAHAAEAAABDABQAAAAHAAEAAABDABUAAAAHAAIAAABDABgAAAAIAAAAAABDABkAAAAHAAEAAABDABoAAAAHAAEAAABDABsAAAAHAAEAAABDABwAAAAHAAEAAABDAB0AAAAHAAEAAABDAB4AAAAHAAEAAABDAB8AAAAHAAEAAABDACAAAAAHAAEAAABDACEAAAAHAAEAAABDACIAAAAHAAEAAABDACMAAAAHAAEAAABDACQAAAAHAAEAAABDACUAAAAHAAEAAABDACYAAAAHAAEAAABDACcAAAAHAAEAAABDACgAAAAHAAEAAABDACkAAAAHAAEAAABDACoAAAAHAAEAAABEABEAAAAHAAEAAABEABIAAAAHAAEAAABEABMAAAAHAAEAAABEABQAAAAHAAEAAABEABUAAAAGAAIAAABEABgAAAAGAAAAAABEABkAAAAHAAEAAABEABoAAAAHAAEAAABEABsAAAAHAAEAAABEABwAAAAHAAEAAABEAB0AAAAHAAEAAABEAB4AAAAHAAEAAABEAB8AAAAHAAEAAABEACAAAAAHAAEAAABEACEAAAAHAAEAAABEACIAAAAHAAEAAABEACMAAAAHAAEAAABEACQAAAAHAAEAAABEACUAAAAHAAEAAABEACYAAAAHAAEAAABEACcAAAAHAAEAAABEACgAAAAHAAEAAABEACkAAAAHAAEAAABEACoAAAAHAAEAAABFABEAAAAHAAEAAABFABIAAAAHAAEAAABFABMAAAAHAAEAAABFABQAAAAHAAEAAABFABUAAAAHAAEAAABFABYAAAAHAAIAAABFABgAAAAHAAEAAABFABkAAAAHAAEAAABFABoAAAAHAAEAAABFABsAAAAHAAEAAABFABwAAAAHAAEAAABFAB0AAAAHAAEAAABFAB4AAAAHAAEAAABFAB8AAAAHAAEAAABFACAAAAAHAAEAAABFACEAAAAHAAEAAABFACIAAAAHAAEAAABFACMAAAAHAAEAAABFACQAAAAHAAEAAABFACUAAAAHAAEAAABFACYAAAAHAAEAAABFACcAAAAHAAEAAABFACgAAAAHAAEAAABFACkAAAAHAAEAAABFACoAAAAHAAEAAABGABEAAAAHAAEAAABGABIAAAAHAAEAAABGABMAAAAHAAEAAABGABQAAAAIAAIAAABGABUAAAAIAAEAAABGABYAAAAGAAEAAABGABgAAAAHAAEAAABGABkAAAAHAAEAAABGABoAAAAHAAEAAABGABsAAAAHAAEAAABGABwAAAAHAAEAAABGAB0AAAAHAAEAAABGAB4AAAAHAAEAAABGAB8AAAAHAAEAAABGACAAAAAHAAEAAABGACEAAAAHAAEAAABGACIAAAAHAAEAAABGACMAAAAHAAEAAABGACQAAAAHAAEAAABGACUAAAAHAAEAAABGACYAAAAHAAEAAABGACcAAAAHAAEAAABGACgAAAAHAAEAAABGACkAAAAHAAEAAABGACoAAAAHAAEAAABHABEAAAAIAAAAAABHABIAAAAHAAEAAABHABMAAAAHAAEAAABHABQAAAAHAAIAAABHABUAAAAHAAAAAABHABYAAAAHAAEAAABHABcAAAAHAAEAAABHABgAAAAHAAEAAABHABkAAAAHAAEAAABHABoAAAAHAAEAAABHABsAAAAHAAEAAABHABwAAAAHAAEAAABHAB0AAAAHAAEAAABHAB4AAAAHAAEAAABHAB8AAAAHAAEAAABHACAAAAAHAAEAAABHACEAAAAHAAEAAABHACIAAAAHAAEAAABHACMAAAAHAAEAAABHACQAAAAHAAEAAABHACUAAAAHAAEAAABHACYAAAAHAAEAAABHACcAAAAHAAEAAABHACgAAAAHAAEAAABHACkAAAAHAAEAAABHACoAAAAIAAIAAAA=")
+ tile_set = ExtResource("7_po5fq")
+ script = ExtResource("55_a8sfs")
++metadata/_edit_lock_ = true
+ 
+ [node name="Treetops" type="TileMapLayer" parent="Field/Map/Forest"]
+ tile_map_data = PackedByteArray("AAAtABwAAAAGAAAAAAAuABoAAAAGAAIAAAAxAB8AAAAGAAAAAAA7ABwAAAAGAAAAAAA8ABsAAAAHAAAAAAA9ABsAAAAGAAAAAAA+ABoAAAAGAAAAAAA/ABkAAAAGAAAAAABAABgAAAAHAAAAAABBABgAAAAGAAAAAABCABcAAAAHAAAAAABFABcAAAAHAAAAAABGABcAAAAGAAAAAAA=")
+ tile_set = ExtResource("7_po5fq")
++metadata/_edit_lock_ = true
+ 
+ [node name="Gamepieces" type="Node2D" parent="Field/Map/Forest"]
+ y_sort_enabled = true
+@@ -668,7 +655,6 @@ y_sort_enabled = true
+ [node name="Ghost" parent="Field/Map/Forest/Gamepieces" instance=ExtResource("11_yntrj")]
+ position = Vector2(840, 488)
+ metadata/_edit_group_ = true
+-metadata/_edit_lock_ = true
+ 
+ [node name="GhostGFX" parent="Field/Map/Forest/Gamepieces/Ghost" instance=ExtResource("36_7n3c5")]
+ 
+@@ -722,10 +708,11 @@ bus = &"SFX"
+ position = Vector2(776, 424)
+ item_type = 5
+ 
+-[node name="GameEndTrigger" parent="Field/Map/Forest/Gamepieces" instance=ExtResource("39_p2lth")]
++[node name="GameEndTrigger" parent="Field/Map/Forest/Gamepieces" node_paths=PackedStringArray("ghost_animation_player") instance=ExtResource("39_p2lth")]
+ position = Vector2(888, 472)
+ script = ExtResource("40_lduow")
+ timeline = ExtResource("37_uncgg")
++ghost_animation_player = NodePath("../Ghost/AnimationPlayer")
+ 
+ [node name="Area2D2" type="Area2D" parent="Field/Map/Forest/Gamepieces/GameEndTrigger"]
+ position = Vector2(9.76562e-05, 16)
+@@ -757,6 +744,7 @@ metadata/_edit_lock_ = true
+ [node name="Overlay" type="Node2D" parent="Field/Map"]
+ 
+ [node name="DebugMoveGrid" type="TileMapLayer" parent="Field/Map/Overlay"]
++visible = false
+ modulate = Color(1, 1, 1, 0.470588)
+ tile_set = ExtResource("59_nl04t")
+ script = ExtResource("60_a8sfs")
+diff --git a/src/main_2.gd b/src/main_2.gd
+deleted file mode 100644
+index 0566d52..0000000
+--- a/src/main_2.gd
++++ /dev/null
+@@ -1,41 +0,0 @@
+-extends Node2D
+-
+-@export var collision_tilemaps: Array[TileMapLayer] = []
+-
+-var pathfinder: Pathfinder
+-
+-
+-func _ready() -> void:
+-	#Gameboard.properties = $Map/DebugMoveGrid/DebugBoundaries.gameboard_properties
+-	assert(Gameboard.properties != null, "The Gameboard autoload must have a GameboardProperties" +
+-		"resource set before its _ready function is called!")
+-	
+-	pathfinder = Pathfinder.new()
+-	
+-	for gp: Gamepiece in $Gamepieces.get_children():
+-		var cell: = Gameboard.pixel_to_cell(gp.position)
+-		gp.position = Gameboard.cell_to_pixel(cell)
+-		
+-		if GamepieceRegistry.register(gp, cell) == false:
+-			gp.queue_free()
+-	
+-	#print("Create tilemap here")
+-	
+-	for tilemap in collision_tilemaps:
+-		tilemap.add_to_group(Gameboard.COLLISION_TILEMAPLAYER_GROUP)
+-	
+-	await get_tree().process_frame
+-	await get_tree().process_frame
+-	await get_tree().process_frame
+-	
+-	#print(Gameboard.pathfinder)
+-
+-
+-func _unhandled_input(event: InputEvent) -> void:
+-	if event.is_action_released("ui_cancel"):
+-		$Map/TileMapLayer2.set_cell(Vector2i(4,3))
+-		await get_tree().process_frame
+-		await get_tree().process_frame
+-		await get_tree().process_frame
+-		await get_tree().process_frame
+-		print(Gameboard.pathfinder)
+diff --git a/src/main_2.gd.uid b/src/main_2.gd.uid
+deleted file mode 100644
+index 03ec22d..0000000
+--- a/src/main_2.gd.uid
++++ /dev/null
+@@ -1 +0,0 @@
+-uid://ccm6jxmjt0frp

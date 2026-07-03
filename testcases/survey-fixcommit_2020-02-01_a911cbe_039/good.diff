@@ -1,0 +1,127 @@
+diff --git a/godot/src/combat/interface/bars/lifebar/LifeBar.gd b/godot/src/combat/interface/bars/lifebar/LifeBar.gd
+index 2924931..8e1d652 100644
+--- a/godot/src/combat/interface/bars/lifebar/LifeBar.gd
++++ b/godot/src/combat/interface/bars/lifebar/LifeBar.gd
+@@ -1,4 +1,4 @@
+- # Can't extend from StatBar (the class_name) because this won't let us export
++# Can't extend from StatBar (the class_name) because this won't let us export
+ # the inherited variables from the base class 
+ extends "res://src/combat/interface/bars/StatBar.gd"
+ class_name LifeBar
+diff --git a/godot/src/combat/interface/bars/manabar/ManaBar.gd b/godot/src/combat/interface/bars/manabar/ManaBar.gd
+index 71cf8c1..9489180 100644
+--- a/godot/src/combat/interface/bars/manabar/ManaBar.gd
++++ b/godot/src/combat/interface/bars/manabar/ManaBar.gd
+@@ -1,4 +1,4 @@
+- # Can't extend from StatBar (the class_name) because this won't let us export
++# Can't extend from StatBar (the class_name) because this won't let us export
+ # the inherited variables from the base class 
+ extends "res://src/combat/interface/bars/StatBar.gd"
+ class_name ManaBar
+diff --git a/godot/src/combat/interface/turn_order/CombatPortrait.gd b/godot/src/combat/interface/turn_order/CombatPortrait.gd
+index 2b712b4..06cc22a 100644
+--- a/godot/src/combat/interface/turn_order/CombatPortrait.gd
++++ b/godot/src/combat/interface/turn_order/CombatPortrait.gd
+@@ -22,27 +22,27 @@ func initialize(battler : Battler, play_animation : bool = true) -> void:
+ 
+ func reduce() -> void:
+ 	# Used as the initialization animation.
+-	# animation_player.play('reduce')
++	animation_player.play('reduce')
+ 
+-# # func highlight() -> void:
+-	Highlight the portrait.
++func highlight() -> void:
++	# Highlight the portrait.
+ 
+ 	# Used when the battler becomes active.
+-	# animation_player.play('highlight')
++	animation_player.play('highlight')
+ 
+-# # func wait() -> void:
+-	Remove the portrait highlight.
++func wait() -> void:
++	# Remove the portrait highlight.
+ 
+-	Used when the battler switch from the active to the waiting state.
+-	# animation_player.play('wait')
++	# Used when the battler switch from the active to the waiting state.
++	animation_player.play('wait')
+ 
+-# # func disable() -> void:
+-	Disable (grey-out) the portrait.
++func disable() -> void:
++	# Disable (grey-out) the portrait.
+ 
+-	Used when the battler won't be playing anymore (dead, petrified, etc.).
+-	# animation_player.play('disable')
++	# Used when the battler won't be playing anymore (dead, petrified, etc.).
++	animation_player.play('disable')
+ 
+-# # func _appear(alpha):
++func _appear(alpha):
+ 	# Tween the modulation alpha to make the portrait appear.
+ 	var from : Color = modulate
+ 	var to : Color = modulate
+diff --git a/godot/src/combat/interface/turn_order/TurnOrder.gd b/godot/src/combat/interface/turn_order/TurnOrder.gd
+index 74dd190..cb8ff2c 100644
+--- a/godot/src/combat/interface/turn_order/TurnOrder.gd
++++ b/godot/src/combat/interface/turn_order/TurnOrder.gd
+@@ -12,7 +12,7 @@ func initialize(combat_arena : CombatArena, turn_queue : TurnQueue):
+ func rebuild(battlers : Array, active_battler : Battler) -> void:
+ 	# Creates the turn order interface.
+ 	
+-# 	# For each battler, both PC and NPC, create its interactive portrait and add 
++ 	# For each battler, both PC and NPC, create its interactive portrait and add 
+ 	# it to the portraits list.
+ 	for portrait in portraits.get_children():
+ 		portrait.queue_free()
+@@ -26,7 +26,7 @@ func rebuild(battlers : Array, active_battler : Battler) -> void:
+ func next(playing_battler : Battler) -> void:
+ 	# Switch to the next battler.
+ 	
+-# 	# Deactivate the previous portrait and highlight the next one.
++ 	# Deactivate the previous portrait and highlight the next one.
+ 	for portrait in portraits.get_children():
+ 		if portrait.battler == playing_battler:
+ 			portrait.highlight()
+@@ -39,15 +39,15 @@ func next(playing_battler : Battler) -> void:
+ func _on_queue_changed(battlers : Array, active_battler : Battler) -> void:
+ 	# Update the turn order interface according to the battlers state.
+ 
+-# 	# # Only rebuild the interface if the number of battler has changed.
+-	# if battlers.size() != portraits.get_child_count():
+-		# rebuild(battlers, active_battler)
++ 	# Only rebuild the interface if the number of battler has changed.
++	if battlers.size() != portraits.get_child_count():
++		rebuild(battlers, active_battler)
+ 
+-# 	# # Do not update the interface if the turn queue is currently searching for
+-	# # the next battler able to play.
+-	# if active_battler.is_able_to_play():
+-		# next(active_battler)
++ 	# Do not update the interface if the turn queue is currently searching for
++	# the next battler able to play.
++	if active_battler.is_able_to_play():
++		next(active_battler)
+ 
+-# # func _on_battle_ends():
++func _on_battle_ends():
+ 	# When the battle is starting to end, free the turn order interface.
+ 	queue_free()
+diff --git a/godot/src/combat/turn_queue/TurnQueue.gd b/godot/src/combat/turn_queue/TurnQueue.gd
+index 4432493..635f17e 100644
+--- a/godot/src/combat/turn_queue/TurnQueue.gd
++++ b/godot/src/combat/turn_queue/TurnQueue.gd
+@@ -55,7 +55,7 @@ func get_battlers():
+ 
+ func print_queue():
+ 	# Prints the Battlers' and their speed in the turn order
+-	# var string : String
+-	# for battler in get_children():
+-		# string += battler.name + "(%s)" % battler.stats.speed + " "
+-	# print(string)
++	var string : String
++	for battler in get_children():
++		string += battler.name + "(%s)" % battler.stats.speed + " "
++	print(string)

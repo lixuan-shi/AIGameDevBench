@@ -1,0 +1,190 @@
+diff --git a/source/match/MatchConstants.gd b/source/match/MatchConstants.gd
+index 919b30a..32472d8 100644
+--- a/source/match/MatchConstants.gd
++++ b/source/match/MatchConstants.gd
+@@ -198,3 +198,4 @@ class Units:
+ 	const NEW_RESOURCE_SEARCH_RADIUS_M = 30
+ 	const MOVING_UNIT_RADIUS_MAX_M = 1.0
+ 	const EMPTY_SPACE_RADIUS_SURROUNDING_STRUCTURE_M = MOVING_UNIT_RADIUS_MAX_M * 2.5
++	const STRUCTURE_CONSTRUCTING_SPEED = 0.3  # progress [0.0..1.0] per second
+diff --git a/source/match/units/Structure.gd b/source/match/units/Structure.gd
+index 3d4a5d2..ef2d116 100644
+--- a/source/match/units/Structure.gd
++++ b/source/match/units/Structure.gd
+@@ -6,43 +6,43 @@ const UNDER_CONSTRUCTION_MATERIAL = preload(
+ 	"res://source/match/resources/materials/structure_under_construction.material.tres"
+ )
+ 
+-var _under_construction = false
++var _construction_progress = 1.0
+ 
+ 
+ func mark_as_under_construction():
+-	assert(not _under_construction, "structure already under construction")
+-	_under_construction = true
++	assert(not is_under_construction(), "structure already under construction")
++	_construction_progress = 0.0
+ 	_change_geometry_material(UNDER_CONSTRUCTION_MATERIAL)
+ 	if hp == null:
+ 		await ready
+ 	hp = 1
+ 
+ 
+-func construct( added_progress ):
+-	assert(_under_construction, "structure must be under construction")
+-	
+-	var progress = get_meta("progress", 0)
+-	progress += added_progress
+-	set_meta( "progress", progress )
+-	
+-	#hp = hp_max * progress / 100
+-	
+-	if progress >= 10 :
++func construct(progress):
++	assert(is_under_construction(), "structure must be under construction")
++
++	var expected_hp_before_progressing = int(_construction_progress * float(hp_max - 1))
++	_construction_progress += progress
++	var expected_hp_after_progressing = int(_construction_progress * float(hp_max - 1))
++	print(expected_hp_before_progressing, expected_hp_after_progressing)
++	if expected_hp_after_progressing > expected_hp_before_progressing:
++		hp += 1
++	if _construction_progress >= 1.0:
+ 		finnish_construction()
+-		return true
+-	
+-	return false
+ 
+ 
+ func finnish_construction():
+-	_under_construction = false
+ 	_change_geometry_material(null)
+-	hp = hp_max
+ 	if is_inside_tree():
+ 		constructed.emit()
+ 
++
+ func is_constructed():
+-	return not _under_construction
++	return _construction_progress >= 1.0
++
++
++func is_under_construction():
++	return not is_constructed()
+ 
+ 
+ func _change_geometry_material(material):
+diff --git a/source/match/units/actions/CollectingResourcesSequentially.gd b/source/match/units/actions/CollectingResourcesSequentially.gd
+index 58d6b3f..2ee388c 100644
+--- a/source/match/units/actions/CollectingResourcesSequentially.gd
++++ b/source/match/units/actions/CollectingResourcesSequentially.gd
+@@ -22,7 +22,7 @@ var _sub_action = null
+ static func is_applicable(source_unit, target_unit):
+ 	return (
+ 		(source_unit is Worker and target_unit is ResourceUnit)
+-		or (source_unit is Worker and target_unit is CommandCenter)
++		or (source_unit is Worker and target_unit is CommandCenter and target_unit.is_constructed())
+ 	)
+ 
+ 
+@@ -126,11 +126,9 @@ func _find_closest_resource_unit_in_nearby_area():
+ 
+ static func _find_cc_closest_to_unit(unit):
+ 	var ccs_of_the_same_player = unit.get_tree().get_nodes_in_group("units").filter(
+-		func(a_unit): return ( 
+-				a_unit is CommandCenter 
+-				and a_unit.player == unit.player
+-				and a_unit.is_constructed()
+-				)
++		func(a_unit): return (
++			a_unit is CommandCenter and a_unit.player == unit.player and a_unit.is_constructed()
++		)
+ 	)
+ 	if ccs_of_the_same_player.is_empty():
+ 		return null
+diff --git a/source/match/units/actions/Constructing.gd b/source/match/units/actions/Constructing.gd
+index bf99280..5926d4c 100644
+--- a/source/match/units/actions/Constructing.gd
++++ b/source/match/units/actions/Constructing.gd
+@@ -3,6 +3,9 @@ extends "res://source/match/units/actions/Action.gd"
+ const Worker = preload("res://source/match/units/Worker.gd")
+ const Structure = preload("res://source/match/units/Structure.gd")
+ const MovingToUnit = preload("res://source/match/units/actions/MovingToUnit.gd")
++const ConstructingWhileInRange = preload(
++	"res://source/match/units/actions/ConstructingWhileInRange.gd"
++)
+ 
+ var _target_unit = null
+ var _sub_action = null
+@@ -25,23 +28,18 @@ func _init(target_unit):
+ 
+ 
+ func _ready():
+-	if not Utils.Match.Unit.Movement.units_adhere(_unit, _target_unit):
+-		_sub_action = MovingToUnit.new(_target_unit)
+-		_sub_action.tree_exited.connect(_on_sub_action_finished)
+-		add_child(_sub_action)
++	_construct_or_move_closer()
+ 
+-func _process(delta):
+-	if Utils.Match.Unit.Movement.units_adhere(_unit, _target_unit):
+-		_try_constructing_structure(delta)
+ 
+-
+-func _try_constructing_structure( delta ):
+-		_target_unit.constructed.disconnect(_on_target_unit_constructed)
+-		if _target_unit.construct(delta):
+-			queue_free()
+-			return true
+-		else:
+-			return false
++func _construct_or_move_closer():
++	_sub_action = (
++		MovingToUnit.new(_target_unit)
++		if not Utils.Match.Unit.Movement.units_adhere(_unit, _target_unit)
++		else ConstructingWhileInRange.new(_target_unit)
++	)
++	_sub_action.tree_exited.connect(_on_sub_action_finished)
++	add_child(_sub_action)
++	_unit.action_updated.emit()
+ 
+ 
+ func _to_string():
+@@ -55,6 +53,7 @@ func _on_sub_action_finished():
+ 		queue_free()
+ 		return
+ 	_sub_action = null
++	_construct_or_move_closer()
+ 
+ 
+ func _on_target_unit_constructed():
+diff --git a/source/match/units/actions/ConstructingWhileInRange.gd b/source/match/units/actions/ConstructingWhileInRange.gd
+new file mode 100644
+index 0000000..7f6f681
+--- /dev/null
++++ b/source/match/units/actions/ConstructingWhileInRange.gd
+@@ -0,0 +1,24 @@
++extends "res://source/match/units/actions/Action.gd"
++
++var _target_unit = null
++
++@onready var _unit = Utils.NodeEx.find_parent_with_group(self, "units")
++
++
++func _init(target_unit):
++	_target_unit = target_unit
++
++
++func _ready():
++	_target_unit.tree_exited.connect(queue_free)
++	_target_unit.constructed.connect(queue_free)
++
++
++func _process(delta):
++	if (
++		not Utils.Match.Unit.Movement.units_adhere(_unit, _target_unit)
++		or _target_unit.is_constructed()
++	):
++		queue_free()
++		return
++	_target_unit.construct(delta * Constants.Match.Units.STRUCTURE_CONSTRUCTING_SPEED)

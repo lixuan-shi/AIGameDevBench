@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-12-07_e23cbba_143"
+category = "intent_translation"
+source_kind = "git"
+baseline_ref = "a4d888d3cd3e6518d21decf14fa928b297dd536d"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scripts/Classes/Singletons/AudioManager.gd, Scripts/UI/ResourcePackConfigMenu.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-12-07_e23cbba_143"
+bad_case_type = "B2"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

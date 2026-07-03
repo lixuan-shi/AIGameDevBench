@@ -1,0 +1,12 @@
+diff --git a/source/match/units/traits/Movement.gd b/source/match/units/traits/Movement.gd
+index 1103170..de56f9d 100644
+--- a/source/match/units/traits/Movement.gd
++++ b/source/match/units/traits/Movement.gd
+@@ -23,6 +23,7 @@ func _ready():
+ 	navigation_finished.connect(_on_navigation_finished)
+ 	set_navigation_map(_match.navigation.get_navigation_map_rid_by_layer(navigation_layers))
+ 	_align_unit_position_to_navigation()
++	move(_unit.global_transform.origin)
+ 
+ 
+ func move(movement_target: Vector3):

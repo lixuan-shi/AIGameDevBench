@@ -1,0 +1,2893 @@
+diff --git a/addons/Seriously/Seriously.gd b/addons/Seriously/Seriously.gd
+new file mode 100644
+index 0000000..cf93782
+--- /dev/null
++++ b/addons/Seriously/Seriously.gd
+@@ -0,0 +1,594 @@
++class_name Seriously extends RefCounted
++
++const OBJECT_AS_DICT := false # Should objects be serialized as dict? (more performance?)
++const INT_MAX = 9223372036854775807
++const INT_MIN = -9223372036854775808
++
++enum CustomTypes {
++	# Ensure the values dont overlap with an existing TYPE_*
++	UINT8 = 50,
++	INT8 = 51,
++	UINT16 = 52,
++	INT16 = 53,
++	UINT32 = 54,
++	INT32 = 55,
++	UINT64 = 56,
++	INT64 = 57,
++	TYPED_ARRAY = 58
++}
++
++static var _serializer = {
++	TYPE_NIL: {
++		"pack": func(_value, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			return stream,
++		"unpack": func(_stream: StreamPeerBuffer):
++			return null,
++	},
++	TYPE_BOOL: {
++		"pack": func(value, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_u8(1 if value else 0)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> bool:
++			return stream.get_u8() > 0,
++	},
++	TYPE_INT: {
++		"pack": func(value: int, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_32(value)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> int:
++			return stream.get_32(),
++	},
++	CustomTypes.UINT8: {
++		"pack": func(value: int, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_u8(value)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> int:
++			return stream.get_u8(),
++	},
++	CustomTypes.INT8: {
++		"pack": func(value: int, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_8(value)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> int:
++			return stream.get_8(),
++	},
++	CustomTypes.UINT16: {
++		"pack": func(value: int, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_u16(value)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> int:
++			return stream.get_u16(),
++	},
++	CustomTypes.INT16: {
++		"pack": func(value: int, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_16(value)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> int:
++			return stream.get_16(),
++	},
++	CustomTypes.UINT32: {
++		"pack": func(value: int, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_u32(value)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> int:
++			return stream.get_u32(),
++	},
++	CustomTypes.INT32: {
++		"pack": func(value: int, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_32(value)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> int:
++			return stream.get_32(),
++	},
++	CustomTypes.UINT64: {
++		"pack": func(value: int, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_u64(value)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> int:
++			return stream.get_u64(),
++	},
++	CustomTypes.INT64: {
++		"pack": func(value: int, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_64(value)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> int:
++			return stream.get_64(),
++	},
++	TYPE_FLOAT: {
++		"pack": func(value: float, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_double(value)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> float:
++			return stream.get_double(),
++	},
++	TYPE_STRING: {
++		"pack": func(value: String, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_u16(value.length())
++			stream.put_data(value.to_utf8_buffer())
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> String:
++			return stream.get_utf8_string(stream.get_u16()),
++	},
++	TYPE_VECTOR2: {
++		"pack": func(value: Vector2, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_float(value.x)
++			stream.put_float(value.y)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> Vector2:
++			return Vector2(stream.get_float(), stream.get_float()),
++	},
++	TYPE_VECTOR2I: {
++		"pack": func(value: Vector2i, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_32(value.x)
++			stream.put_32(value.y)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> Vector2i:
++			return Vector2i(stream.get_32(), stream.get_32()),
++	},
++	TYPE_RECT2: {
++		"pack": func(value: Rect2, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_float(value.position.x)
++			stream.put_float(value.position.y)
++			stream.put_float(value.size.x)
++			stream.put_float(value.size.y)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> Rect2:
++			return Rect2(stream.get_float(), stream.get_float(), stream.get_float(), stream.get_float()),
++	},
++	TYPE_RECT2I: {
++		"pack": func(value: Rect2i, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_32(value.position.x)
++			stream.put_32(value.position.y)
++			stream.put_32(value.size.x)
++			stream.put_32(value.size.y)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> Rect2i:
++			return Rect2i(stream.get_32(), stream.get_32(), stream.get_32(), stream.get_32()),
++	},
++	TYPE_VECTOR3: {
++		"pack": func(value: Vector3, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_float(value.x)
++			stream.put_float(value.y)
++			stream.put_float(value.z)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> Vector3:
++			return Vector3(stream.get_float(), stream.get_float(), stream.get_float()),
++	},
++	TYPE_VECTOR3I: {
++		"pack": func(value: Vector3i, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_32(value.x)
++			stream.put_32(value.y)
++			stream.put_32(value.z)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> Vector3i:
++			return Vector3i(stream.get_32(), stream.get_32(), stream.get_32()),
++	},
++	TYPE_TRANSFORM2D: {
++		"pack": func(value: Transform2D, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			pack(value.x, stream, TYPE_VECTOR2)
++			pack(value.y, stream, TYPE_VECTOR2)
++			pack(value.origin, stream, TYPE_VECTOR2)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> Transform2D:
++			return Transform2D(unpack(stream, TYPE_VECTOR2), unpack(stream, TYPE_VECTOR2), unpack(stream, TYPE_VECTOR2)),
++	},
++	TYPE_VECTOR4: {
++		"pack": func(value: Vector4, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_float(value.x)
++			stream.put_float(value.y)
++			stream.put_float(value.z)
++			stream.put_float(value.w)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> Vector4:
++			return Vector4(stream.get_float(), stream.get_float(), stream.get_float(), stream.get_float()),
++	},
++	TYPE_VECTOR4I: {
++		"pack": func(value: Vector4i, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_32(value.x)
++			stream.put_32(value.y)
++			stream.put_32(value.z)
++			stream.put_32(value.w)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> Vector4i:
++			return Vector4i(stream.get_32(), stream.get_32(), stream.get_32(), stream.get_32()),
++	},
++	TYPE_PLANE: {
++		"pack": func(value: Plane, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			pack(value.normal, stream, TYPE_VECTOR3)
++			stream.put_float(value.d)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> Plane:
++			return Plane(unpack(stream, TYPE_VECTOR3), stream.get_float()),
++	},
++	TYPE_QUATERNION: {
++		"pack": func(value: Quaternion, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_float(value.x)
++			stream.put_float(value.y)
++			stream.put_float(value.z)
++			stream.put_float(value.w)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> Quaternion:
++			return Quaternion(stream.get_float(), stream.get_float(), stream.get_float(), stream.get_float()),
++	},
++	TYPE_AABB: {
++		"pack": func(value: AABB, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			pack(value.position, stream, TYPE_VECTOR3)
++			pack(value.size, stream, TYPE_VECTOR3)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> AABB:
++			return AABB(unpack(stream, TYPE_VECTOR3), unpack(stream, TYPE_VECTOR3)),
++	},
++	TYPE_BASIS: {
++		"pack": func(value: Basis, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			pack(value.x, stream, TYPE_VECTOR3)
++			pack(value.y, stream, TYPE_VECTOR3)
++			pack(value.z, stream, TYPE_VECTOR3)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> Basis:
++			return Basis(unpack(stream, TYPE_VECTOR3), unpack(stream, TYPE_VECTOR3), unpack(stream, TYPE_VECTOR3)),
++	},
++	TYPE_TRANSFORM3D: {
++		"pack": func(value: Transform3D, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			pack(value.basis, stream, TYPE_BASIS)
++			pack(value.origin, stream, TYPE_VECTOR3)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> Transform3D:
++			return Transform3D(unpack(stream, TYPE_BASIS), unpack(stream, TYPE_VECTOR3)),
++	},
++	TYPE_PROJECTION: {
++		"pack": func(value: Projection, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			pack(value.x, stream, TYPE_VECTOR4)
++			pack(value.y, stream, TYPE_VECTOR4)
++			pack(value.z, stream, TYPE_VECTOR4)
++			pack(value.w, stream, TYPE_VECTOR4)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> Projection:
++			return Projection(unpack(stream, TYPE_VECTOR4), unpack(stream, TYPE_VECTOR4), unpack(stream, TYPE_VECTOR4), unpack(stream, TYPE_VECTOR4)),
++	},
++	TYPE_COLOR: {
++		"pack": func(value: Color, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_u32(value.to_rgba32())
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> Color:
++			return Color(stream.get_u32()),
++	},
++	TYPE_STRING_NAME: {
++		"pack": func(value: StringName, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			pack(str(value), stream, TYPE_STRING)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> StringName:
++			return StringName(unpack(stream, TYPE_STRING)),
++	},
++	TYPE_NODE_PATH: {
++		"pack": func(value: NodePath, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			pack(str(value), stream, TYPE_STRING)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> NodePath:
++			return NodePath(unpack(stream, TYPE_STRING)),
++	},
++	TYPE_RID: {
++		"pack": func(_value: RID, _stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			push_error("[Seriously] TYPE_RID is not supported")
++			return null,
++		"unpack": func(_stream: StreamPeerBuffer):
++			push_error("[Seriously] TYPE_RID is not supported")
++			return null,
++	},
++	TYPE_OBJECT: {
++		"pack": func(value: Object, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			var prop_names = value.get_property_list().filter(func(p): return p.usage & PROPERTY_USAGE_SCRIPT_VARIABLE).map(func(p): return p.name)
++
++			stream.put_u16(prop_names.size())
++
++			for name in prop_names:
++				pack(name, stream, TYPE_STRING)
++				pack(value.get(name), stream)
++
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer):
++			var object_size := stream.get_u16()
++			var dict := {}
++
++			for j in object_size:
++				var name = unpack(stream, TYPE_STRING)
++				dict[name] = unpack(stream)
++
++			if OBJECT_AS_DICT:
++				return dict
++
++			# Create dynamic object (bad performance?)
++			var source_code := "extends RefCounted\n"
++
++			for name in dict.keys():
++				source_code += "var %s\n" % [name]
++
++			var dynamic_object := GDScript.new()
++			dynamic_object.source_code = source_code
++			dynamic_object.reload()
++
++			var object = dynamic_object.new()
++			for name in dict.keys():
++				object.set(name, dict[name])
++
++			return object,
++	},
++	TYPE_CALLABLE: {
++		"pack": func(_value: Callable, _stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			push_error("[Seriously] TYPE_CALLABLE type pack requested. This is not possible!")
++			return null,
++		"unpack": func(_stream: StreamPeerBuffer):
++			push_error("[Seriously] TYPE_CALLABLE type unpack requested. This is not possible!")
++			return null,
++	},
++	TYPE_SIGNAL: {
++		"pack": func(_value: Signal, _stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			push_error("[Seriously] TYPE_SIGNAL type pack requested. This is not possible!")
++			return null,
++		"unpack": func(_stream: StreamPeerBuffer):
++			push_error("[Seriously] TYPE_SIGNAL type unpack requested. This is not possible!")
++			return null,
++	},
++	TYPE_DICTIONARY: {
++		"pack": func(value: Dictionary, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_u16(value.size())
++
++			for key in value.keys():
++				pack(key, stream, TYPE_STRING)
++				pack(value[key], stream)
++
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> Dictionary:
++			var dictionary_size = stream.get_u16()
++			var dictionary = {}
++
++			for j in dictionary_size:
++				var name = unpack(stream, TYPE_STRING)
++				dictionary[name] = unpack(stream)
++
++			return dictionary,
++	},
++	TYPE_ARRAY: {
++		"pack": func(value: Array, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			var array_size := value.size()
++
++			stream.put_u16(array_size)
++
++			for i in array_size:
++				pack(value[i], stream)
++
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> Array:
++			var array_size = stream.get_u16()
++			var array = []
++
++			for i in array_size:
++				array.append(unpack(stream))
++
++			return array,
++	},
++	TYPE_PACKED_BYTE_ARRAY: {
++		"pack": func(value: PackedByteArray, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_u16(value.size())
++			stream.put_data(value)
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> PackedByteArray:
++			var array_size := stream.get_u16()
++			var data = stream.get_data(array_size)[1]
++			return PackedByteArray(data),
++	},
++	TYPE_PACKED_INT32_ARRAY: {
++		"pack": func(value: PackedInt32Array, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			var buffer = value.to_byte_array()
++
++			stream.put_u16(buffer.size())
++			stream.put_data(buffer)
++
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> PackedInt32Array:
++			return PackedByteArray(stream.get_data(stream.get_u16())).to_int32_array(),
++	},
++	TYPE_PACKED_INT64_ARRAY: {
++		"pack": func(value: PackedInt64Array, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			var buffer = value.to_byte_array()
++
++			stream.put_u16(buffer.size())
++			stream.put_data(buffer)
++
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> PackedInt64Array:
++			return PackedByteArray(stream.get_data(stream.get_u16())).to_int64_array(),
++	},
++	TYPE_PACKED_FLOAT32_ARRAY: {
++		"pack": func(value: PackedFloat32Array, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			var buffer = value.to_byte_array()
++
++			stream.put_u16(buffer.size())
++			stream.put_data(buffer)
++
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> PackedFloat32Array:
++			return PackedByteArray(stream.get_data(stream.get_u16())).to_float32_array(),
++	},
++	TYPE_PACKED_FLOAT64_ARRAY: {
++		"pack": func(value: PackedFloat64Array, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			var buffer = value.to_byte_array()
++
++			stream.put_u16(buffer.size())
++			stream.put_data(buffer)
++
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> PackedFloat64Array:
++			return PackedByteArray(stream.get_data(stream.get_u16())).to_float64_array(),
++	},
++	TYPE_PACKED_STRING_ARRAY: {
++		"pack": func(value: PackedStringArray, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_u16(value.size())
++
++			for string in value:
++				pack(string, stream, TYPE_STRING)
++
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> PackedStringArray:
++			var array_size := stream.get_u16()
++			var array := PackedStringArray()
++
++			for i in array_size:
++				array.append(unpack(stream, TYPE_STRING))
++
++			return array,
++	},
++	TYPE_PACKED_VECTOR2_ARRAY: {
++		"pack": func(value: PackedVector2Array, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_u16(value.size())
++
++			for vector in value:
++				pack(vector, stream, TYPE_VECTOR2)
++
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> PackedVector2Array:
++			var array_size := stream.get_u16()
++			var array := PackedVector2Array()
++
++			for i in array_size:
++				array.append(unpack(stream, TYPE_VECTOR2))
++
++			return array,
++	},
++	TYPE_PACKED_VECTOR3_ARRAY: {
++		"pack": func(value: PackedVector3Array, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_u16(value.size())
++
++			for vector in value:
++				pack(vector, stream, TYPE_VECTOR3)
++
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> PackedVector3Array:
++			var array_size := stream.get_u16()
++			var array := PackedVector3Array()
++
++			for i in array_size:
++				array.append(unpack(stream, TYPE_VECTOR3))
++
++			return array,
++	},
++	TYPE_PACKED_COLOR_ARRAY: {
++		"pack": func(value: PackedColorArray, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			stream.put_u16(value.size())
++
++			for vector in value:
++				pack(vector, stream, TYPE_COLOR)
++
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer) -> PackedColorArray:
++			var array_size := stream.get_u16()
++			var array := PackedColorArray()
++
++			for i in array_size:
++				array.append(unpack(stream, TYPE_COLOR))
++
++			return array,
++	},
++	CustomTypes.TYPED_ARRAY: {
++		"pack": func(array: Array, stream: StreamPeerBuffer) -> StreamPeerBuffer:
++			var item_type: int = TYPE_NIL
++
++			if _can_array_be_typed(array):
++				item_type = typeof(array[0])
++
++			stream.put_u16(array.size())
++			stream.put_u8(item_type)
++
++			for item in array:
++				pack(item, stream, item_type)
++
++			return stream,
++		"unpack": func(stream: StreamPeerBuffer):
++			var array_size = stream.get_u16()
++			var item_type = stream.get_u8()
++
++			if item_type == TYPE_NIL:
++				return null
++
++			var array = []
++			for i in array_size:
++				array.append(unpack(stream, item_type))
++
++			return array,
++	}
++}
++
++static func pack_to_bytes(value) -> PackedByteArray:
++	return pack(value).data_array
++
++static func unpack_from_bytes(bytes: PackedByteArray):
++	var stream := StreamPeerBuffer.new()
++	stream.data_array = bytes
++	return unpack(stream)
++
++static func pack(value, stream:=StreamPeerBuffer.new(), type:=-1, add_type_prefix:=false) -> StreamPeerBuffer:
++	add_type_prefix = add_type_prefix or type == -1 # If type is unknown we add a type prefix to identify it
++
++	if type == -1:
++		type = typeof(value) # Check the generic type of the value
++
++		# If the type is an array, lets try to make it typed (to save data)
++		if type == TYPE_ARRAY and _can_array_be_typed(value):
++			type = CustomTypes.TYPED_ARRAY
++		if type == TYPE_INT:
++			type = _get_int_type(value)
++		if type == TYPE_OBJECT and value == null:
++			type = TYPE_NIL
++
++	if not type in _serializer:
++		push_error("[Seriously] Unknown type: ", type)
++		return null
++
++	if add_type_prefix:
++		stream.put_u8(type)
++
++	return _serializer[type].pack.call(value, stream)
++
++static func unpack(stream: StreamPeerBuffer, type:=-1):
++	if type == -1: # If we dont define a type we try to read a type prefix
++		type = stream.get_u8()
++
++	if not type in _serializer:
++		push_error("[Seriously] Unknown type: ", type)
++		return null
++
++	return _serializer[type].unpack.call(stream)
++
++# Private methods
++static func _can_array_be_typed(array: Array) -> bool:
++	if array.size() == 0: # Typing empty arrays makes no sense
++		return false
++	if array.size() == 1:
++		return true # If an array has just 1 entry thats 1 type. So it CAN be typed
++
++	var array_type: int = typeof(array[0]) # Lets check if all other entries have the same type
++	for entry in array:
++		if typeof(entry) != array_type: return false # This array cannot be typed because there is a mismatch
++
++	return true
++
++static func _get_int_type(value: int) -> int:
++	var unsigned = value >= 0
++	var bit_size = 8
++	if abs(value) <= 0xFF:
++		bit_size = 8
++	elif abs(value) <= 0xFFFF:
++		bit_size = 16
++	elif abs(value) <= 0xFFFFFFFF:
++		bit_size = 32
++	elif value >= INT_MIN and value <= INT_MAX:
++		bit_size = 64
++	else:
++		push_error("[Seriously] Unsupported integer: ", value)
++		return -1
++
++	var type_name := "%sINT%s" % ["U" if unsigned else "", bit_size]
++	if not type_name in CustomTypes:
++		push_error("[Seriously] Unsupported integer: ", value)
++		return -1
++
++	return CustomTypes[type_name]
+diff --git a/addons/graph_2d/custom_nodes/axis.gd b/addons/graph_2d/custom_nodes/axis.gd
+new file mode 100644
+index 0000000..1505b30
+--- /dev/null
++++ b/addons/graph_2d/custom_nodes/axis.gd
+@@ -0,0 +1,50 @@
++@tool
++extends Control
++
++var default_font: Font
++
++enum {
++	POINT = 0,
++	LABEL,
++}
++
++var vert_grad: Array # [Vector2, String]
++var hor_grad: Array
++var x_label: String
++var y_label: String
++
++func _ready():
++	name = "Axis"
++	default_font = ThemeDB.fallback_font
++	var x_label_node = Label.new()
++	x_label_node.name = "XLabel"
++	add_child(x_label_node)
++	var y_label_node = Label.new()
++	y_label_node.name = "YLabel"
++	y_label_node.rotation = -PI/2
++	add_child(y_label_node)
++	
++
++func _draw() -> void:
++	if vert_grad.is_empty() or hor_grad.is_empty(): return
++	
++	var topleft: Vector2 = vert_grad.front()[POINT]
++	var topright: Vector2 = Vector2(hor_grad.back()[POINT].x, vert_grad.front()[POINT].y)
++	var bottomright: Vector2 = hor_grad.back()[POINT]
++	
++	for grad in vert_grad:
++		draw_line(grad[POINT], grad[POINT] - Vector2(10, 0), Color.WHITE)
++		draw_string(default_font, grad[0] + Vector2(-35, -5), grad[1])
++	# draw vertical line
++	draw_line(topleft, vert_grad.back()[POINT], Color.WHITE)
++	get_node("YLabel").text = y_label
++	get_node("YLabel").position = Vector2(5, (bottomright.y + topleft.y)/2)
++		
++	for grad in hor_grad:
++		draw_line(grad[POINT], grad[POINT] + Vector2(0, 10), Color.WHITE)
++		draw_string(default_font, grad[POINT] + Vector2(0, 20), grad[LABEL])
++
++	# draw horizontal line
++	draw_line(hor_grad.front()[POINT], hor_grad.back()[POINT], Color.WHITE)
++	get_node("XLabel").text = x_label
++	get_node("XLabel").position = Vector2((bottomright.x + topleft.x)/2, bottomright.y + 20)
+diff --git a/addons/graph_2d/custom_nodes/coordinate.gd b/addons/graph_2d/custom_nodes/coordinate.gd
+new file mode 100644
+index 0000000..7d663f3
+--- /dev/null
++++ b/addons/graph_2d/custom_nodes/coordinate.gd
+@@ -0,0 +1,11 @@
++@tool
++extends Label
++
++func _ready():
++	name = "Coordinate"
++	anchor_right = 1
++	anchor_left = 1
++	offset_right = -20
++	grow_horizontal = Control.GROW_DIRECTION_BEGIN
++	
++	text = "(0.0, 0.0)"
+diff --git a/addons/graph_2d/custom_nodes/grid.gd b/addons/graph_2d/custom_nodes/grid.gd
+new file mode 100644
+index 0000000..471a58b
+--- /dev/null
++++ b/addons/graph_2d/custom_nodes/grid.gd
+@@ -0,0 +1,15 @@
++@tool
++extends Control
++
++var vert_grid: Array
++var hor_grid: Array
++
++func _ready():
++	name = "Grid"
++
++func _draw() -> void:
++	for line in hor_grid:
++		draw_line(line[0], line[1], Color(1,1,1,0.3))
++		
++	for line in vert_grid:
++		draw_line(line[0], line[1], Color(1,1,1,0.3))
+diff --git a/addons/graph_2d/custom_nodes/legend.gd b/addons/graph_2d/custom_nodes/legend.gd
+new file mode 100644
+index 0000000..1e59ae6
+--- /dev/null
++++ b/addons/graph_2d/custom_nodes/legend.gd
+@@ -0,0 +1,20 @@
++@tool
++extends Control
++
++var layout := VBoxContainer.new()
++
++func _ready():
++	name = "Legend"
++	layout.position.x = 10
++	layout.position.y = 20
++	add_child(layout)
++
++func update(labels):
++	for child in layout.get_children():
++		layout.remove_child(child)
++		
++	for label in labels:
++		var l = Label.new()
++		l.text = label.name
++		l.add_theme_color_override("font_color", label.color)
++		layout.add_child(l)
+diff --git a/addons/graph_2d/custom_nodes/plot_2d.gd b/addons/graph_2d/custom_nodes/plot_2d.gd
+new file mode 100644
+index 0000000..8d0ed2f
+--- /dev/null
++++ b/addons/graph_2d/custom_nodes/plot_2d.gd
+@@ -0,0 +1,14 @@
++@tool
++extends Control
++class_name LinePlot
++
++var points_px := PackedVector2Array([])
++var color: Color = Color.WHITE
++var width: float = 1.0
++
++func _ready() -> void:
++	pass
++
++func _draw() -> void:
++	if points_px.size() > 1:
++		draw_polyline(points_px, color, width, true)
+diff --git a/addons/graph_2d/graph_2d.gd b/addons/graph_2d/graph_2d.gd
+new file mode 100644
+index 0000000..cd2d682
+--- /dev/null
++++ b/addons/graph_2d/graph_2d.gd
+@@ -0,0 +1,428 @@
++@tool
++@icon("res://addons/graph_2d/graph_2d.svg")
++extends Control
++class_name Graph2D
++
++@export_group("X Axis")
++## Minimun value on X-axis
++@export var x_min: float = 0.0:
++	set(value):
++		if value < x_max:
++			x_step = _get_min_step(value, x_max)
++			x_min = get_min_value(value, x_max, x_step)
++			update_graph()
++			update_plots()
++## Maximum value on X-axis
++@export var x_max: float = 10.0:
++	set(value):
++		if value > x_min:
++			x_step = _get_min_step(x_min, value)
++			x_max = get_max_value(x_min, value, x_step)
++			update_graph()
++			update_plots()
++
++@export var x_label: String = "":
++	set(value):
++		x_label = value
++		update_graph()
++
++@export_group("Y Axis")
++## Minimun value on Y-axis
++@export var y_min = 0.0:
++	set(value):
++		if value < y_max:
++			y_step = _get_min_step(value, y_max)
++#			print_debug("y step: ", y_step)
++			y_min = get_min_value(value, y_max, y_step)
++#			print_debug("y_min: ", y_min)
++			update_graph()
++			update_plots()
++## Maximum value on Y-axis
++@export var y_max = 1.0:
++	set(value):
++		if value > y_min:
++			y_step = _get_min_step(y_min, value)
++			y_max = get_max_value(y_min, value, y_step)
++#			print_debug("y_max: ", y_max)
++			update_graph()
++			update_plots()
++
++## Y-axis label
++@export var y_label: String = "":
++	set(value):
++		y_label = value
++		update_graph()
++		
++@export_group("Background")
++## background color of graph
++@export var background_color = Color.BLACK:
++	set(value):
++		background_color = value
++		if get_node_or_null("Background"):
++			get_node("Background").color = background_color
++## Grid visibility
++@export var grid_horizontal_visible = false:
++	set(value):
++		grid_horizontal_visible = value
++		update_graph()
++
++@export var grid_vertical_visible = false:
++	set(value):
++		grid_vertical_visible = value
++		update_graph()
++
++const MARGIN_TOP = 30
++const MARGIN_BOTTOM = 30
++const MARGIN_LEFT = 45
++const MARGIN_RIGHT = 30
++
++const Graph2DAxis = preload("res://addons/graph_2d/custom_nodes/axis.gd")
++const Graph2DCoord = preload("res://addons/graph_2d/custom_nodes/coordinate.gd")
++const Graph2DGrid = preload("res://addons/graph_2d/custom_nodes/grid.gd")
++const Graph2DLegend = preload("res://addons/graph_2d/custom_nodes/legend.gd")
++
++var plots: Array
++
++var x_step: float
++var y_step: float
++
++
++class PlotItem:
++	var curve: LinePlot
++	var points: PackedVector2Array
++	var graph: Graph2D
++	var label: String
++	
++	func _init(obj, l, c, w):
++		curve = LinePlot.new()
++		graph = obj
++		label = l
++		curve.name = l
++		curve.color = c
++		curve.width = w
++		graph.get_node("PlotArea").add_child(curve)
++		
++	func add_point(pt: Vector2):
++		points.append(pt)
++		var point = pt.clamp(Vector2(graph.x_min, graph.y_min), Vector2(graph.x_max, graph.y_max))
++		var pt_px: Vector2
++		pt_px.x = remap(point.x, graph.x_min, graph.x_max, 0, graph.get_node("PlotArea").size.x)
++		pt_px.y = remap(point.y, graph.y_min, graph.y_max, graph.get_node("PlotArea").size.y, 0)
++		curve.points_px.append(pt_px)
++		curve.queue_redraw()
++		
++	func clear():
++		points.clear()
++		curve.points_px.clear()
++		curve.queue_redraw()
++	
++	func redraw():
++		curve.points_px.clear()
++		for pt in points:
++#			print_debug("Plot redraw %s" % pt)
++			if pt.x > graph.x_max or pt.x < graph.x_min: continue
++			var point = pt.clamp(Vector2(graph.x_min, graph.y_min), Vector2(graph.x_max, graph.y_max))
++			var pt_px: Vector2
++			pt_px.x = remap(point.x, graph.x_min, graph.x_max, 0, graph.get_node("PlotArea").size.x)
++			pt_px.y = remap(point.y, graph.y_min, graph.y_max, graph.get_node("PlotArea").size.y, 0)
++			curve.points_px.append(pt_px)
++		curve.queue_redraw()
++		
++	func count() -> int:
++		return points.size()
++
++func _ready():
++	var background = ColorRect.new()
++	background.name = "Background"
++	background.color = background_color
++	background.anchor_right = 1.0
++	background.anchor_bottom = 1.0
++	add_child(background)
++	
++	var plot_area = Control.new()
++	
++	plot_area.name = "PlotArea"
++	plot_area.anchor_right = 1.0
++	plot_area.anchor_bottom = 1.0
++	plot_area.offset_left = MARGIN_LEFT
++	plot_area.offset_top = MARGIN_TOP
++	plot_area.offset_right = -MARGIN_RIGHT
++	plot_area.offset_bottom = -MARGIN_BOTTOM
++	add_child(plot_area)
++	
++	var axis = Graph2DAxis.new()
++	add_child(axis)
++	
++	var grid = Graph2DGrid.new()
++	add_child(grid)
++	
++	var legend = Graph2DLegend.new()
++	plot_area.add_child(legend)
++	
++	var coordinate = Graph2DCoord.new()
++	plot_area.add_child(coordinate)
++	
++	resized.connect(_on_Graph_resized)
++	plot_area.resized.connect(_on_plot_area_resized)
++
++	move_child(grid, 0)
++	move_child(axis, 0)
++	move_child(plot_area, 0)
++	move_child(background, 0)
++	
++	update_graph()
++
++func _input(event: InputEvent) -> void:
++
++	if event is InputEventMouseMotion:
++		var plot_rect: Rect2 = Rect2(Vector2.ZERO, get_node("PlotArea").size)
++		
++		if plot_rect.has_point(get_node("PlotArea").get_local_mouse_position()):
++			var pos: Vector2i = get_node("PlotArea").get_local_mouse_position()
++			var point = pixel_to_coordinate(pos)
++			get_node("PlotArea/Coordinate").text = "(%.3f, %.3f)" % [point.x, point.y]
++
++## Add plot in Graph2D and return an instance of plot
++func add_plot_item(label = "", color = Color.WHITE, width = 1.0) -> PlotItem:
++	var plot = PlotItem.new(self, label, color, width)
++	plots.append(plot)
++	update_legend()
++	return plot
++
++func remove_plot_item(plot: PlotItem):
++	# remove from plot_list
++	var new_plot_list = plots.filter(func(p): return p!=plot)
++	plots = new_plot_list
++	plot.clear()
++	plot.curve.queue_free()
++	# unreference plot object
++	plot.unreference()
++	update_legend()
++
++func pixel_to_coordinate(px: Vector2i) -> Vector2:
++	var point: Vector2
++	point.x = remap(px.x, 0, get_node("PlotArea").size.x, x_min, x_max)
++	point.y = remap(px.y, 0, get_node("PlotArea").size.y, y_max, y_min)
++	return point
++
++func update_graph() -> void:
++	if get_node_or_null("Axis") == null: return
++	if get_node_or_null("Grid") == null: return
++	if get_node_or_null("PlotArea") == null: return
++	
++	# Update margins depend of axis labels
++	get_node("Axis").x_label = x_label
++	get_node("Axis").y_label = y_label
++	var margin_left: float = MARGIN_LEFT if get_node("Axis").y_label == "" else MARGIN_LEFT + 20
++	var margin_bottom: float = MARGIN_BOTTOM if get_node("Axis").x_label == "" else MARGIN_BOTTOM + 20
++	
++	get_node("PlotArea").offset_left = margin_left
++	get_node("PlotArea").offset_bottom = -margin_bottom
++	
++	# Vertical Graduation
++	var y_step = _get_min_step(y_min, y_max)
++	assert(not is_inf(y_step), "y_step is infinite!")
++
++	var y_axis_range: float = y_max - y_min
++	var vert_grad_number = _get_graduation_num(y_min, y_max, y_step, "vert")
++	
++	# Horizontal Graduation
++	var x_step = _get_min_step(x_min, x_max)
++	assert(not is_inf(x_step), "y_step is infinite!")
++	
++	var x_axis_range: float = x_max - x_min
++	var hor_grad_number = _get_graduation_num(x_min, x_max, x_step, "hor")
++	
++	# Plot area height in pixel
++	var area_height = size.y - MARGIN_TOP - margin_bottom
++	var vert_grad_step_px = area_height / (vert_grad_number - 1)
++	# Plot area width in pixel
++	var area_width = size.x - margin_left - MARGIN_RIGHT
++	var hor_grad_step_px = area_width / (hor_grad_number -1)
++	
++	var vert_grad: Array
++	var hor_grid: Array
++	var grad_px: Vector2
++	grad_px.x = margin_left
++	# Draw grid number
++	for n in range(vert_grad_number):
++		var grad: Array = []
++		grad_px.y = MARGIN_TOP + n * vert_grad_step_px
++		grad.append(grad_px)
++		var grad_text = "%0.1f" % (float(y_max) - n * float(y_axis_range)/(vert_grad_number-1))
++		grad.append(grad_text)
++		vert_grad.append(grad)
++		
++		# Horizontal grid
++		if grid_horizontal_visible:
++			var grid_px: PackedVector2Array
++			grid_px.append(grad_px)
++			grid_px.append(Vector2(grad_px.x + area_width, grad_px.y))
++			hor_grid.append(grid_px)
++			
++	get_node("Axis").vert_grad = vert_grad
++	
++	if grid_horizontal_visible:
++		get_node("Grid").hor_grid = hor_grid
++	else:
++		get_node("Grid").hor_grid = []
++		
++	var hor_grad: Array
++	var vert_grid: Array
++	grad_px = Vector2()
++	grad_px.y = MARGIN_TOP + area_height
++	
++	for n in range(hor_grad_number):
++		var grad: Array = []
++		grad_px.x = margin_left + n * hor_grad_step_px
++		grad.append(grad_px)
++		var grad_text = "%0.1f" % (float(x_min) + n * float(x_axis_range)/(hor_grad_number-1))
++		grad.append(grad_text)
++		hor_grad.append(grad)
++		
++		# Vertical grid
++		if grid_vertical_visible:
++			var grid_px: PackedVector2Array
++			grid_px.append(grad_px)
++			grid_px.append(Vector2(grad_px.x, grad_px.y - area_height))
++			vert_grid.append(grid_px)
++		
++	get_node("Axis").hor_grad = hor_grad
++	
++	if grid_vertical_visible:
++		get_node("Grid").vert_grid = vert_grid
++	else:
++		get_node("Grid").vert_grid = []
++	
++	get_node("Axis").queue_redraw()
++	get_node("Grid").queue_redraw()
++	
++func update_plots():
++	for plot in plots:
++		plot.redraw()
++
++func update_legend() -> void:
++	# Add labels to the legend
++	var labels = Array()
++	for p in plots:
++		labels.append({
++			name = p.label,
++			color = p.curve.color,
++		})
++	get_node("PlotArea/Legend").update(labels)
++
++func _on_Graph_resized() -> void:
++	update_graph()
++	
++func _on_plot_area_resized() -> void:
++	update_plots()
++
++## This function return the minimal step
++func _get_min_step(value_min, value_max):
++	var range_log: int = int(log10(value_max - value_min))
++#	print("range log: ", range_log)
++	var step: float = 10.0**(range_log-1)
++#	print("min step: %f " % [step])
++	return step
++
++func _get_graduation_num(value_min, value_max, step, orientation) -> int:
++	var diff = value_max - value_min
++	var nb_grad: int = roundi(diff/step)
++	var max_grad_num: int
++	match orientation:
++		"vert":
++			if size.y < 250: max_grad_num = 5
++			else: max_grad_num = 10
++		"hor":
++			if size.x < 450: max_grad_num = 5
++			else: max_grad_num = 10
++	
++	while nb_grad > max_grad_num:
++#		print("->", nb_grad)
++		if not nb_grad % 2:
++			nb_grad /= 2
++			continue
++		elif not nb_grad % 3:
++			nb_grad /= 3
++			continue
++		elif not nb_grad % 5:
++			nb_grad /= 5
++			continue
++		elif not nb_grad % 7:
++			nb_grad /= 7
++			continue
++		elif not nb_grad % 9:
++			nb_grad /= 9
++			continue
++		else:
++			# not divided
++			break
++#			return nb_grad + 1
++			
++#	print("diff: %f , nb_grad: %d" % [diff, nb_grad])
++	return nb_grad + 1
++	
++func get_min_value(min_value, max_value, step):
++	var min_token = roundf(min_value/step) * step
++	
++	while true:
++		var diff = max_value - min_token
++		var nb_grad: int = roundi(diff/step)
++		
++		while nb_grad > 10:
++	#		print("->", nb_grad)
++			if not nb_grad % 2:
++				nb_grad /= 2
++				continue
++			elif not nb_grad % 3:
++				nb_grad /= 3
++				continue
++			elif not nb_grad % 5:
++				nb_grad /= 5
++				continue
++			elif not nb_grad % 7:
++				nb_grad /= 7
++				continue
++			elif not nb_grad % 9:
++				nb_grad /= 9
++				continue
++			else:
++				# not divided
++				break
++		if nb_grad <= 10:
++			return min_token
++		min_token -= step
++	
++func get_max_value(min_value, max_value, step):
++	var max_token = roundf(max_value/step) * step
++	
++	while true:
++		var diff = max_token - min_value
++		var nb_grad: int = roundi(diff/step)
++
++		while nb_grad > 10:
++	#		print("->", nb_grad)
++			if not nb_grad % 2:
++				nb_grad /= 2
++				continue
++			elif not nb_grad % 3:
++				nb_grad /= 3
++				continue
++			elif not nb_grad % 5:
++				nb_grad /= 5
++				continue
++			elif not nb_grad % 7:
++				nb_grad /= 7
++				continue
++			elif not nb_grad % 9:
++				nb_grad /= 9
++				continue
++			else:
++				# not divided
++				break
++		if nb_grad <= 10:
++			return max_token
++		max_token += step
++		
++func log10(value: float) -> float:
++	return log(value)/log(10)
+diff --git a/addons/graph_2d/graph_2d.svg b/addons/graph_2d/graph_2d.svg
+new file mode 100644
+index 0000000..8a817af
+--- /dev/null
++++ b/addons/graph_2d/graph_2d.svg
+@@ -0,0 +1,63 @@
++<?xml version="1.0" encoding="UTF-8" standalone="no"?>
++<svg
++   height="16"
++   viewBox="0 0 16 16"
++   width="16"
++   version="1.1"
++   id="svg4"
++   sodipodi:docname="Plot2D.svg"
++   inkscape:version="1.1 (1:1.1+202105261517+ce6663b3b7)"
++   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
++   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
++   xmlns="http://www.w3.org/2000/svg"
++   xmlns:svg="http://www.w3.org/2000/svg"
++   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
++   xmlns:cc="http://creativecommons.org/ns#"
++   xmlns:dc="http://purl.org/dc/elements/1.1/">
++  <metadata
++     id="metadata10">
++    <rdf:RDF>
++      <cc:Work
++         rdf:about="">
++        <dc:format>image/svg+xml</dc:format>
++        <dc:type
++           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
++        <dc:title />
++      </cc:Work>
++    </rdf:RDF>
++  </metadata>
++  <defs
++     id="defs8" />
++  <sodipodi:namedview
++     pagecolor="#ffffff"
++     bordercolor="#666666"
++     borderopacity="1"
++     objecttolerance="10"
++     gridtolerance="10"
++     guidetolerance="10"
++     inkscape:pageopacity="0"
++     inkscape:pageshadow="2"
++     inkscape:window-width="2560"
++     inkscape:window-height="1371"
++     id="namedview6"
++     showgrid="false"
++     inkscape:zoom="13.876971"
++     inkscape:cx="41.759834"
++     inkscape:cy="16.141851"
++     inkscape:window-x="1920"
++     inkscape:window-y="0"
++     inkscape:window-maximized="1"
++     inkscape:current-layer="svg4"
++     inkscape:document-rotation="0"
++     inkscape:pagecheckerboard="0" />
++  <path
++     style="color:#000000;fill:#a5efac;stroke-linecap:round;stroke-linejoin:round;-inkscape-stroke:none"
++     d="m 7.953125,1038.8516 a 0.55005501,0.55005501 0 0 0 -0.4804688,0.3906 l -2.7089843,9.0273 -2.5273438,-2.9863 a 0.55000001,0.55000001 0 0 0 -0.7753906,-0.064 0.55000001,0.55000001 0 0 0 -0.064453,0.7753 l 3.1835937,3.7618 a 0.55005501,0.55005501 0 0 0 0.9472656,-0.1973 l 2.6015626,-8.6699 2.3789067,4.7578 a 0.55005501,0.55005501 0 0 0 0.796875,0.2109 l 3,-2 a 0.55000001,0.55000001 0 0 0 0.152343,-0.7617 0.55000001,0.55000001 0 0 0 -0.761718,-0.1543 l -2.482422,1.6543 -2.7207035,-5.4414 a 0.55005501,0.55005501 0 0 0 -0.5390625,-0.3027 z"
++     id="path2"
++     transform="translate(0,-1036.4)" />
++  <path
++     style="fill:none;stroke:#a5efac;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0"
++     d="M 1.6796066,1.352875 V 14.204629 H 14.529664"
++     id="path830"
++     inkscape:label="path830" />
++</svg>
+diff --git a/addons/graph_2d/graph_2d.svg.import b/addons/graph_2d/graph_2d.svg.import
+new file mode 100644
+index 0000000..a080427
+--- /dev/null
++++ b/addons/graph_2d/graph_2d.svg.import
+@@ -0,0 +1,37 @@
++[remap]
++
++importer="texture"
++type="CompressedTexture2D"
++uid="uid://tl8aj8jfk1mx"
++path="res://.godot/imported/graph_2d.svg-1a61f3392130136af7ffea4e82a7bd1d.ctex"
++metadata={
++"vram_texture": false
++}
++
++[deps]
++
++source_file="res://addons/graph_2d/graph_2d.svg"
++dest_files=["res://.godot/imported/graph_2d.svg-1a61f3392130136af7ffea4e82a7bd1d.ctex"]
++
++[params]
++
++compress/mode=0
++compress/high_quality=false
++compress/lossy_quality=0.7
++compress/hdr_compression=1
++compress/normal_map=0
++compress/channel_pack=0
++mipmaps/generate=false
++mipmaps/limit=-1
++roughness/mode=0
++roughness/src_normal=""
++process/fix_alpha_border=true
++process/premult_alpha=false
++process/normal_map_invert_y=false
++process/hdr_as_srgb=false
++process/hdr_clamp_exposure=false
++process/size_limit=0
++detect_3d/compress_to=1
++svg/scale=1.0
++editor/scale_with_editor_scale=false
++editor/convert_colors_with_editor_theme=false
+diff --git a/addons/graph_2d/plugin.cfg b/addons/graph_2d/plugin.cfg
+new file mode 100644
+index 0000000..2d7e5e4
+--- /dev/null
++++ b/addons/graph_2d/plugin.cfg
+@@ -0,0 +1,7 @@
++[plugin]
++
++name="Graph2D"
++description="2D graph to display multiple curves in real time"
++author="LD2Studio"
++version="1.0.0"
++script="plugin.gd"
+diff --git a/addons/graph_2d/plugin.gd b/addons/graph_2d/plugin.gd
+new file mode 100644
+index 0000000..d0d4f06
+--- /dev/null
++++ b/addons/graph_2d/plugin.gd
+@@ -0,0 +1,14 @@
++@tool
++extends EditorPlugin
++
++
++func _enter_tree() -> void:
++	# Initialization of the plugin goes here.
++	add_custom_type("Graph2D", "Control",
++					preload("res://addons/graph_2d/graph_2d.gd"),
++					preload("res://addons/graph_2d/graph_2d.svg"))
++
++
++func _exit_tree() -> void:
++	# Clean-up of the plugin goes here.
++	remove_custom_type("Graph2D")
+diff --git a/classes/ConfigResource.gd b/classes/ConfigResource.gd
+index ddd6f57..09f785b 100644
+--- a/classes/ConfigResource.gd
++++ b/classes/ConfigResource.gd
+@@ -8,39 +8,36 @@ enum MODE { DEVELOPMENT, DEPLOYMENT }
+ @export var mode: MODE = MODE.DEVELOPMENT
+ @export var use_tls: bool = false
+ @export var minimize_on_start: bool = true
++@export var gateway_fps: int = 30
++@export var server_fps: int = 20
++@export var client_fps: int = 30
+ 
+ @export_group("Gateway Server Server Configuration")
+ @export var gateway_server_server_bind_address: String = "*"
+ @export var gateway_server_server_port: int = 9071
+-@export var gateway_server_server_fps: int = 30
+ @export var gateway_server_certh_path: String = ""
+ @export var gateway_server_key_path: String = ""
+ 
+ @export_group("Gateway Client Server Configuration")
+ @export var gateway_client_server_bind_address: String = "*"
+ @export var gateway_client_server_port: int = 9072
+-@export var gateway_client_server_fps: int = 30
+ @export var gateway_client_certh_path: String = ""
+ @export var gateway_client_key_path: String = ""
+ 
+ @export_group("Server Client Server Configuration")
+ @export var server_client_server_bind_address: String = "*"
+ @export var server_client_server_port: int = 9073
+-@export var server_client_server_fps: int = 10
+ @export var server_client_certh_path: String = ""
+ @export var server_client_key_path: String = ""
+ 
+ @export_group("Client Gateway Configuration")
+ @export var server_gateway_client_address: String = "ws://localhost:9071"
+-@export var server_gateway_client_fps: int = 30
+ 
+ @export_group("Client Gateway Configuration")
+ @export var client_gateway_client_address: String = "ws://localhost:9072"
+-@export var client_gateway_client_fps: int = 30
+ 
+ @export_group("Client Server Configuration")
+ @export var client_server_client_address: String = "ws://localhost:9073"
+-@export var client_server_client_fps: int = 30
+ 
+ @export_group("Database Configuration")
+ @export var database_backend: Database.BACKENDS = Database.BACKENDS.JSON
+diff --git a/classes/MultiplayerConnection.gd b/classes/MultiplayerConnection.gd
+index 683c28e..2d8b06a 100644
+--- a/classes/MultiplayerConnection.gd
++++ b/classes/MultiplayerConnection.gd
+@@ -10,12 +10,6 @@ signal client_disconnected(username: String)
+ ## Signal to indicate that the initialization is done. Used for the child components
+ signal init_done
+ 
+-## The physics ticks rate for the client
+-@export var client_physics_ticks_per_second: int = 30
+-
+-## The physics ticks rate for the server
+-@export var server_physics_ticks_per_second: int = 10
+-
+ @export var database: Database = null
+ 
+ ## The modes a connection can be in
+@@ -26,6 +20,8 @@ var multiplayer_api: MultiplayerAPI = null
+ ## A list of the components attached to this component
+ var component_list: ComponentList = ComponentList.new()
+ 
++var network_stats: NetworkStats = NetworkStats.new()
++
+ ## The client's player character
+ var client_player: Player = null
+ 
+@@ -50,7 +46,7 @@ func _process(_delta):
+ 		multiplayer_api.poll()
+ 
+ 
+-func _init_common(fps: int) -> bool:
++func _init_common() -> bool:
+ 	multiplayer_api = MultiplayerAPI.create_default_interface()
+ 
+ 	get_tree().set_multiplayer(multiplayer_api, get_path())
+@@ -58,9 +54,6 @@ func _init_common(fps: int) -> bool:
+ 	# Set the current multiplayer's api path to this path to optimize multiplayer packets
+ 	multiplayer_api.object_configuration_add(null, get_path())
+ 
+-	GodotLogger.info("Setting the game's physics ticks per second to %d" % fps)
+-	Engine.set_physics_ticks_per_second(fps)
+-
+ 	return true
+ 
+ 
+@@ -73,7 +66,7 @@ func _client_init() -> bool:
+ 
+ 	GodotLogger.info("Running game as client instance")
+ 
+-	if not _init_common(client_physics_ticks_per_second):
++	if not _init_common():
+ 		GodotLogger.error("Failed to init common connection part")
+ 		return false
+ 
+@@ -117,7 +110,7 @@ func _server_init() -> bool:
+ 
+ 	GodotLogger.info("Running game as server instance")
+ 
+-	if not _init_common(server_physics_ticks_per_second):
++	if not _init_common():
+ 		GodotLogger.error("Failed to init common connection part")
+ 		return false
+ 
+diff --git a/classes/NetworkStats.gd b/classes/NetworkStats.gd
+new file mode 100644
+index 0000000..f50dd0c
+--- /dev/null
++++ b/classes/NetworkStats.gd
+@@ -0,0 +1,17 @@
++extends Node
++
++class_name NetworkStats
++
++var _function_calls: Dictionary = {}
++
++
++func log_func_call(func_name: String, caller: String):
++	if _function_calls.has(func_name):
++		_function_calls[func_name]["total"] += 1
++		if _function_calls[func_name]["callers"].has(caller):
++			_function_calls[func_name]["callers"][caller] += 1
++		else:
++			_function_calls[func_name]["callers"][caller] = 1
++
++	else:
++		_function_calls[func_name] = {"total": 1, "callers": {caller: 1}}
+diff --git a/components/behaviors/attackandwanderbehaviorcomponent/AttackAndWanderBehaviorComponent.gd b/components/behaviors/attackandwanderbehaviorcomponent/AttackAndWanderBehaviorComponent.gd
+index f5b6c8d..2b71bb1 100644
+--- a/components/behaviors/attackandwanderbehaviorcomponent/AttackAndWanderBehaviorComponent.gd
++++ b/components/behaviors/attackandwanderbehaviorcomponent/AttackAndWanderBehaviorComponent.gd
+@@ -23,9 +23,6 @@ class_name AttackAndWanderBehaviorComponent
+ # The parent node
+ var _target_node: Node
+ 
+-## The navigation agent used to find a new location
+-@onready var navigation_agent: NavigationAgent2D = $NavigationAgent2D
+-
+ ## The avoidance ray component is used to detect obstacles ahead
+ @onready var avoidance_rays_component: AvoidanceRaysComponent = $AvoidanceRaysComponent
+ 
+diff --git a/components/behaviors/attackandwanderbehaviorcomponent/AttackAndWanderBehaviorComponent.tscn b/components/behaviors/attackandwanderbehaviorcomponent/AttackAndWanderBehaviorComponent.tscn
+index 944f88e..235b64d 100644
+--- a/components/behaviors/attackandwanderbehaviorcomponent/AttackAndWanderBehaviorComponent.tscn
++++ b/components/behaviors/attackandwanderbehaviorcomponent/AttackAndWanderBehaviorComponent.tscn
+@@ -10,9 +10,6 @@ script = ExtResource("1_hil3r")
+ 
+ [node name="AvoidanceRaysComponent" parent="." instance=ExtResource("3_pre5k")]
+ 
+-[node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]
+-path_postprocessing = 1
+-
+ [node name="WanderComponent" parent="." instance=ExtResource("2_u2qbf")]
+ 
+ [node name="AggroComponent" parent="." instance=ExtResource("4_0w2bs")]
+diff --git a/components/behaviors/components/aggrocomponent/AggroComponent.gd b/components/behaviors/components/aggrocomponent/AggroComponent.gd
+index ac4bf46..1721cd4 100644
+--- a/components/behaviors/components/aggrocomponent/AggroComponent.gd
++++ b/components/behaviors/components/aggrocomponent/AggroComponent.gd
+@@ -23,9 +23,6 @@ var _action_synchronizer: ActionSynchronizerComponent = null
+ # The avoidance ray component is used to detect obstacles ahead
+ var _avoidance_rays_component: AvoidanceRaysComponent = null
+ 
+-# The navigation agent used to find a new location
+-var _navigation_agent: NavigationAgent2D = null
+-
+ # This is the area used to detect players
+ var _aggro_area: Area2D = null
+ 
+@@ -44,6 +41,8 @@ var _attack_timer: Timer = null
+ # Raycast used to check if the current target is in line of sight
+ var _line_of_sight_raycast: RayCast2D = null
+ 
++var _path: AStarComponent.AStarPath = null
++
+ 
+ # Called when the node enters the scene tree for the first time.
+ func _ready():
+@@ -105,12 +104,6 @@ func _link_parent():
+ 	)
+ 	_avoidance_rays_component = _parent.avoidance_rays_component
+ 
+-	assert(
+-		_parent.get("navigation_agent") != null,
+-		"The parent behavior should have the navigation_agent variable"
+-	)
+-	_navigation_agent = _parent.navigation_agent
+-
+ 	assert(
+ 		_parent.get("aggro_area") != null, "The parent behavior should have the aggro_area variable"
+ 	)
+@@ -166,19 +159,20 @@ func aggro():
+ 			_avoidance_rays_component.move_with_avoidance(_target_node.stats.movement_speed)
+ 		else:
+ 			# If the target's position has changed and the search path timer is not running, calculate a new path towards the target
+-			if (
+-				_navigation_agent.target_position != current_target.position
+-				and _search_path_timer.is_stopped()
+-			):
++			if _search_path_timer.is_stopped():
+ 				# This will trigger a new calculation of the navigation path
+-				_navigation_agent.target_position = current_target.position
+-
++				_path = _target_node.multiplayer_connection.map.astar.get_astar_path(
++					_target_node.position, current_target.position
++				)
+ 				# Start the search path timer to limit the amount of navigation path searches
+ 				_search_path_timer.start()
+ 
+ 			# Navigate to the next path position
+-			if not _navigation_agent.is_navigation_finished():
+-				var next_path_position: Vector2 = _navigation_agent.get_next_path_position()
++			if _path != null and not _path.is_navigation_finished():
++				# Get the next path position
++				var next_path_position: Vector2 = _path.get_next_path_position(
++					_target_node.position
++				)
+ 
+ 				# Calculate the velocity towards this next path position
+ 				_target_node.velocity = (
+@@ -191,7 +185,9 @@ func aggro():
+ 
+ 			# Navigation is finish, let's calculate a new path
+ 			else:
+-				_navigation_agent.target_position = current_target.position
++				_path = _target_node.multiplayer_connection.map.astar.get_astar_path(
++					_target_node.position, current_target.position
++				)
+ 	return
+ 
+ 
+diff --git a/components/behaviors/components/fleecomponent/FleeComponent.gd b/components/behaviors/components/fleecomponent/FleeComponent.gd
+index 3aa442b..ec97e94 100644
+--- a/components/behaviors/components/fleecomponent/FleeComponent.gd
++++ b/components/behaviors/components/fleecomponent/FleeComponent.gd
+@@ -23,9 +23,6 @@ var _stats_component: StatsSynchronizerComponent = null
+ # The avoidance ray component is used to detect obstacles ahead
+ var _avoidance_rays_component: AvoidanceRaysComponent = null
+ 
+-# The navigation agent used to find a new location
+-var _navigation_agent: NavigationAgent2D = null
+-
+ # How much the speed of the parent should increase when fleeing
+ var _flee_speed_boost: float = 3.0
+ 
+@@ -79,12 +76,6 @@ func _link_parent():
+ 	)
+ 	_avoidance_rays_component = _parent.avoidance_rays_component
+ 
+-	assert(
+-		_parent.get("navigation_agent") != null,
+-		"The parent behavior should have the navigation_agent variable"
+-	)
+-	_navigation_agent = _parent.navigation_agent
+-
+ 	assert(
+ 		_parent.get("flee_speed_boost") != null,
+ 		"The parent behavior should have the flee_speed_boost variable"
+diff --git a/components/behaviors/components/wandercomponent/WanderComponent.gd b/components/behaviors/components/wandercomponent/WanderComponent.gd
+index 8cf70ee..8c2cf65 100644
+--- a/components/behaviors/components/wandercomponent/WanderComponent.gd
++++ b/components/behaviors/components/wandercomponent/WanderComponent.gd
+@@ -17,9 +17,6 @@ var _stats_component: StatsSynchronizerComponent = null
+ # The avoidance ray component is used to detect obstacles ahead
+ var _avoidance_rays_component: AvoidanceRaysComponent = null
+ 
+-# The navigation agent used to find a new location
+-var _navigation_agent: NavigationAgent2D = null
+-
+ # The minimum time the parent will stay idle
+ var _min_idle_time: int = 0
+ 
+@@ -44,6 +41,8 @@ var _starting_postion: Vector2
+ # Check if you're linked with your parent
+ var _linked: bool = false
+ 
++var _path: AStarComponent.AStarPath = null
++
+ 
+ func _ready():
+ 	# Get the parent node
+@@ -98,12 +97,6 @@ func _link_parent():
+ 	)
+ 	_avoidance_rays_component = _parent.avoidance_rays_component
+ 
+-	assert(
+-		_parent.get("navigation_agent") != null,
+-		"The parent behavior should have the navigation_agent variable"
+-	)
+-	_navigation_agent = _parent.navigation_agent
+-
+ 	assert(
+ 		_parent.get("min_idle_time") != null,
+ 		"The parent behavior should have the min_idle_time variable"
+@@ -131,9 +124,9 @@ func wander():
+ 		return
+ 
+ 	# If the navigation agent is still going, move towards the next point
+-	if not _navigation_agent.is_navigation_finished():
++	if _path != null and not _path.is_navigation_finished():
+ 		# Get the next path position
+-		var next_path_position: Vector2 = _navigation_agent.get_next_path_position()
++		var next_path_position: Vector2 = _path.get_next_path_position(_target_node.position)
+ 
+ 		# Calculate the velocity towards this next path position
+ 		_target_node.velocity = (
+@@ -174,10 +167,14 @@ static func find_random_spot(origin: Vector2, distance: float) -> Vector2:
+ func _on_idle_timer_timeout():
+ 	# Find a new location to wander to
+ 	_wander_target = WanderComponent.find_random_spot(_starting_postion, _max_wander_distance)
+-	_navigation_agent.target_position = _wander_target
++	_path = _target_node.multiplayer_connection.map.astar.get_astar_path(
++		_target_node.position, _wander_target
++	)
+ 
+ 
+ func _on_colliding_timer_timeout():
+ 	# Find a new location to wander to
+ 	_wander_target = WanderComponent.find_random_spot(_starting_postion, _max_wander_distance)
+-	_navigation_agent.target_position = _wander_target
++	_path = _target_node.multiplayer_connection.map.astar.get_astar_path(
++		_target_node.position, _wander_target
++	)
+diff --git a/components/behaviors/fleeandwanderbehaviorcomponent/FleeAndWanderBehaviorCopmonent.gd b/components/behaviors/fleeandwanderbehaviorcomponent/FleeAndWanderBehaviorCopmonent.gd
+index a978b73..22567dd 100644
+--- a/components/behaviors/fleeandwanderbehaviorcomponent/FleeAndWanderBehaviorCopmonent.gd
++++ b/components/behaviors/fleeandwanderbehaviorcomponent/FleeAndWanderBehaviorCopmonent.gd
+@@ -20,9 +20,6 @@ class_name FleeAndWanderBehaviorComponent
+ # The parent node
+ var _target_node: Node
+ 
+-## The navigation agent used to find a new location
+-@onready var navigation_agent: NavigationAgent2D = $NavigationAgent2D
+-
+ # The component used to handle the flee behavior
+ @onready var _flee_component: FleeComponent = $FleeComponent
+ 
+diff --git a/components/behaviors/fleeandwanderbehaviorcomponent/FleeAndWanderBehaviorCopmonent.tscn b/components/behaviors/fleeandwanderbehaviorcomponent/FleeAndWanderBehaviorCopmonent.tscn
+index 0fc0589..309d594 100644
+--- a/components/behaviors/fleeandwanderbehaviorcomponent/FleeAndWanderBehaviorCopmonent.tscn
++++ b/components/behaviors/fleeandwanderbehaviorcomponent/FleeAndWanderBehaviorCopmonent.tscn
+@@ -10,9 +10,6 @@ script = ExtResource("1_qussi")
+ 
+ [node name="AvoidanceRaysComponent" parent="." instance=ExtResource("2_3b1xg")]
+ 
+-[node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]
+-path_postprocessing = 1
+-
+ [node name="FleeComponent" parent="." instance=ExtResource("3_yeiba")]
+ 
+ [node name="WanderComponent" parent="." instance=ExtResource("3_pn0iu")]
+diff --git a/components/common/positionsynchronizercomponent/PositionSynchronizerRPC.gd b/components/common/positionsynchronizercomponent/PositionSynchronizerRPC.gd
+index cb9311c..65569e3 100644
+--- a/components/common/positionsynchronizercomponent/PositionSynchronizerRPC.gd
++++ b/components/common/positionsynchronizercomponent/PositionSynchronizerRPC.gd
+@@ -4,14 +4,20 @@ class_name PositionSynchronizerRPC
+ 
+ const COMPONENT_NAME = "PositionSynchronizerRPC"
+ 
++@export var message_identifier: int = 0
++
++var _network_message_handler: NetworkMessageHandler = null
++
+ # Reference to the MultiplayerConnection parent node.
+ var _multiplayer_connection: MultiplayerConnection = null
+ 
+ 
+ # Called when the node enters the scene tree for the first time.
+ func _ready():
++	_network_message_handler = get_parent()
++
+ 	# Get the MultiplayerConnection parent node.
+-	_multiplayer_connection = get_parent()
++	_multiplayer_connection = get_parent().get_parent()
+ 
+ 	# Register the component with the parent MultiplayerConnection.
+ 	_multiplayer_connection.component_list.register_component(COMPONENT_NAME, self)
+@@ -21,11 +27,38 @@ func _ready():
+ 
+ 
+ func sync_position(peer_id: int, player_name: String, timestamp: float, pos: Vector2):
+-	_sync_position.rpc_id(peer_id, player_name, timestamp, pos)
++	_network_message_handler.send_message(
++		peer_id, message_identifier, [player_name, timestamp, pos]
++	)
++
++
++func handle_message(peer_id: int, message: Array):
++	if peer_id != 1:
++		return
++
++	var n = message[0]
++	var t = message[1]
++	var p = message[2]
++
++	var entity: Node = _multiplayer_connection.map.get_entity_by_name(n)
++
++	if entity == null:
++		return
++
++	if entity.get("component_list") == null:
++		return
++
++	if entity.component_list.has("position_synchronizer"):
++		entity.component_list["position_synchronizer"].client_sync_position(t, p)
+ 
+ 
+ @rpc("call_remote", "authority", "unreliable")
+-func _sync_position(n: String, t: float, p: Vector2):
++func _sync_position(d: PackedByteArray):
++	var test: Array = bytes_to_var(d)
++	var n = test[0]
++	var t = test[1]
++	var p = test[2]
++
+ 	var entity: Node = _multiplayer_connection.map.get_entity_by_name(n)
+ 
+ 	if entity == null:
+diff --git a/components/connection/ClockSynchronizer/ClockSynchronizer.gd b/components/connection/ClockSynchronizer/ClockSynchronizer.gd
+index 3eb168c..a10e08a 100644
+--- a/components/connection/ClockSynchronizer/ClockSynchronizer.gd
++++ b/components/connection/ClockSynchronizer/ClockSynchronizer.gd
+@@ -8,6 +8,10 @@ const LATENCY_BUFFER_SIZE = 9
+ const LATENCY_BUFFER_MID_POINT = int(LATENCY_BUFFER_SIZE / float(2))
+ const LATENCY_MINIMUM_THRESHOLD = 20
+ 
++enum TYPE { FETCH_SERVER_TIME, RETURN_SERVER_TIME, GET_LATENCY, RETURN_LATENCY }
++
++@export var message_identifier: int = 0
++
+ ## Time of the delay between clock sync calls on the client side
+ @export var client_clock_sync_time: float = 0.5
+ 
+@@ -16,6 +20,8 @@ var client_clock: float = 0.0
+ 
+ var latency: float = 0.0
+ 
++var _network_message_handler: NetworkMessageHandler = null
++
+ var _multiplayer_connection: MultiplayerConnection = null
+ 
+ var _latency_buffer = []
+@@ -27,7 +33,10 @@ var _client_clock_sync_timer: Timer = null
+ 
+ 
+ func _ready():
+-	_multiplayer_connection = get_parent()
++	_network_message_handler = get_parent()
++
++	# Get the MultiplayerConnection parent node.
++	_multiplayer_connection = get_parent().get_parent()
+ 
+ 	# Register yourself with your parent
+ 	_multiplayer_connection.component_list.register_component(COMPONENT_NAME, self)
+@@ -56,10 +65,26 @@ func _physics_process(delta):
+ 	_delta_latency = 0
+ 
+ 
++func handle_message(peer_id: int, message: Array):
++	match message[0]:
++		TYPE.FETCH_SERVER_TIME:
++			_fetch_server_time(peer_id, message[1])
++		TYPE.RETURN_SERVER_TIME:
++			_return_server_time(peer_id, message[1], message[2])
++		TYPE.GET_LATENCY:
++			_get_latency(peer_id, message[1])
++		TYPE.RETURN_LATENCY:
++			_return_latency(peer_id, message[1])
++
++
+ func _start_sync_clock():
+ 	GodotLogger.info("Starting sync clock")
+ 
+-	fetch_server_time.rpc_id(1, Time.get_unix_time_from_system())
++	# fetch_server_time.rpc_id(1, Time.get_unix_time_from_system())
++
++	_network_message_handler.send_message(
++		1, message_identifier, [TYPE.FETCH_SERVER_TIME, Time.get_unix_time_from_system()]
++	)
+ 
+ 	_client_clock_sync_timer.start()
+ 
+@@ -72,8 +97,15 @@ func _stop_sync_clock():
+ 
+ func _on_client_clock_sync_timer_timeout():
+ 	# If the connection is still up, call the get latency rpc
+-	if _multiplayer_connection.multiplayer_api.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
+-		get_latency.rpc_id(1, Time.get_unix_time_from_system())
++	if (
++		_multiplayer_connection.multiplayer_api.multiplayer_peer.get_connection_status()
++		== MultiplayerPeer.CONNECTION_CONNECTED
++	):
++		# get_latency.rpc_id(1, Time.get_unix_time_from_system())
++
++		_network_message_handler.send_message(
++			1, message_identifier, [TYPE.GET_LATENCY, Time.get_unix_time_from_system()]
++		)
+ 
+ 
+ func _on_client_connected(connected: bool):
+@@ -83,32 +115,42 @@ func _on_client_connected(connected: bool):
+ 		_stop_sync_clock()
+ 
+ 
+-@rpc("call_remote", "any_peer", "reliable")
+-func fetch_server_time(client_time: float):
++func _fetch_server_time(id: int, client_time: float):
+ 	if not _multiplayer_connection.is_server():
+ 		return
+ 
+-	var id = _multiplayer_connection.multiplayer_api.get_remote_sender_id()
+-	return_server_time.rpc_id(id, Time.get_unix_time_from_system(), client_time)
++	# return_server_time.rpc_id(id, Time.get_unix_time_from_system(), client_time)
++
++	_network_message_handler.send_message(
++		id,
++		message_identifier,
++		[TYPE.RETURN_SERVER_TIME, Time.get_unix_time_from_system(), client_time]
++	)
+ 
+ 
+-@rpc("call_remote", "authority", "reliable")
+-func return_server_time(server_time: float, client_time: float):
++func _return_server_time(id: int, server_time: float, client_time: float):
++	if id != 1:
++		return
++
+ 	latency = (Time.get_unix_time_from_system() - client_time) / 2
+ 	client_clock = server_time + latency
+ 
+ 
+-@rpc("call_remote", "any_peer", "reliable")
+-func get_latency(client_time: float):
++func _get_latency(id: int, client_time: float):
+ 	if not _multiplayer_connection.is_server():
+ 		return
+ 
+-	var id = _multiplayer_connection.multiplayer_api.get_remote_sender_id()
+-	return_latency.rpc_id(id, client_time)
++	# return_latency.rpc_id(id, client_time)
+ 
++	_network_message_handler.send_message(
++		id, message_identifier, [TYPE.RETURN_LATENCY, client_time]
++	)
++
++
++func _return_latency(id: int, client_time: float):
++	if id != 1:
++		return
+ 
+-@rpc("call_remote", "authority", "reliable")
+-func return_latency(client_time: float):
+ 	_latency_buffer.append((Time.get_unix_time_from_system() - client_time) / 2)
+ 	if _latency_buffer.size() == LATENCY_BUFFER_SIZE:
+ 		var total_latency = 0
+diff --git a/components/connection/NetworkMessageHandler/NetworkMessageHandler.gd b/components/connection/NetworkMessageHandler/NetworkMessageHandler.gd
+new file mode 100644
+index 0000000..ecf2149
+--- /dev/null
++++ b/components/connection/NetworkMessageHandler/NetworkMessageHandler.gd
+@@ -0,0 +1,130 @@
++extends Node
++
++class_name NetworkMessageHandler
++
++const COMPONENT_NAME = "NetworkMessageHandler"
++
++# Reference to the MultiplayerConnection parent node.
++var multiplayer_connection: MultiplayerConnection = null
++
++var _message_mapper: Dictionary = {}
++
++var _input_message_queue: Dictionary = {}
++var _output_message_queue: Dictionary = {}
++
++var bytes_per_second_out = 0
++var bytes_per_second_in = 0
++
++
++# Called when the node enters the scene tree for the first time.
++func _ready():
++	# Get the MultiplayerConnection parent node.
++	multiplayer_connection = get_parent()
++
++	# Register the component with the parent MultiplayerConnection.
++	multiplayer_connection.component_list.register_component(COMPONENT_NAME, self)
++
++	# Wait until the multiplayer connection is initialized.
++	await multiplayer_connection.init_done
++
++	_map_childs()
++
++
++func _physics_process(_delta: float):
++	_handle_input_messages()
++	_handle_output_messages()
++
++
++func _handle_input_messages():
++	for peer_id in _input_message_queue:
++		_handle_peer_input_messages(peer_id, _input_message_queue[peer_id])
++
++	_input_message_queue.clear()
++
++
++func _handle_peer_input_messages(peer_id: int, messages: Array):
++	for message in messages:
++		_handle_peer_input_message(peer_id, message)
++
++
++func _handle_peer_input_message(peer_id: int, message: PackedByteArray):
++	var input_data: StreamPeerBuffer = StreamPeerBuffer.new()
++	input_data.data_array = message
++
++	var amount_of_messages: int = input_data.get_u16()
++	for i in amount_of_messages:
++		var message_size: int = input_data.get_u16()
++		var message_data: PackedByteArray = input_data.get_data(message_size)[1]
++		_map_input_message(peer_id, Seriously.unpack_from_bytes(message_data))
++
++
++func _map_input_message(peer_id: int, message: Array):
++	if message.size() < 2:
++		return
++
++	if not _message_mapper.has(message[0]):
++		return
++
++	_message_mapper[message[0]].handle_message(peer_id, message[1])
++
++
++func _handle_output_messages():
++	for peer_id in _output_message_queue:
++		_handle_peer_output_messages(peer_id, _output_message_queue[peer_id])
++
++	_output_message_queue.clear()
++
++
++func _handle_peer_output_messages(peer_id: int, messages: Array):
++	var output_data: StreamPeerBuffer = StreamPeerBuffer.new()
++	output_data.put_u16(messages.size())
++
++	for message in messages:
++		var message_data: PackedByteArray = Seriously.pack_to_bytes(message)
++		output_data.put_u16(message_data.size())
++		output_data.put_data(message_data)
++
++	bytes_per_second_out = output_data.get_size() / 0.05
++
++	if peer_id in multiplayer_connection.multiplayer_api.get_peers():
++		_send_message.rpc_id(peer_id, output_data.data_array)
++
++
++func _map_childs():
++	for child in get_children():
++		if child.get("message_identifier") == null:
++			GodotLogger.warn("Failed to map child=[%s], missing message identifier" % child.name)
++			continue
++
++		if _message_mapper.has(child.message_identifier):
++			GodotLogger.warn(
++				(
++					"Failed to map child=[%s], message identifier=[%d] already mapped"
++					% [child.name, child.message_identifier]
++				)
++			)
++			continue
++
++		GodotLogger.info(
++			"Mapping child=[%s] to message identifier=[%d]" % [child.name, child.message_identifier]
++		)
++
++		_message_mapper[child.message_identifier] = child
++
++
++func send_message(peer_id: int, identifier: int, message: Array):
++	if _output_message_queue.has(peer_id):
++		_output_message_queue[peer_id].append([identifier, message])
++	else:
++		_output_message_queue[peer_id] = [[identifier, message]]
++
++
++@rpc("call_remote", "any_peer", "reliable")
++func _send_message(message: PackedByteArray):
++	bytes_per_second_in = message.size() / 0.05
++
++	var peer_id = multiplayer_connection.multiplayer_api.get_remote_sender_id()
++	if _input_message_queue.has(peer_id):
++		_input_message_queue[peer_id].append(message)
++	else:
++		_input_message_queue[peer_id] = [message]
+diff --git a/components/connection/NetworkMessageHandler/NetworkMessageHandler.tscn b/components/connection/NetworkMessageHandler/NetworkMessageHandler.tscn
+new file mode 100644
+index 0000000..2970108
+--- /dev/null
++++ b/components/connection/NetworkMessageHandler/NetworkMessageHandler.tscn
+@@ -0,0 +1,6 @@
++[gd_scene load_steps=2 format=3 uid="uid://bwhs7uqiwaesi"]
++
++[ext_resource type="Script" path="res://components/connection/NetworkMessageHandler/NetworkMessageHandler.gd" id="1_h7o6y"]
++
++[node name="NetworkMessageHandler" type="Node"]
++script = ExtResource("1_h7o6y")
+diff --git a/components/map/AStarComponent/AStarComponent.gd b/components/map/AStarComponent/AStarComponent.gd
+new file mode 100644
+index 0000000..4fddbd4
+--- /dev/null
++++ b/components/map/AStarComponent/AStarComponent.gd
+@@ -0,0 +1,218 @@
++extends Node
++
++class_name AStarComponent
++
++const ARRIVAL_DISTANCE: float = 8.0
++const DIRECTIONS: Array[Vector2] = [Vector2.RIGHT, Vector2.UP, Vector2.LEFT, Vector2.DOWN]
++const DIAGONAL_DIRECTIONS: Array[Vector2] = [
++	Vector2.RIGHT,
++	Vector2.UP,
++	Vector2.LEFT,
++	Vector2.DOWN,
++	Vector2(1, 1),
++	Vector2(1, -1),
++	Vector2(-1, 1),
++	Vector2(-1, -1)
++]
++
++enum PAIRING_METHODS {
++	CANTOR_UNSIGNED,  # positive values only
++	CANTOR_SIGNED,  # both positive and negative values
++	SZUDZIK_UNSIGNED,  # more efficient than cantor
++	SZUDZIK_SIGNED,  # both positive and negative values
++	SZUDZIK_IMPROVED,  # improved version (best option)
++}
++
++@export var navigation_tilemap: TileMap = null
++
++@export var diagonals: bool = true
++@export var current_pairing_method: PAIRING_METHODS = PAIRING_METHODS.SZUDZIK_IMPROVED
++
++var _target_node: Node
++
++var _astar: AStar2D = null
++
++
++# Called when the node enters the scene tree for the first time.
++func _ready():
++	_target_node = get_parent()
++
++	assert(_target_node.multiplayer_connection != null, "Target's multiplayer connection is null")
++
++	if not _target_node.multiplayer_connection.is_server():
++		queue_free()
++		return
++
++	_astar = AStar2D.new()
++
++	create_pathfinding_points()
++
++
++func create_pathfinding_points() -> void:
++	_astar.clear()
++
++	var used_cell_positions: Array[Vector2i] = navigation_tilemap.get_used_cells(0)
++
++	for cell_position in used_cell_positions:
++		_astar.add_point(get_point(cell_position), cell_position)
++
++	for cell_position in used_cell_positions:
++		connect_cardinals(cell_position)
++
++
++func connect_cardinals(point_position) -> void:
++	var center: int = get_point(point_position)
++	var directions: Array[Vector2] = []
++
++	if diagonals:
++		directions = DIAGONAL_DIRECTIONS
++	else:
++		directions = DIRECTIONS
++
++	for direction in directions:
++		var cardinal_point: int = get_point(
++			point_position + navigation_tilemap.local_to_map(direction)
++		)
++
++		if cardinal_point != center and _astar.has_point(cardinal_point):
++			_astar.connect_points(center, cardinal_point, true)
++
++
++func get_astar_path(
++	start_position: Vector2, end_position: Vector2, max_distance := -1
++) -> AStarPath:
++	var map_start_pos: Vector2 = navigation_tilemap.local_to_map(start_position)
++
++	var map_end_pos: Vector2 = navigation_tilemap.local_to_map(end_position)
++
++	if not has_point(map_start_pos):
++		return null
++
++	if not has_point(map_end_pos):
++		return null
++
++	var astar_path: PackedVector2Array = _astar.get_point_path(
++		get_point(map_start_pos), get_point(map_end_pos)
++	)
++
++	astar_path = set_path_length(astar_path, max_distance)
++
++	var out_path: AStarPath = AStarPath.new()
++
++	for step in astar_path:
++		out_path.path.append(navigation_tilemap.map_to_local(step))
++
++	return out_path
++
++
++func set_path_length(point_path: Array, max_distance: int) -> Array:
++	if max_distance < 0:
++		return point_path
++
++	var new_size: int = int(min(point_path.size(), max_distance))
++
++	point_path.resize(new_size)
++
++	return point_path
++
++
++func get_point(point_position: Vector2) -> int:
++	var a: int = int(point_position.x)
++	var b: int = int(point_position.y)
++	match current_pairing_method:
++		PAIRING_METHODS.CANTOR_UNSIGNED:
++			assert(
++				a >= 0 and b >= 0,
++				"Board: pairing method has failed. Choose method that supports negative values."
++			)
++			return cantor_pair(a, b)
++		PAIRING_METHODS.SZUDZIK_UNSIGNED:
++			assert(
++				a >= 0 and b >= 0,
++				"Board: pairing method has failed. Choose method that supports negative values."
++			)
++			return szudzik_pair(a, b)
++		PAIRING_METHODS.CANTOR_SIGNED:
++			return cantor_pair_signed(a, b)
++		PAIRING_METHODS.SZUDZIK_SIGNED:
++			return szudzik_pair_signed(a, b)
++		PAIRING_METHODS.SZUDZIK_IMPROVED:
++			return szudzik_pair_improved(a, b)
++	return szudzik_pair_improved(a, b)
++
++
++func cantor_pair(a: int, b: int) -> int:
++	var result := 0.5 * (a + b) * (a + b + 1) + b
++	return int(result)
++
++
++func cantor_pair_signed(a: int, b: int) -> int:
++	if a >= 0:
++		a = a * 2
++	else:
++		a = (a * -2) - 1
++	if b >= 0:
++		b = b * 2
++	else:
++		b = (b * -2) - 1
++	return cantor_pair(a, b)
++
++
++func szudzik_pair(a: int, b: int) -> int:
++	if a >= b:
++		return (a * a) + a + b
++	else:
++		return (b * b) + a
++
++
++func szudzik_pair_signed(a: int, b: int) -> int:
++	if a >= 0:
++		a = a * 2
++	else:
++		a = (a * -2) - 1
++	if b >= 0:
++		b = b * 2
++	else:
++		b = (b * -2) - 1
++	return int(szudzik_pair(a, b))
++
++
++func szudzik_pair_improved(x: int, y: int) -> int:
++	var a: int = 0
++	var b: int = 0
++	if x >= 0:
++		a = x * 2
++	else:
++		a = (x * -2) - 1
++	if y >= 0:
++		b = y * 2
++	else:
++		b = (y * -2) - 1
++	var c = szudzik_pair(a, b)
++	if a >= 0 and b < 0 or b >= 0 and a < 0:
++		return -c - 1
++	return c
++
++
++func has_point(point_position: Vector2) -> bool:
++	var point_id: int = get_point(point_position)
++	return _astar.has_point(point_id)
++
++
++class AStarPath:
++	extends RefCounted
++	var path: Array[Vector2] = []
++
++	func is_navigation_finished() -> bool:
++		return path.size() <= 0
++
++	func get_next_path_position(current_position: Vector2) -> Vector2:
++		if is_navigation_finished():
++			return current_position
++
++		var next_path_position = path[0]
++
++		if current_position.distance_to(next_path_position) < AStarComponent.ARRIVAL_DISTANCE:
++			path.pop_front()
++
++		return next_path_position
+diff --git a/components/map/AStarComponent/AStarComponent.tscn b/components/map/AStarComponent/AStarComponent.tscn
+new file mode 100644
+index 0000000..69e59cd
+--- /dev/null
++++ b/components/map/AStarComponent/AStarComponent.tscn
+@@ -0,0 +1,6 @@
++[gd_scene load_steps=2 format=3 uid="uid://wvx1u6p3es4m"]
++
++[ext_resource type="Script" path="res://components/map/AStarComponent/AStarComponent.gd" id="1_xptv7"]
++
++[node name="AStarComponent" type="Node"]
++script = ExtResource("1_xptv7")
+diff --git a/components/npc/shopsynchronizercomponent/ShopSynchronizerRPC.gd b/components/npc/shopsynchronizercomponent/ShopSynchronizerRPC.gd
+index d253641..4a9639b 100644
+--- a/components/npc/shopsynchronizercomponent/ShopSynchronizerRPC.gd
++++ b/components/npc/shopsynchronizercomponent/ShopSynchronizerRPC.gd
+@@ -6,14 +6,22 @@ class_name ShopSynchronizerRPC
+ # The component name for registration in the multiplayer connection's component list.
+ const COMPONENT_NAME = "ShopSynchronizerRPC"
+ 
++enum TYPE { SYNC_SHOP, BUY_ITEM }
++
++@export var message_identifier: int = 0
++
++var _network_message_handler: NetworkMessageHandler = null
++
+ # Reference to the MultiplayerConnection parent node.
+ var _multiplayer_connection: MultiplayerConnection = null
+ 
+ 
+ # Called when the node enters the scene tree for the first time.
+ func _ready():
++	_network_message_handler = get_parent()
++
+ 	# Get the MultiplayerConnection parent node.
+-	_multiplayer_connection = get_parent()
++	_multiplayer_connection = get_parent().get_parent()
+ 
+ 	# Register the component with the parent MultiplayerConnection.
+ 	_multiplayer_connection.component_list.register_component(COMPONENT_NAME, self)
+@@ -23,15 +31,33 @@ func _ready():
+ 
+ 
+ func sync_shop(peer_id: int, entity_name: String, shop: Dictionary):
+-	_sync_shop.rpc_id(peer_id, entity_name, shop)
++	# _sync_shop.rpc_id(peer_id, entity_name, shop)
++
++	_network_message_handler.send_message(
++		peer_id, message_identifier, [TYPE.SYNC_SHOP, entity_name, shop]
++	)
+ 
+ 
+ func buy_item(entity_name: String, item_uuid: String):
+-	_buy_item.rpc_id(1, entity_name, item_uuid)
++	# _buy_item.rpc_id(1, entity_name, item_uuid)
++
++	_network_message_handler.send_message(
++		1, message_identifier, [TYPE.BUY_ITEM, entity_name, item_uuid]
++	)
+ 
+ 
+-@rpc("call_remote", "authority", "reliable")
+-func _sync_shop(n: String, s: Dictionary):
++func handle_message(peer_id: int, message: Array):
++	match message[0]:
++		TYPE.SYNC_SHOP:
++			_sync_shop(peer_id, message[1], message[2])
++		TYPE.BUY_ITEM:
++			_buy_item(peer_id, message[1], message[2])
++
++
++func _sync_shop(id: int, n: String, s: Dictionary):
++	if id != 1:
++		return
++
+ 	var entity: Node = _multiplayer_connection.map.get_entity_by_name(n)
+ 
+ 	if entity == null:
+@@ -44,12 +70,9 @@ func _sync_shop(n: String, s: Dictionary):
+ 		entity.component_list[ShopSynchronizerComponent.COMPONENT_NAME].from_json(s)
+ 
+ 
+-@rpc("call_remote", "any_peer", "reliable")
+-func _buy_item(n: String, u: String):
++func _buy_item(id: int, n: String, u: String):
+ 	assert(_multiplayer_connection.is_server(), "This call can only run on the server")
+ 
+-	var id = _multiplayer_connection.multiplayer_api.get_remote_sender_id()
+-
+ 	var user: MultiplayerConnection.User = _multiplayer_connection.get_user_by_id(id)
+ 	if user == null:
+ 		return
+diff --git a/components/player/playersynchronizer/PlayerSynchronizerRPC.gd b/components/player/playersynchronizer/PlayerSynchronizerRPC.gd
+index 3e7d01b..73abce1 100644
+--- a/components/player/playersynchronizer/PlayerSynchronizerRPC.gd
++++ b/components/player/playersynchronizer/PlayerSynchronizerRPC.gd
+@@ -6,14 +6,22 @@ class_name PlayerSynchronizerRPC
+ # The component name for registration in the multiplayer connection's component list.
+ const COMPONENT_NAME = "PlayerSynchronizerRPC"
+ 
++enum TYPE { POS, INPUT, INTERACT, ATTACK }
++
++@export var message_identifier: int = 0
++
++var _network_message_handler: NetworkMessageHandler = null
++
+ # Reference to the MultiplayerConnection parent node.
+ var _multiplayer_connection: MultiplayerConnection = null
+ 
+ 
+ # Called when the node enters the scene tree for the first time.
+ func _ready():
++	_network_message_handler = get_parent()
++
+ 	# Get the MultiplayerConnection parent node.
+-	_multiplayer_connection = get_parent()
++	_multiplayer_connection = get_parent().get_parent()
+ 
+ 	# Register the component with the parent MultiplayerConnection.
+ 	_multiplayer_connection.component_list.register_component(COMPONENT_NAME, self)
+@@ -23,23 +31,43 @@ func _ready():
+ 
+ 
+ func sync_pos(peer_id: int, current_frame: int, pos: Vector2):
+-	_sync_pos.rpc_id(peer_id, current_frame, pos)
++	_network_message_handler.send_message(
++		peer_id, message_identifier, [TYPE.POS, current_frame, pos]
++	)
+ 
+ 
+ func sync_input(current_frame: int, direction: Vector2, timestamp: float):
+-	_sync_input.rpc_id(1, current_frame, direction, timestamp)
++	_network_message_handler.send_message(
++		1, message_identifier, [TYPE.INPUT, current_frame, direction, timestamp]
++	)
+ 
+ 
+ func sync_interact(target: String):
+-	_sync_interact.rpc_id(1, target)
++	_network_message_handler.send_message(1, message_identifier, [TYPE.INTERACT, target])
+ 
+ 
+ func request_attack(timestamp: float, direction: Vector2, enemies: Array):
+-	_request_attack.rpc_id(1, timestamp, direction, enemies)
++	_network_message_handler.send_message(
++		1, message_identifier, [TYPE.ATTACK, timestamp, direction, enemies]
++	)
++
+ 
++func handle_message(peer_id: int, message: Array):
++	match message[0]:
++		TYPE.POS:
++			_sync_pos(peer_id, message[1], message[2])
++		TYPE.INPUT:
++			_sync_input(peer_id, message[1], message[2], message[3])
++		TYPE.INTERACT:
++			_sync_interact(peer_id, message[1])
++		TYPE.ATTACK:
++			_request_attack(peer_id, message[1], message[2], message[3])
++
++
++func _sync_pos(id: int, c: int, p: Vector2):
++	if id != 1:
++		return
+ 
+-@rpc("call_remote", "authority", "unreliable")
+-func _sync_pos(c: int, p: Vector2):
+ 	if _multiplayer_connection.client_player == null:
+ 		return
+ 
+@@ -49,13 +77,7 @@ func _sync_pos(c: int, p: Vector2):
+ 		)
+ 
+ 
+-@rpc("call_remote", "any_peer", "reliable")
+-func _sync_input(c: int, d: Vector2, t: float):
+-	if not _multiplayer_connection.is_server():
+-		return
+-
+-	var id = _multiplayer_connection.multiplayer_api.get_remote_sender_id()
+-
++func _sync_input(id: int, c: int, d: Vector2, t: float):
+ 	var user: MultiplayerConnection.User = _multiplayer_connection.get_user_by_id(id)
+ 	if user == null:
+ 		return
+@@ -70,13 +92,7 @@ func _sync_input(c: int, d: Vector2, t: float):
+ 		user.player.component_list["player_synchronizer"].server_sync_input(c, d, t)
+ 
+ 
+-@rpc("call_remote", "any_peer", "reliable")
+-func _sync_interact(t: String):
+-	if not _multiplayer_connection.is_server():
+-		return
+-
+-	var id = _multiplayer_connection.multiplayer_api.get_remote_sender_id()
+-
++func _sync_interact(id: int, t: String):
+ 	var user: MultiplayerConnection.User = _multiplayer_connection.get_user_by_id(id)
+ 	if user == null:
+ 		return
+@@ -91,13 +107,7 @@ func _sync_interact(t: String):
+ 		user.player.component_list["player_synchronizer"].server_sync_interact(t)
+ 
+ 
+-@rpc("call_remote", "any_peer", "reliable")
+-func _request_attack(t: float, d: Vector2, e: Array):
+-	if not _multiplayer_connection.is_server():
+-		return
+-
+-	var id = _multiplayer_connection.multiplayer_api.get_remote_sender_id()
+-
++func _request_attack(id: int, t: float, d: Vector2, e: Array):
+ 	var user: MultiplayerConnection.User = _multiplayer_connection.get_user_by_id(id)
+ 	if user == null:
+ 		return
+diff --git a/project.godot b/project.godot
+index 543b2bb..7213712 100644
+--- a/project.godot
++++ b/project.godot
+@@ -37,7 +37,7 @@ project/assembly_name="Jdungeon"
+ 
+ [editor_plugins]
+ 
+-enabled=PackedStringArray("res://addons/gut/plugin.cfg", "res://addons/logger/plugin.cfg")
++enabled=PackedStringArray("res://addons/graph_2d/plugin.cfg", "res://addons/gut/plugin.cfg", "res://addons/logger/plugin.cfg")
+ 
+ [file_customization]
+ 
+@@ -167,6 +167,11 @@ j_continue={
+ , Object(InputEventMouseButton,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"button_mask":1,"position":Vector2(133, 6),"global_position":Vector2(137, 47),"factor":1.0,"button_index":1,"canceled":false,"pressed":true,"double_click":false,"script":null)
+ ]
+ }
++j_toggle_debug_menu={
++"deadzone": 0.5,
++"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":75,"key_label":0,"unicode":107,"echo":false,"script":null)
++]
++}
+ 
+ [internationalization]
+ 
+diff --git a/resources/DeploymentConfigResource.tres b/resources/DeploymentConfigResource.tres
+index cd281ef..103fc43 100644
+--- a/resources/DeploymentConfigResource.tres
++++ b/resources/DeploymentConfigResource.tres
+@@ -7,26 +7,23 @@ script = ExtResource("1_qlogw")
+ mode = 1
+ use_tls = true
+ minimize_on_start = false
++gateway_fps = 30
++server_fps = 20
++client_fps = 30
+ gateway_server_server_bind_address = "*"
+ gateway_server_server_port = 9071
+-gateway_server_server_fps = 30
+ gateway_server_certh_path = "/etc/letsencrypt/live/jdungeon.org/fullchain.pem"
+ gateway_server_key_path = "/etc/letsencrypt/live/jdungeon.org/privkey.pem"
+ gateway_client_server_bind_address = "*"
+ gateway_client_server_port = 9072
+-gateway_client_server_fps = 30
+ gateway_client_certh_path = "/etc/letsencrypt/live/jdungeon.org/fullchain.pem"
+ gateway_client_key_path = "/etc/letsencrypt/live/jdungeon.org/privkey.pem"
+ server_client_server_bind_address = "*"
+ server_client_server_port = 9073
+-server_client_server_fps = 10
+ server_client_certh_path = "/etc/letsencrypt/live/jdungeon.org/fullchain.pem"
+ server_client_key_path = "/etc/letsencrypt/live/jdungeon.org/privkey.pem"
+ server_gateway_client_address = "wss://jdungeon.org:9071"
+-server_gateway_client_fps = 30
+ client_gateway_client_address = "wss://jdungeon.org:9072"
+-client_gateway_client_fps = 30
+ client_server_client_address = "wss://jdungeon.org:9073"
+-client_server_client_fps = 30
+ database_backend = 0
+ json_backend_file = "/app/users.json"
+diff --git a/resources/DevelopmentConfigResource.tres b/resources/DevelopmentConfigResource.tres
+index 0a6e748..e8d809f 100644
+--- a/resources/DevelopmentConfigResource.tres
++++ b/resources/DevelopmentConfigResource.tres
+@@ -7,26 +7,23 @@ script = ExtResource("1_cwmgo")
+ mode = 0
+ use_tls = false
+ minimize_on_start = true
++gateway_fps = 30
++server_fps = 20
++client_fps = 30
+ gateway_server_server_bind_address = "*"
+ gateway_server_server_port = 9071
+-gateway_server_server_fps = 30
+ gateway_server_certh_path = ""
+ gateway_server_key_path = ""
+ gateway_client_server_bind_address = "*"
+ gateway_client_server_port = 9072
+-gateway_client_server_fps = 30
+ gateway_client_certh_path = ""
+ gateway_client_key_path = ""
+ server_client_server_bind_address = "*"
+ server_client_server_port = 9073
+-server_client_server_fps = 10
+ server_client_certh_path = ""
+ server_client_key_path = ""
+ server_gateway_client_address = "ws://localhost:9071"
+-server_gateway_client_fps = 30
+ client_gateway_client_address = "ws://localhost:9072"
+-client_gateway_client_fps = 30
+ client_server_client_address = "ws://localhost:9073"
+-client_server_client_fps = 30
+ database_backend = 0
+ json_backend_file = "res://data/users.json"
+diff --git a/scenes/enemies/BlueMole/BlueMole.tscn b/scenes/enemies/BlueMole/BlueMole.tscn
+index 8ab895f..d553714 100644
+--- a/scenes/enemies/BlueMole/BlueMole.tscn
++++ b/scenes/enemies/BlueMole/BlueMole.tscn
+@@ -1,4 +1,4 @@
+-[gd_scene load_steps=30 format=3 uid="uid://cgxevug65fx3d"]
++[gd_scene load_steps=31 format=3 uid="uid://cgxevug65fx3d"]
+ 
+ [ext_resource type="Script" path="res://scenes/enemies/BlueMole/BlueMole.gd" id="1_0kuqc"]
+ [ext_resource type="PackedScene" uid="uid://kb8mhtyak1ki" path="res://components/common/watchersynchronizercomponent/WatcherSynchronizerComponent.tscn" id="2_7anrd"]
+@@ -12,6 +12,7 @@
+ [ext_resource type="Texture2D" uid="uid://ix4rovrd5tqg" path="res://assets/images/enemies/bluemole/scaled/Arm1.png" id="9_82elk"]
+ [ext_resource type="Texture2D" uid="uid://xnjigwd7ta4k" path="res://assets/images/enemies/bluemole/scaled/Arm2.png" id="10_hd4po"]
+ [ext_resource type="PackedScene" uid="uid://cy3sl4bl86h6m" path="res://components/common/velocitysimulatorcomponent/VelocitySimulatorComponent.tscn" id="10_l3uqk"]
++[ext_resource type="PackedScene" uid="uid://dikf715gqy3x" path="res://components/enemy/enemyrespawncomponent/EnemyRespawnComponent.tscn" id="10_tpey2"]
+ [ext_resource type="Texture2D" uid="uid://dqyouflmy1kq6" path="res://assets/images/enemies/bluemole/scaled/Body.png" id="11_6l74c"]
+ [ext_resource type="Texture2D" uid="uid://d4bfefdngmd1y" path="res://assets/images/enemies/bluemole/scaled/Leg1.png" id="12_5o0li"]
+ [ext_resource type="Texture2D" uid="uid://co2tfr6eu3uiv" path="res://assets/images/enemies/bluemole/scaled/Leg2.png" id="13_tm3ud"]
+@@ -990,6 +991,9 @@ action_synchronizer = NodePath("../ActionSynchronizerComponent")
+ [node name="FloatingTextComponent" parent="." node_paths=PackedStringArray("stats_synchronizer") instance=ExtResource("8_q46g2")]
+ stats_synchronizer = NodePath("../StatsSynchronizerComponent")
+ 
++[node name="EnemyRespawnComponent" parent="." node_paths=PackedStringArray("stats") instance=ExtResource("10_tpey2")]
++stats = NodePath("../StatsSynchronizerComponent")
++
+ [node name="VelocitySimulatorComponent" parent="." instance=ExtResource("10_l3uqk")]
+ 
+ [node name="Sprites" type="Node2D" parent="."]
+diff --git a/scenes/main/Main.gd b/scenes/main/Main.gd
+index deda786..fb5da4a 100644
+--- a/scenes/main/Main.gd
++++ b/scenes/main/Main.gd
+@@ -52,6 +52,9 @@ func _start_gateway():
+ 
+ 	GodotLogger.info("Running as Gateway")
+ 
++	GodotLogger.info("Setting the game's physics ticks per second to %d" % config.gateway_fps)
++	Engine.set_physics_ticks_per_second(config.gateway_fps)
++
+ 	if config.minimize_on_start:
+ 		get_tree().root.mode = Window.MODE_MINIMIZED
+ 
+@@ -124,6 +127,9 @@ func _start_server():
+ 
+ 	GodotLogger.info("Running as server")
+ 
++	GodotLogger.info("Setting the game's physics ticks per second to %d" % config.server_fps)
++	Engine.set_physics_ticks_per_second(config.server_fps)
++
+ 	if config.minimize_on_start:
+ 		get_tree().root.mode = Window.MODE_MINIMIZED
+ 
+@@ -161,6 +167,9 @@ func _start_client():
+ 
+ 	GodotLogger.info("Running as client")
+ 
++	GodotLogger.info("Setting the game's physics ticks per second to %d" % config.client_fps)
++	Engine.set_physics_ticks_per_second(config.client_fps)
++
+ 	%GatewayServer.queue_free()
+ 
+ 	%ServerFsm.queue_free()
+diff --git a/scenes/main/Main.tscn b/scenes/main/Main.tscn
+index 6293f71..524ab71 100644
+--- a/scenes/main/Main.tscn
++++ b/scenes/main/Main.tscn
+@@ -1,4 +1,4 @@
+-[gd_scene load_steps=23 format=3 uid="uid://dhlwuon2arb14"]
++[gd_scene load_steps=24 format=3 uid="uid://dhlwuon2arb14"]
+ 
+ [ext_resource type="Script" path="res://scenes/main/Main.gd" id="1_et6n2"]
+ [ext_resource type="Texture2D" uid="uid://bmd5m8qefqtlc" path="res://assets/images/varia/background/Untitled_Artwork.jpg" id="2_56s56"]
+@@ -10,6 +10,7 @@
+ [ext_resource type="PackedScene" uid="uid://dcur4xolp0oia" path="res://components/connection/ServerFSM/ServerFSM.tscn" id="5_uiu1q"]
+ [ext_resource type="PackedScene" uid="uid://s8h0g10nfeim" path="res://components/common/positionsynchronizercomponent/PositionSynchronizerRPC.tscn" id="6_1dj18"]
+ [ext_resource type="PackedScene" uid="uid://cepejjmy1uay8" path="res://components/connection/ClientFSM/ClientFSMServerRPC.tscn" id="6_5ffrs"]
++[ext_resource type="PackedScene" uid="uid://bwhs7uqiwaesi" path="res://components/connection/NetworkMessageHandler/NetworkMessageHandler.tscn" id="6_08ulk"]
+ [ext_resource type="PackedScene" uid="uid://b6qnexfdo1eg" path="res://components/common/statssynchronizercomponent/StatsSynchronizerRPC.tscn" id="7_6biju"]
+ [ext_resource type="PackedScene" uid="uid://bn4fr6idoaxuw" path="res://components/common/actionsynchronizercomponent/ActionSynchronizerRPC.tscn" id="8_3q1k4"]
+ [ext_resource type="PackedScene" uid="uid://dderndos7tfdu" path="res://components/player/networkviewsynchronizercomponent/NetworkViewSynchronizerRPC.tscn" id="9_3pk1n"]
+@@ -47,11 +48,21 @@ server_fsm_rpc = NodePath("../../GatewayServer/SFR")
+ unique_name_in_owner = true
+ database = NodePath("../../Database")
+ 
+-[node name="CFSR" parent="Connections/ServerClient" instance=ExtResource("6_5ffrs")]
++[node name="NetworkMessageHandler" parent="Connections/ServerClient" instance=ExtResource("6_08ulk")]
++
++[node name="PositionSynchronizerRPC" parent="Connections/ServerClient/NetworkMessageHandler" instance=ExtResource("6_1dj18")]
++message_identifier = 1
+ 
+-[node name="CS" parent="Connections/ServerClient" instance=ExtResource("5_emdm5")]
++[node name="PlayerSynchronizerRPC" parent="Connections/ServerClient/NetworkMessageHandler" instance=ExtResource("10_ghnhu")]
++message_identifier = 2
+ 
+-[node name="PSR" parent="Connections/ServerClient" instance=ExtResource("6_1dj18")]
++[node name="ClockSynchronizer" parent="Connections/ServerClient/NetworkMessageHandler" instance=ExtResource("5_emdm5")]
++message_identifier = 3
++
++[node name="ShopSynchronizerRPC" parent="Connections/ServerClient/NetworkMessageHandler" instance=ExtResource("15_et847")]
++message_identifier = 4
++
++[node name="CFSR" parent="Connections/ServerClient" instance=ExtResource("6_5ffrs")]
+ 
+ [node name="SSR" parent="Connections/ServerClient" instance=ExtResource("7_6biju")]
+ 
+@@ -59,14 +70,10 @@ database = NodePath("../../Database")
+ 
+ [node name="NWSR" parent="Connections/ServerClient" instance=ExtResource("9_3pk1n")]
+ 
+-[node name="PLSR" parent="Connections/ServerClient" instance=ExtResource("10_ghnhu")]
+-
+ [node name="ISR" parent="Connections/ServerClient" instance=ExtResource("13_dprpu")]
+ 
+ [node name="ESR" parent="Connections/ServerClient" instance=ExtResource("14_m4jl4")]
+ 
+-[node name="SHSR" parent="Connections/ServerClient" instance=ExtResource("15_et847")]
+-
+ [node name="CSR" parent="Connections/ServerClient" instance=ExtResource("16_7gwu3")]
+ 
+ [node name="PUR" parent="Connections/ServerClient" instance=ExtResource("17_5u5ls")]
+diff --git a/scenes/maps/basecamp/BaseCamp.gd b/scenes/maps/basecamp/BaseCamp.gd
+index a3c8557..9a32390 100644
+--- a/scenes/maps/basecamp/BaseCamp.gd
++++ b/scenes/maps/basecamp/BaseCamp.gd
+@@ -4,6 +4,8 @@ extends Map
+ 
+ @onready var camera: Camera2D = $Camera2D
+ 
++@onready var astar: AStarComponent = $AStarComponent
++
+ 
+ func _physics_process(delta):
+ 	if multiplayer_connection.is_server():
+diff --git a/scenes/maps/basecamp/BaseCamp.tscn b/scenes/maps/basecamp/BaseCamp.tscn
+index 86f1385..dd56421 100644
+--- a/scenes/maps/basecamp/BaseCamp.tscn
++++ b/scenes/maps/basecamp/BaseCamp.tscn
+@@ -1,6 +1,7 @@
+-[gd_scene load_steps=23 format=3 uid="uid://bo5ly7xiyj847"]
++[gd_scene load_steps=24 format=3 uid="uid://bo5ly7xiyj847"]
+ 
+ [ext_resource type="Script" path="res://scenes/maps/basecamp/BaseCamp.gd" id="1_4tpho"]
++[ext_resource type="PackedScene" uid="uid://wvx1u6p3es4m" path="res://components/map/AStarComponent/AStarComponent.tscn" id="2_kkmpe"]
+ [ext_resource type="TileSet" uid="uid://pjsyexx3ov10" path="res://data/tileset/atlas.tres" id="2_vpf6b"]
+ [ext_resource type="TileSet" uid="uid://d0vhi8a2dswg6" path="res://data/tileset/navcol.tres" id="3_37stb"]
+ [ext_resource type="PackedScene" uid="uid://cgxevug65fx3d" path="res://scenes/enemies/BlueMole/BlueMole.tscn" id="5_oe42q"]
+@@ -31,6 +32,9 @@ npcs_to_sync = NodePath("NPCs")
+ player_respawn_locations = NodePath("PlayerRespawnLocations")
+ portals_to_sync = NodePath("Portals")
+ 
++[node name="AStarComponent" parent="." node_paths=PackedStringArray("navigation_tilemap") instance=ExtResource("2_kkmpe")]
++navigation_tilemap = NodePath("../Map/Navigation")
++
+ [node name="Map" type="Node2D" parent="."]
+ y_sort_enabled = true
+ 
+diff --git a/scenes/player/Player.tscn b/scenes/player/Player.tscn
+index b88537a..1913936 100644
+--- a/scenes/player/Player.tscn
++++ b/scenes/player/Player.tscn
+@@ -1,4 +1,4 @@
+-[gd_scene load_steps=50 format=3 uid="uid://cycpseafpexil"]
++[gd_scene load_steps=51 format=3 uid="uid://cycpseafpexil"]
+ 
+ [ext_resource type="Script" path="res://scenes/player/Player.gd" id="1_yw2vn"]
+ [ext_resource type="PackedScene" uid="uid://dfwc0qu1hc7xr" path="res://components/player/inventorysynchronizercomponent/InventorySynchronizerComponent.tscn" id="2_1l633"]
+@@ -37,6 +37,7 @@
+ [ext_resource type="PackedScene" uid="uid://dmf2tmcuq22vg" path="res://scenes/player/chatpanel/ChatPanel.tscn" id="34_55882"]
+ [ext_resource type="PackedScene" uid="uid://dssmk0m8xsvxf" path="res://scenes/player/gamemenu/GameMenu.tscn" id="35_aixvg"]
+ [ext_resource type="PackedScene" uid="uid://d261xncd2la2h" path="res://scenes/player/shortcutmenu/ShortcutMenu.tscn" id="37_7vdqs"]
++[ext_resource type="PackedScene" uid="uid://bagivotue0kvw" path="res://scenes/player/debugpanel/DebugPanel.tscn" id="38_607x8"]
+ 
+ [sub_resource type="CircleShape2D" id="CircleShape2D_rrdkp"]
+ radius = 16.0
+@@ -2046,3 +2047,14 @@ game_menu = NodePath("../GameMenu")
+ stats_display = NodePath("../StatDisplay")
+ equipment = NodePath("../Equipment")
+ inventory = NodePath("../Inventory")
++
++[node name="DebugPanel" parent="Camera2D/UILayer" node_paths=PackedStringArray("player") instance=ExtResource("38_607x8")]
++visible = false
++anchors_preset = 1
++anchor_left = 1.0
++anchor_right = 1.0
++offset_left = -512.0
++offset_bottom = 256.0
++grow_horizontal = 0
++mouse_filter = 1
++player = NodePath("../../..")
+diff --git a/scenes/player/debugpanel/DebugPanel.gd b/scenes/player/debugpanel/DebugPanel.gd
+new file mode 100644
+index 0000000..4532398
+--- /dev/null
++++ b/scenes/player/debugpanel/DebugPanel.gd
+@@ -0,0 +1,93 @@
++extends PanelContainer
++
++@export var player: Player = null
++
++var buffer_window: float = 60.0
++
++var _network_message_handler: NetworkMessageHandler = null
++
++var _clock_synchronizer: ClockSynchronizer = null
++
++var _my_plot_in: Graph2D.PlotItem = null
++var _my_plot_out: Graph2D.PlotItem = null
++
++var _in_buffer: Array = []
++var _out_buffer: Array = []
++var _plot_timer: Timer = null
++
++
++# Called when the node enters the scene tree for the first time.
++func _ready():
++	if player.multiplayer_connection.is_server():
++		queue_free()
++		return
++
++	# Get the NetworkMessageHandler component.
++	_network_message_handler = player.multiplayer_connection.component_list.get_component(
++		NetworkMessageHandler.COMPONENT_NAME
++	)
++
++	assert(_network_message_handler != null, "Failed to get NetworkMessageHandler component")
++
++	# Get the ClockSynchronizer component.
++	_clock_synchronizer = player.multiplayer_connection.component_list.get_component(
++		ClockSynchronizer.COMPONENT_NAME
++	)
++
++	assert(_clock_synchronizer != null, "Failed to get ClockSynchronizer component")
++
++	_plot_timer = Timer.new()
++	_plot_timer.name = "PlotTimer"
++	_plot_timer.autostart = true
++	_plot_timer.wait_time = 1.0
++	_plot_timer.timeout.connect(_on_plot_timer_timeout)
++	add_child(_plot_timer)
++
++	_my_plot_in = %Graph2D.add_plot_item("Kbps in", Color.GREEN, 1.0)
++	_my_plot_out = %Graph2D.add_plot_item("Kpbs out", Color.RED, 1.0)
++
++
++func _input(event):
++	if JUI.chat_active:
++		return
++
++	if event.is_action_pressed("j_toggle_debug_menu"):
++		if visible:
++			hide()
++		else:
++			show()
++
++
++func _physics_process(_delta):
++	var time_offset: float = _clock_synchronizer.client_clock - buffer_window
++
++	while _in_buffer.size() > 0 and _in_buffer[0][1] < time_offset:
++		_in_buffer.remove_at(0)
++
++	while _out_buffer.size() > 0 and _out_buffer[0][1] < time_offset:
++		_out_buffer.remove_at(0)
++
++	_in_buffer.append(
++		[_network_message_handler.bytes_per_second_in / 1000, _clock_synchronizer.client_clock]
++	)
++	_out_buffer.append(
++		[_network_message_handler.bytes_per_second_out / 1000, _clock_synchronizer.client_clock]
++	)
++
++
++func _on_plot_timer_timeout():
++	if not visible:
++		return
++
++	_my_plot_in.clear()
++	_my_plot_out.clear()
++
++	for i in range(_in_buffer.size() - 1, -1, -1):
++		var element: Array = _in_buffer[i]
++		_my_plot_in.add_point(Vector2(_clock_synchronizer.client_clock - element[1], element[0]))
++
++	for i in range(_out_buffer.size() - 1, -1, -1):
++		var element: Array = _out_buffer[i]
++		_my_plot_out.add_point(Vector2(_clock_synchronizer.client_clock - element[1], element[0]))
++
++	%Ping.text = "Ping: %.2f" % (_clock_synchronizer.latency * 500)  # 1000/2 = 500
+diff --git a/scenes/player/debugpanel/DebugPanel.tscn b/scenes/player/debugpanel/DebugPanel.tscn
+new file mode 100644
+index 0000000..f70c501
+--- /dev/null
++++ b/scenes/player/debugpanel/DebugPanel.tscn
+@@ -0,0 +1,24 @@
++[gd_scene load_steps=3 format=3 uid="uid://bagivotue0kvw"]
++
++[ext_resource type="Script" path="res://scenes/player/debugpanel/DebugPanel.gd" id="1_0jtlh"]
++[ext_resource type="Script" path="res://addons/graph_2d/graph_2d.gd" id="2_8kj31"]
++
++[node name="DebugPanel" type="PanelContainer"]
++script = ExtResource("1_0jtlh")
++
++[node name="VBoxContainer" type="VBoxContainer" parent="."]
++layout_mode = 2
++
++[node name="Graph2D" type="Control" parent="VBoxContainer"]
++unique_name_in_owner = true
++custom_minimum_size = Vector2(512, 256)
++layout_mode = 2
++script = ExtResource("2_8kj31")
++x_max = 60.0
++y_max = 10.0
++background_color = Color(0, 0, 0, 0.25098)
++
++[node name="Ping" type="Label" parent="VBoxContainer"]
++unique_name_in_owner = true
++layout_mode = 2
++text = "Ping: 0.00 ms"
+diff --git a/scenes/player/gamemenu/controlsmenu/ControlsMenu.tscn b/scenes/player/gamemenu/controlsmenu/ControlsMenu.tscn
+index 75a2b9b..afcdcf5 100644
+--- a/scenes/player/gamemenu/controlsmenu/ControlsMenu.tscn
++++ b/scenes/player/gamemenu/controlsmenu/ControlsMenu.tscn
+@@ -82,6 +82,10 @@ text = "Open Chat: Enter"
+ layout_mode = 2
+ text = "Open Menu: Esc"
+ 
++[node name="Label6" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer/VBoxContainer2"]
++layout_mode = 2
++text = "Network stats: K"
++
+ [node name="MarginContainer2" type="MarginContainer" parent="MarginContainer/VBoxContainer"]
+ layout_mode = 2
+ theme_override_constants/margin_top = 16

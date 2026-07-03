@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-04-25_6f8961a_025"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "0489b4895b4146917f855741323f0419070255a5"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\a-little-game-called-mario"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/title/TitleScreen.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-04-25_6f8961a_025"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

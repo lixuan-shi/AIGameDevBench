@@ -1,0 +1,11 @@
+diff --git a/source/match/players/simple-clairvoyant-ai/IntelligenceController.gd b/source/match/players/simple-clairvoyant-ai/IntelligenceController.gd
+index 685a741..1f8e8f5 100644
+--- a/source/match/players/simple-clairvoyant-ai/IntelligenceController.gd
++++ b/source/match/players/simple-clairvoyant-ai/IntelligenceController.gd
+@@ -69,4 +69,6 @@ func _on_drone_action_changed(new_action, drone):
+ 			. create_timer(randf_range(TARGET_SWITICHING_TIME_MIN_S, TARGET_SWITICHING_TIME_MAX_S))
+ 			. timeout
+ 		)
++		if not drone.is_inside_tree():
++			return
+ 		_navigate_to_random_position(drone)

@@ -96,6 +96,8 @@ def load_testcase(dir: Path) -> Testcase:
 def discover_testcases(root: Path) -> list[Testcase]:
     out: list[Testcase] = []
     for child in sorted(root.iterdir()):
+        if child.name.startswith("_"):
+            continue
         if child.is_dir() and (child / "testcase.toml").exists():
             out.append(load_testcase(child))
     return out

@@ -1,0 +1,13 @@
+diff --git a/game/Scripts/Game/CameraController.gd b/game/Scripts/Game/CameraController.gd
+index be39300..db4e06b 100644
+--- a/game/Scripts/Game/CameraController.gd
++++ b/game/Scripts/Game/CameraController.gd
+@@ -1434,7 +1434,7 @@ func _set_control_hint_label() -> void:
+ 		
+ 		var all_locked = true
+ 		for piece in _selected_pieces:
+-			if piece != null:
++			if is_instance_valid(piece):
+ 				if piece is Piece:
+ 					if not piece.is_locked():
+ 						all_locked = false

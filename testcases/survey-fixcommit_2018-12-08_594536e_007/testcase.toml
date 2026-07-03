@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2018-12-08_594536e_007"
+category = "precise_edit"
+source_kind = "git"
+baseline_ref = "2c3485e24180812c8b6f9514e9605596f33480a3"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: godot/combat/battlers/Battler.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2018-12-08_594536e_007"
+bad_case_type = "C1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

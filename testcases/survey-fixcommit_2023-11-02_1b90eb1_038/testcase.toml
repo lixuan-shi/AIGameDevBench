@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-11-02_1b90eb1_038"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "ff98120a4e3c01165c36e5b2fac8e560412a88a9"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/enemies/MoldedDruvar/MoldedDruvar.gd, scenes/enemies/MoldedDruvar/MoldedDruvar.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-11-02_1b90eb1_038"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

@@ -1,0 +1,62 @@
+diff --git a/scenes/enemies/Sheep/Sheep.tscn b/scenes/enemies/Sheep/Sheep.tscn
+index 31ebfe7..414ef70 100644
+--- a/scenes/enemies/Sheep/Sheep.tscn
++++ b/scenes/enemies/Sheep/Sheep.tscn
+@@ -190,6 +190,7 @@ _data = {
+ }
+ 
+ [node name="Sheep" type="CharacterBody2D"]
++scale = Vector2(0.8, 0.8)
+ script = ExtResource("1_6p7b5")
+ respawn = true
+ 
+diff --git a/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn b/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn
+index 4cbc8f5..15ccc49 100644
+--- a/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn
++++ b/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn
+@@ -765,6 +765,7 @@ _data = {
+ }
+ 
+ [node name="TreeTrunkGuy" type="CharacterBody2D"]
++scale = Vector2(0.8, 0.8)
+ script = ExtResource("1_j7ilt")
+ 
+ [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+diff --git a/scenes/npcs/milklady/Milklady.tscn b/scenes/npcs/milklady/Milklady.tscn
+index f8e5206..aab7070 100644
+--- a/scenes/npcs/milklady/Milklady.tscn
++++ b/scenes/npcs/milklady/Milklady.tscn
+@@ -466,6 +466,7 @@ _data = {
+ }
+ 
+ [node name="Milklady" type="CharacterBody2D"]
++scale = Vector2(0.8, 0.8)
+ script = ExtResource("1_i2k6g")
+ 
+ [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+diff --git a/scenes/player/Player.tscn b/scenes/player/Player.tscn
+index 9833d0b..8decab1 100644
+--- a/scenes/player/Player.tscn
++++ b/scenes/player/Player.tscn
+@@ -619,7 +619,7 @@ _data = {
+ }
+ 
+ [node name="Player" type="CharacterBody2D"]
+-scale = Vector2(0.75, 0.75)
++scale = Vector2(0.6, 0.6)
+ script = ExtResource("1_yw2vn")
+ 
+ [node name="Sprites" type="Node2D" parent="."]
+diff --git a/scripts/classes/JPlayerSynchronizer.gd b/scripts/classes/JPlayerSynchronizer.gd
+index c78f4e9..9188df4 100644
+--- a/scripts/classes/JPlayerSynchronizer.gd
++++ b/scripts/classes/JPlayerSynchronizer.gd
+@@ -7,7 +7,7 @@ signal interacted(target_name: String)
+ 
+ @export var player: JPlayerBody2D
+ @export var synchronizer: JSynchronizer
+-@export var network_sync_area_size: float = 1024.0
++@export var network_sync_area_size: float = 2048.0
+ 
+ var bodies_in_view: Array[JBody2D] = []
+ var items_in_view: Array[JItem] = []

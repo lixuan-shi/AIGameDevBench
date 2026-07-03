@@ -1,0 +1,141 @@
+{
+  "schema": "survey.bad_case.testcase.v1",
+  "testcase_id": "survey-fixcommit_2023-03-01_afc8e84_015",
+  "source_repo": "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rts",
+  "baseline_ref": "8217a493c34a7178f1f88e2ead4b314d566d1c5a",
+  "repro_ref": "8217a493c34a7178f1f88e2ead4b314d566d1c5a",
+  "bad_ref": "8217a493c34a7178f1f88e2ead4b314d566d1c5a",
+  "good_ref": "afc8e846f6c1c024dd900ebe051b9ad483dfbccf",
+  "baseline_resolution_error": null,
+  "expected": {
+    "bad_case_type": "A3",
+    "notes": "fix commit afc8e84: Fix fog of war glitch at edges",
+    "original_l0_pass": null,
+    "original_l1_pass": null,
+    "original_l0_details": [],
+    "original_l1_details": [],
+    "original_human_intervention_ratio": 0.0,
+    "original_rounds_to_resolution": 2,
+    "must_change_one_of": [
+      "source/match/Match.tscn",
+      "source/shaders/3d/simple_fog_of_war.gdshader",
+      "tests/manual/TestPlayerVsAI.tscn"
+    ],
+    "minimum_changed_files": 1
+  },
+  "hidden_oracle": {
+    "good_ref": "afc8e846f6c1c024dd900ebe051b9ad483dfbccf",
+    "good_diff_file": "good.diff",
+    "good_changed_files": [
+      "source/match/Match.tscn",
+      "source/shaders/3d/simple_fog_of_war.gdshader",
+      "tests/manual/TestPlayerVsAI.tscn"
+    ],
+    "history_mining_strategy": "fix_commit_parent"
+  },
+  "bench_record": {
+    "testcase_id": "fixcommit_2023-03-01_afc8e84_015",
+    "harness": "git-history",
+    "category": "survey:A1",
+    "l0_l1_pass": true,
+    "score": 0.0,
+    "verifier_result": {
+      "score": 0.0,
+      "status": "fail",
+      "category": "survey:A1",
+      "error": "fix commit afc8e84: Fix fog of war glitch at edges",
+      "checks": [
+        {
+          "name": "bad_case_detected",
+          "passed": false,
+          "detail": "fix commit afc8e84: Fix fog of war glitch at edges",
+          "expected": "none",
+          "actual": "A1"
+        },
+        {
+          "name": "human_intervention_ratio",
+          "passed": true,
+          "detail": "",
+          "expected": "<= 0.40",
+          "actual": 0.0
+        },
+        {
+          "name": "rounds_to_resolution",
+          "passed": true,
+          "detail": "",
+          "expected": "<= 4",
+          "actual": 2
+        }
+      ]
+    },
+    "diff": "",
+    "artifacts_path": null,
+    "ai_agent_context": {
+      "harness": "git-history",
+      "transcript_session_id": null,
+      "transcript_match_confidence": null,
+      "transcript_path": null,
+      "codex_session_id": null,
+      "total_tokens": null,
+      "filtered_to_commits": [
+        "afc8e84"
+      ],
+      "filtered_turns": null,
+      "turns": []
+    },
+    "survey_session": {
+      "session_id": "fixcommit_2023-03-01_afc8e84_015",
+      "harness": "git-history",
+      "config": {},
+      "bad_case_type": "A1",
+      "auto_detected": true,
+      "confidence": "low",
+      "notes": "fix commit afc8e84: Fix fog of war glitch at edges",
+      "prompts": [],
+      "system_context": {
+        "source": "git-history-fix",
+        "baseline_ref": "8217a493c34a7178f1f88e2ead4b314d566d1c5a",
+        "bad_ref": "8217a493c34a7178f1f88e2ead4b314d566d1c5a",
+        "good_ref": "afc8e846f6c1c024dd900ebe051b9ad483dfbccf",
+        "good_commit_timestamp": "2023-03-01T23:38:22+01:00",
+        "good_changed_files": [
+          "source/match/Match.tscn",
+          "source/shaders/3d/simple_fog_of_war.gdshader",
+          "tests/manual/TestPlayerVsAI.tscn"
+        ],
+        "fix_commit_subject": "Fix fog of war glitch at edges",
+        "oracle_level": "diff_only",
+        "history_mining_strategy": "fix_commit_parent",
+        "failure_mode": "missing background geometry"
+      },
+      "changed_files": [
+        "source/match/Match.tscn",
+        "source/shaders/3d/simple_fog_of_war.gdshader",
+        "tests/manual/TestPlayerVsAI.tscn"
+      ],
+      "commits": [
+        "afc8e84"
+      ],
+      "timestamps": {
+        "started": "2023-03-01T23:38:22+01:00",
+        "ended": "2023-03-01T23:38:22+01:00"
+      },
+      "verification": null,
+      "outcome": {
+        "first_pass_success": false,
+        "rounds_to_resolution": 2,
+        "ai_lines_changed": 0,
+        "human_lines_changed": 0,
+        "human_intervention_ratio": 0.0,
+        "token_cost": 0,
+        "session_duration_minutes": 0.0
+      },
+      "tag": {
+        "bad_case_type": "A3",
+        "suggested_type": "A3",
+        "confidence": "medium",
+        "root_cause": "Fog-of-war showed a glitch at map edges due to no background geometry and no lower-y clamp; adding a background PlaneMesh and lowest_y_allowed parameter fixes the scene/shader setup."
+      }
+    }
+  }
+}

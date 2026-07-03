@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-16_ae4317f_095"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "8474bc3c192a46eed593cb3375f13e0ab1f689ba"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Prefabs/Blocks/SpikeBlock.tscn, Scenes/Prefabs/Entities/Enemies/Icicle.tscn, Scenes/Prefabs/Entities/Enemies/Muncher.tscn, Scenes/Prefabs/Entities/Enemies/RockyWrench.tscn, Scenes/Prefabs/Entities/Objects/Burner.tscn, Scenes/Prefabs/Entities/Objects/CannonBall.tscn, Scenes/Prefabs/Entities/Objects/WrenchProjectile.tscn, Scripts/Classes/Entities/Objects/Burner.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-16_ae4317f_095"
+bad_case_type = "A2"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

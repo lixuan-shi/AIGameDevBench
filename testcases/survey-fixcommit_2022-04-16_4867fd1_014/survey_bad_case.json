@@ -1,0 +1,205 @@
+{
+  "schema": "survey.bad_case.testcase.v1",
+  "testcase_id": "survey-fixcommit_2022-04-16_4867fd1_014",
+  "source_repo": "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\a-little-game-called-mario",
+  "baseline_ref": "22691b44b70e242f1d38989593afb59c27e05e9c",
+  "repro_ref": "22691b44b70e242f1d38989593afb59c27e05e9c",
+  "bad_ref": "22691b44b70e242f1d38989593afb59c27e05e9c",
+  "good_ref": "4867fd17c2e873241c993e40162de20b02d0b23e",
+  "baseline_resolution_error": null,
+  "expected": {
+    "bad_case_type": "B2",
+    "notes": "fix commit 4867fd1: Add scoring system to DDR, fix scene change issues, Mute music/hide ui (#350)",
+    "original_l0_pass": null,
+    "original_l1_pass": null,
+    "original_l0_details": [],
+    "original_l1_details": [],
+    "original_human_intervention_ratio": 0.0,
+    "original_rounds_to_resolution": 2,
+    "must_change_one_of": [
+      "scenes/DDR/Controls.gd",
+      "scenes/DDR/HitBubblePosition.gd",
+      "scenes/DDR/Level.gd",
+      "scenes/DDR/hit_bubble/HitBubble.gd",
+      "scenes/DDR/hit_bubble/HitBubbleCool.tscn",
+      "scenes/DDR/hit_bubble/HitBubbleNice.tscn",
+      "scenes/DDR/hit_bubble/HitBubbleOof.tscn",
+      "scenes/DDR/hit_bubble/HitBubblePerfect.tscn",
+      "scenes/DDR/hit_bubble/HitBubbleSick.tscn",
+      "scenes/DDR/track/Track.gd",
+      "scenes/DDR/track/note/Note.gd",
+      "scenes/levels/DDR_01/Level.tscn",
+      "scripts/Main.gd",
+      "scripts/autoload/EventBus.gd"
+    ],
+    "minimum_changed_files": 1
+  },
+  "hidden_oracle": {
+    "good_ref": "4867fd17c2e873241c993e40162de20b02d0b23e",
+    "good_diff_file": "good.diff",
+    "good_changed_files": [
+      "scenes/DDR/Controls.gd",
+      "scenes/DDR/HitBubblePosition.gd",
+      "scenes/DDR/Level.gd",
+      "scenes/DDR/hit_bubble/HitBubble.gd",
+      "scenes/DDR/hit_bubble/HitBubbleCool.tscn",
+      "scenes/DDR/hit_bubble/HitBubbleNice.tscn",
+      "scenes/DDR/hit_bubble/HitBubbleOof.tscn",
+      "scenes/DDR/hit_bubble/HitBubblePerfect.tscn",
+      "scenes/DDR/hit_bubble/HitBubbleSick.tscn",
+      "scenes/DDR/track/Track.gd",
+      "scenes/DDR/track/note/Note.gd",
+      "scenes/levels/DDR_01/Level.tscn",
+      "scripts/Main.gd",
+      "scripts/autoload/EventBus.gd",
+      "sprites/DDR/COOL.png",
+      "sprites/DDR/COOL.png.import",
+      "sprites/DDR/NICE.png",
+      "sprites/DDR/NICE.png.import",
+      "sprites/DDR/OOF..png",
+      "sprites/DDR/OOF..png.import",
+      "sprites/DDR/PERFECT.png",
+      "sprites/DDR/PERFECT.png.import",
+      "sprites/DDR/SICK.png",
+      "sprites/DDR/SICK.png.import"
+    ],
+    "history_mining_strategy": "fix_commit_parent"
+  },
+  "bench_record": {
+    "testcase_id": "fixcommit_2022-04-16_4867fd1_014",
+    "harness": "git-history",
+    "category": "survey:A1",
+    "l0_l1_pass": true,
+    "score": 0.0,
+    "verifier_result": {
+      "score": 0.0,
+      "status": "fail",
+      "category": "survey:A1",
+      "error": "fix commit 4867fd1: Add scoring system to DDR, fix scene change issues, Mute music/hide ui (#350)",
+      "checks": [
+        {
+          "name": "bad_case_detected",
+          "passed": false,
+          "detail": "fix commit 4867fd1: Add scoring system to DDR, fix scene change issues, Mute music/hide ui (#350)",
+          "expected": "none",
+          "actual": "A1"
+        },
+        {
+          "name": "human_intervention_ratio",
+          "passed": true,
+          "detail": "",
+          "expected": "<= 0.40",
+          "actual": 0.0
+        },
+        {
+          "name": "rounds_to_resolution",
+          "passed": true,
+          "detail": "",
+          "expected": "<= 4",
+          "actual": 2
+        }
+      ]
+    },
+    "diff": "",
+    "artifacts_path": null,
+    "ai_agent_context": {
+      "harness": "git-history",
+      "transcript_session_id": null,
+      "transcript_match_confidence": null,
+      "transcript_path": null,
+      "codex_session_id": null,
+      "total_tokens": null,
+      "filtered_to_commits": [
+        "4867fd1"
+      ],
+      "filtered_turns": null,
+      "turns": []
+    },
+    "survey_session": {
+      "session_id": "fixcommit_2022-04-16_4867fd1_014",
+      "harness": "git-history",
+      "config": {},
+      "bad_case_type": "A1",
+      "auto_detected": true,
+      "confidence": "low",
+      "notes": "fix commit 4867fd1: Add scoring system to DDR, fix scene change issues, Mute music/hide ui (#350)",
+      "prompts": [],
+      "system_context": {
+        "source": "git-history-fix",
+        "baseline_ref": "22691b44b70e242f1d38989593afb59c27e05e9c",
+        "bad_ref": "22691b44b70e242f1d38989593afb59c27e05e9c",
+        "good_ref": "4867fd17c2e873241c993e40162de20b02d0b23e",
+        "good_commit_timestamp": "2022-04-16T16:54:15+02:00",
+        "good_changed_files": [
+          "scenes/DDR/Controls.gd",
+          "scenes/DDR/HitBubblePosition.gd",
+          "scenes/DDR/Level.gd",
+          "scenes/DDR/hit_bubble/HitBubble.gd",
+          "scenes/DDR/hit_bubble/HitBubbleCool.tscn",
+          "scenes/DDR/hit_bubble/HitBubbleNice.tscn",
+          "scenes/DDR/hit_bubble/HitBubbleOof.tscn",
+          "scenes/DDR/hit_bubble/HitBubblePerfect.tscn",
+          "scenes/DDR/hit_bubble/HitBubbleSick.tscn",
+          "scenes/DDR/track/Track.gd",
+          "scenes/DDR/track/note/Note.gd",
+          "scenes/levels/DDR_01/Level.tscn",
+          "scripts/Main.gd",
+          "scripts/autoload/EventBus.gd",
+          "sprites/DDR/COOL.png",
+          "sprites/DDR/COOL.png.import",
+          "sprites/DDR/NICE.png",
+          "sprites/DDR/NICE.png.import",
+          "sprites/DDR/OOF..png",
+          "sprites/DDR/OOF..png.import",
+          "sprites/DDR/PERFECT.png",
+          "sprites/DDR/PERFECT.png.import",
+          "sprites/DDR/SICK.png",
+          "sprites/DDR/SICK.png.import"
+        ],
+        "fix_commit_subject": "Add scoring system to DDR, fix scene change issues, Mute music/hide ui (#350)",
+        "oracle_level": "diff_only",
+        "history_mining_strategy": "fix_commit_parent",
+        "failure_mode": "incomplete feature added"
+      },
+      "changed_files": [
+        "scenes/DDR/Controls.gd",
+        "scenes/DDR/HitBubblePosition.gd",
+        "scenes/DDR/Level.gd",
+        "scenes/DDR/hit_bubble/HitBubble.gd",
+        "scenes/DDR/hit_bubble/HitBubbleCool.tscn",
+        "scenes/DDR/hit_bubble/HitBubbleNice.tscn",
+        "scenes/DDR/hit_bubble/HitBubbleOof.tscn",
+        "scenes/DDR/hit_bubble/HitBubblePerfect.tscn",
+        "scenes/DDR/hit_bubble/HitBubbleSick.tscn",
+        "scenes/DDR/track/Track.gd",
+        "scenes/DDR/track/note/Note.gd",
+        "scenes/levels/DDR_01/Level.tscn",
+        "scripts/Main.gd",
+        "scripts/autoload/EventBus.gd"
+      ],
+      "commits": [
+        "4867fd1"
+      ],
+      "timestamps": {
+        "started": "2022-04-16T16:54:15+02:00",
+        "ended": "2022-04-16T16:54:15+02:00"
+      },
+      "verification": null,
+      "outcome": {
+        "first_pass_success": false,
+        "rounds_to_resolution": 2,
+        "ai_lines_changed": 0,
+        "human_lines_changed": 0,
+        "human_intervention_ratio": 0.0,
+        "token_cost": 0,
+        "session_duration_minutes": 0.0
+      },
+      "tag": {
+        "bad_case_type": "B2",
+        "suggested_type": "B2",
+        "confidence": "medium",
+        "root_cause": "Commit adds a previously-missing DDR scoring system (signals, hit-bubble nodes) alongside scene-change fixes, completing partial feature work."
+      }
+    }
+  }
+}

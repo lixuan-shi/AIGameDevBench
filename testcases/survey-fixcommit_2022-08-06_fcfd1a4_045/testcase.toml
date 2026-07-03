@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-08-06_fcfd1a4_045"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "cf147babb4314a107919c0730e8d0901e25827c6"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\a-little-game-called-mario"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scripts/typeshoot/TypeShootLevel.gd, scripts/ui/Notes.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-08-06_fcfd1a4_045"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

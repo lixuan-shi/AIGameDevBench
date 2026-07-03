@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-10-18_d104761_019"
+category = "intent_translation"
+source_kind = "git"
+baseline_ref = "53621e94ab247bef0fbb703c59104dc65790350d"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/ui/game_menu/game_menu.gd, scenes/ui/game_menu/game_menu.tscn, scenes/ui/report_bug_menu/report_bug_menu.gd, scenes/ui/report_bug_menu/report_bug_menu.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-10-18_d104761_019"
+bad_case_type = "B3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

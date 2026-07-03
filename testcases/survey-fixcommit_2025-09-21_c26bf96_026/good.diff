@@ -1,0 +1,42 @@
+diff --git a/Scenes/Levels/SMBLL/LostLevelsEnding.tscn b/Scenes/Levels/SMBLL/LostLevelsEnding.tscn
+index 30f2059..8c65311 100644
+--- a/Scenes/Levels/SMBLL/LostLevelsEnding.tscn
++++ b/Scenes/Levels/SMBLL/LostLevelsEnding.tscn
+@@ -415,6 +415,11 @@ color = Color(0, 0, 0, 0)
+ time_of_day = 1
+ primary_layer = 1
+ 
++[node name="ResourceSetter" parent="LevelBG/SkyLayer/Sky" index="0"]
++force_properties = {
++"Time": "Night"
++}
++
+ [node name="ResourceSetter" parent="LevelBG/PrimaryLayer/Bush" index="0"]
+ process_mode = 3
+ force_properties = {
+diff --git a/Scripts/Classes/Entities/Player.gd b/Scripts/Classes/Entities/Player.gd
+index b4864a3..ed53f42 100644
+--- a/Scripts/Classes/Entities/Player.gd
++++ b/Scripts/Classes/Entities/Player.gd
+@@ -597,7 +597,7 @@ func get_power_up(power_name := "") -> void:
+ 	refresh_hitbox()
+ 
+ func check_for_block() -> void:
+-	if test_move(global_transform, Vector2.UP * 2):
++	if test_move(global_transform, (Vector2.UP * gravity_vector) * 4):
+ 		crouching = true
+ 
+ func power_up_animation(new_power_state := "") -> void:
+diff --git a/Scripts/Parts/LostLevelsEnding.gd b/Scripts/Parts/LostLevelsEnding.gd
+index bfbd257..5c990f1 100644
+--- a/Scripts/Parts/LostLevelsEnding.gd
++++ b/Scripts/Parts/LostLevelsEnding.gd
+@@ -19,7 +19,7 @@ func _ready() -> void:
+ 	AudioManager.set_music_override(AudioManager.MUSIC_OVERRIDES.ENDING, 9999999, false)
+ 	Global.can_time_tick = false
+ 	SaveManager.visited_levels[SaveManager.get_level_idx(9, 1)] = "1"
+-	$Text2/Hero.text = tr("CUTSCENE_LL_PEACH_4" if Global.player_characters[0] != "3" else "CUTSCENE_LL_PEACH_4F")
++	$Text2/Hero.text = tr("CUTSCENE_LL_PEACH_4" if Global.player_characters[0] != 3 else "CUTSCENE_LL_PEACH_4F")
+ 	$Text2/Hurrah.text = tr("CUTSCENE_LL_PEACH_3").replace("{PLAYER}", tr(Player.CHARACTER_NAMES[int(Global.player_characters[0])]))
+ 	$ThankYou.text = tr("CUTSCENE_CASTLE_PEACH_1").replace("{PLAYER}", tr(Player.CHARACTER_NAMES[int(Global.player_characters[0])]))
+ func _process(_delta: float) -> void:

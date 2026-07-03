@@ -1,0 +1,31 @@
+diff --git a/game/Scripts/Game/3D/Room.gd b/game/Scripts/Game/3D/Room.gd
+index 5d309f7..1415b3c 100644
+--- a/game/Scripts/Game/3D/Room.gd
++++ b/game/Scripts/Game/3D/Room.gd
+@@ -1441,6 +1441,9 @@ master func request_pop_stack(stack_name: String, n: int, hover: bool,
+ 		new_piece = stack
+ 
+ 	if new_piece and hover:
++		# Since this is all happening in one frame, make sure the internal
++		# physics state transform is correct before starting to hover the piece.
++		new_piece.force_set_physics_state_transform()
+ 		if new_piece.srv_start_hovering(player_id, new_piece.transform.origin, Vector3()):
+ 			rpc_id(player_id, "request_pop_stack_accepted", new_piece.name)
+ 
+diff --git a/game/Scripts/Game/Pieces/Piece.gd b/game/Scripts/Game/Pieces/Piece.gd
+index e4d7856..cb0bcef 100644
+--- a/game/Scripts/Game/Pieces/Piece.gd
++++ b/game/Scripts/Game/Pieces/Piece.gd
+@@ -99,6 +99,12 @@ func apply_texture(texture: Texture, surface: int = 0) -> void:
+ 		
+ 		mesh_instance.set_surface_material(surface, material)
+ 
++# Force the piece to save the current transform as the latest physics state
++# transform. Use this if the latest physics state transform is required before
++# the next physics frame.
++func force_set_physics_state_transform() -> void:
++	_last_physics_state_transform = transform.orthonormalized()
++
+ # Get the current albedo colour in the piece's material.
+ # Returns: The current albedo colour.
+ func get_albedo_color() -> Color:

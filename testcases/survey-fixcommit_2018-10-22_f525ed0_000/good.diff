@@ -1,0 +1,22 @@
+diff --git a/godot/combat/battlers/stats/Stats.gd b/godot/combat/battlers/stats/Stats.gd
+index ac54ce2..b5919c0 100644
+--- a/godot/combat/battlers/stats/Stats.gd
++++ b/godot/combat/battlers/stats/Stats.gd
+@@ -2,7 +2,7 @@ extends Node
+ 
+ class_name CharacterStats
+ 
+-signal health_changed(amount)
++signal health_changed(new_health)
+ signal health_depleted()
+ 
+ var modifiers = {}
+@@ -21,7 +21,7 @@ func set_max_health(value):
+ func take_damage(hit):
+ 	health -= hit.damage
+ 	health = max(0, health)
+-	emit_signal("health_changed", hit.damage)
++	emit_signal("health_changed", health)
+ 	if health == 0:
+ 		emit_signal("health_depleted")
+ 

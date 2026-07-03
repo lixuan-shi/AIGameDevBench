@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-01_51d8184_059"
+category = "intent_translation"
+source_kind = "git"
+baseline_ref = "fa4c1c711c82b98a2907258adb001b4a9c4c2e8e"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Levels/CustomLevelMenu.tscn, Scenes/Levels/SMB1/World1/1-1.tscn, Scripts/Classes/Entities/Player.gd, Scripts/Classes/Singletons/Global.gd, Scripts/Parts/LevelTransition.gd, Scripts/UI/CustomLevelMenu.gd, Scripts/UI/OnlineLevelContainer.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-01_51d8184_059"
+bad_case_type = "B2"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

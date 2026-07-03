@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-08-09_50c02a5_049"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "b6461e57cc90216d0e78b06e333cce6498be2f12"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\a-little-game-called-mario"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/platformer/characters/Player.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-08-09_50c02a5_049"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

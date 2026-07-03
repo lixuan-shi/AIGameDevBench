@@ -1,0 +1,749 @@
+diff --git a/combat/battlers/bear/focus_attack.tres b/combat/battlers/bear/focus_attack.tres
+index b55a5a1..369658f 100644
+--- a/combat/battlers/bear/focus_attack.tres
++++ b/combat/battlers/bear/focus_attack.tres
+@@ -5,13 +5,9 @@
+ 
+ [resource]
+ script = ExtResource("1_4j0yh")
+-added_value = 10
+ icon = ExtResource("1_2rya6")
+-label = "Focus"
++name = "Focus"
+ description = "Increase Attack and Accuracy. Takes half a turn to use."
+ target_scope = 0
+ targets_friendlies = true
+-targets_enemies = false
+-element = 0
+-energy_cost = 0
+ readiness_saved = 50.0
+diff --git a/combat/battlers/bear/player_melee_action.tres b/combat/battlers/bear/player_melee_action.tres
+index e4f929c..754395c 100644
+--- a/combat/battlers/bear/player_melee_action.tres
++++ b/combat/battlers/bear/player_melee_action.tres
+@@ -8,11 +8,6 @@ script = ExtResource("1_oh0gs")
+ hit_chance = 65.0
+ base_damage = 150
+ icon = ExtResource("1_f24qp")
+-label = "Bear Arms"
++name = "Punch"
+ description = "Maul your way to victory! High damage, low hit chance."
+-target_scope = 1
+-targets_friendlies = false
+ targets_enemies = true
+-element = 0
+-energy_cost = 0
+-readiness_saved = 0.0
+diff --git a/combat/battlers/squirrel/area_attack.tres b/combat/battlers/squirrel/area_attack.tres
+index 95385ac..16f1c79 100644
+--- a/combat/battlers/squirrel/area_attack.tres
++++ b/combat/battlers/squirrel/area_attack.tres
+@@ -8,11 +8,7 @@ script = ExtResource("2_x25ju")
+ hit_chance = 85.0
+ base_damage = 60
+ icon = ExtResource("1_eedy7")
+-label = "Arrow Storm"
++name = "Arrow Storm"
+ description = "If only a squirrel could draw a bow."
+ target_scope = 2
+-targets_friendlies = false
+ targets_enemies = true
+-element = 0
+-energy_cost = 0
+-readiness_saved = 0.0
+diff --git a/combat/battlers/squirrel/heal_friendly.tres b/combat/battlers/squirrel/heal_friendly.tres
+index 00883d1..1d4d38f 100644
+--- a/combat/battlers/squirrel/heal_friendly.tres
++++ b/combat/battlers/squirrel/heal_friendly.tres
+@@ -5,13 +5,7 @@
+ 
+ [resource]
+ script = ExtResource("1_knane")
+-heal_amount = 50
+ icon = ExtResource("1_rw7rc")
+-label = "First Aid"
++name = "Heal"
+ description = "A bandage can fix this..."
+-target_scope = 1
+ targets_friendlies = true
+-targets_enemies = false
+-element = 0
+-energy_cost = 0
+-readiness_saved = 0.0
+diff --git a/src/combat/actors/combat_actor.gd b/src/combat/actors/combat_actor.gd
+deleted file mode 100644
+index 3faaef2..0000000
+--- a/src/combat/actors/combat_actor.gd
++++ /dev/null
+@@ -1,61 +0,0 @@
+-## A battle actor is any character or object that performs actions during combat.
+-## This could be a player, an enemy, or even special events like traps or timed effects.
+-##
+-## Actors provide logic to objects that want to act in combat. An actor is typically applied to a
+-## given [Battler], though other objects may wish to also make use of actors. For example, a combat
+-## event that deals damage to all battlers on every third turn would make use of a custom CombatActor,
+-## even though it is not present as a Battler.[br][br]
+-##
+-## Actors take turns based on their initiative value. Higher initiative means
+-## they act earlier in the turn order. Each actor completes their full turn before
+-## the next one begins, following whatever logic you define in your custom actor classes.[br][br]
+-##
+-## [b]Important:[/b] This CombatActor class is like a template that specific actor types extend.
+-## For example, a player-controlled actor would show the action menu UI, while an AI enemy
+-## might have different attack patterns or decision-making logic.
+-@abstract
+-extends Node2D
+-
+-## Emitted whenever the actor's turn is finished. You should emit this only
+-## after all actions and animations are complete.
+-signal turn_finished
+-
+-## The name of the node group that will contain all combat Actors.
+-const GROUP: = "combat_actors"
+-
+-## Influences when this actor takes their turn in combat. This is a speed rating:
+-## actors with higher initiative values (closer to 1.0) will act earlier in the turn order,
+-## while lower values (closer to 0.0) make them act later.
+-@export_range(0.0, 1.0, 0.01) var initiative := 1.0
+-## If this is [b]true[/b], this actor takes part in the battle. Inactive actors won't take turns.
+-@export var is_active: = false
+-## If this is [b]true[/b], this actor is controlled by the player. Use this to
+-## differentiate between player-controlled actors and AI-controlled ones.
+-@export var is_player: = false
+-
+-## Describes whether or not the CombatActor has taken a turn during this combat round.
+-var has_acted_this_round: = false
+-
+-
+-func _ready() -> void:
+-	add_to_group(GROUP)
+-
+-
+-func _to_string() -> String:
+-	var msg: = "%s (CombatActor)" % name
+-	if not is_active:
+-		msg += " - INACTIVE"
+-	elif has_acted_this_round:
+-		msg += " - HAS ACTED"
+-	return msg
+-
+-
+-func melee_attack() -> void:
+-	print("Attack!")
+-
+-
+-func start_turn() -> void:
+-	print(get_parent().name, " starts their turn!")
+-
+-	await get_tree().create_timer(1.5).timeout
+-	turn_finished.emit()
+diff --git a/src/combat/actors/combat_actor.gd.uid b/src/combat/actors/combat_actor.gd.uid
+deleted file mode 100644
+index 371589c..0000000
+--- a/src/combat/actors/combat_actor.gd.uid
++++ /dev/null
+@@ -1 +0,0 @@
+-uid://4chldu0jl40q
+diff --git a/src/combat/actors/combat_turn_queue.gd b/src/combat/actors/combat_turn_queue.gd
+index 8e69a90..63423c9 100644
+--- a/src/combat/actors/combat_turn_queue.gd
++++ b/src/combat/actors/combat_turn_queue.gd
+@@ -25,8 +25,6 @@ func _ready() -> void:
+ # repeatedly calling _select_next_player_action.
+ func next_round() -> void:
+ 	round_count += 1
+-	for battler in battler_roster.get_battlers():
+-		battler.has_acted_this_round = false
+ 	
+ 	# First of all, let enemy (necessarily AI) battlers pick their actions.
+ 	for battler in battler_roster.find_live_battlers(battler_roster.get_enemy_battlers()):
+@@ -106,8 +104,63 @@ func _get_next_actor() -> Battler:
+ 	return ready_to_act_battlers.front()
+ 
+ 
++## Returns all Battlers existing in the current combat.
++func get_battlers() -> Array[Battler]:
++	var battler_list: Array[Battler] = []
++	battler_list.assign(find_children("*", "Battler"))
++	return battler_list
++
++
++## Returns all existing player Battlers.
++func get_player_battlers() -> Array[Battler]:
++	return get_battlers().filter(
++		func _filter_players(battler: Battler):
++			return battler.is_player
++	)
++
++
++## Returns all existing Battlers that are opposed to the player.
++func get_enemy_battlers() -> Array[Battler]:
++	return get_battlers().filter(
++		func _filter_enemies(battler: Battler):
++			return not battler.is_player
++	)
++
++
++## Filter an array of Battlers to return only whose health points are currently greater than 0.
++func find_live_battlers(battlers: Array[Battler]) -> Array[Battler]:
++	return battlers.filter(func(battler: Battler): return battler.stats.health > 0)
++
++
++## Filter an array of Battlers to find those who are active but do not yet have a cached action (see
++## [member Battler.cached_action]).
++func find_battlers_needing_actions(battlers: Array[Battler]) -> Array[Battler]:
++	return battlers.filter(
++		func _filter_actors(actor: Battler) -> bool:
++			return actor.is_active and actor.cached_action == null
++	)
++
++
++## Filter an array of Battlers to find those who may take an action. That is, they are active (see
++## [member Battler.is_active]) and have a cached action ready (see [member Battler.cached_action]).
++func find_ready_to_act_battlers(battlers: Array[Battler]) -> Array[Battler]:
++	return battlers.filter(
++		func _filter_actors(actor: Battler) -> bool:
++			return actor.is_active and actor.cached_action != null
++	)
++
++
++## Returns true if all the specified battlers are inactive.
++func are_battlers_defeated(battlers: Array[Battler]) -> bool:
++	for battler in battlers:
++		if battler.is_active:
++			return false
++	
++	return true
++
++
+ func _to_string() -> String:
+-	var battlers: = battler_roster.get_battlers()
++	var battlers: = get_battlers()
+ 	battlers.sort_custom(Battler.sort)
+ 
+ 	var msg: = "\n%s (CombatTurnQueue) - round %d" % [name, round_count]
+diff --git a/src/combat/battlers/battler.gd b/src/combat/battlers/battler.gd
+index cf9547f..b77691c 100644
+--- a/src/combat/battlers/battler.gd
++++ b/src/combat/battlers/battler.gd
+@@ -129,12 +129,10 @@ var is_selectable: bool = true:
+ 		if not is_selectable:
+ 			is_selected = false
+ 
+-## Describes whether or not the Battler has taken a turn during this combat round.
+-var has_acted_this_round: = false
+-
+ ## Combat happens in two phases. In the first phase each Battler - player and enemy - select an
+ ## action. In the second phase that action is carried out.
+-## When selecting actions, a Battler caches it in the following memeber.
++## When selecting actions, a Battler caches it in the following memeber. The cached action is set
++## to null after execution.
+ var cached_action: BattlerAction = null:
+ 	set(value):
+ 		cached_action = value
+@@ -174,7 +172,6 @@ func _ready() -> void:
+ 
+ #func act(targets: Array[Battler] = []) -> void:
+ func act() -> void:
+-	has_acted_this_round = true
+ 	if cached_action:
+ 		stats.energy -= cached_action.energy_cost
+ 
+@@ -182,6 +179,8 @@ func act() -> void:
+ 		@warning_ignore("redundant_await")
+ 		await cached_action.execute(self)
+ 	
++	# Flag that the Battler has acted by resetting the cached action.
++	cached_action = null
+ 	turn_finished.emit.call_deferred()
+ 
+ 
+@@ -197,6 +196,6 @@ func _to_string() -> String:
+ 	var msg: = "%s (Battler)" % name
+ 	if not is_active:
+ 		msg += " - INACTIVE"
+-	elif has_acted_this_round:
++	elif cached_action == null:
+ 		msg += " - HAS ACTED"
+ 	return msg
+diff --git a/src/combat/battlers/battler_roster.gd b/src/combat/battlers/battler_roster.gd
+index 4cd4240..738c07a 100644
+--- a/src/combat/battlers/battler_roster.gd
++++ b/src/combat/battlers/battler_roster.gd
+@@ -47,12 +47,11 @@ func find_battlers_needing_actions(battlers: Array[Battler]) -> Array[Battler]:
+ 
+ 
+ ## Filter an array of Battlers to find those who may take an action. That is, they are active (see
+-## [member Battler.is_active]) and have not taken a turn yet this round (see
+-## [member Battler.has_acted_this_round]).
++## [member Battler.is_active]) and have a cached action ready (see [member Battler.cached_action]).
+ func find_ready_to_act_battlers(battlers: Array[Battler]) -> Array[Battler]:
+ 	return battlers.filter(
+ 		func _filter_actors(actor: Battler) -> bool:
+-			return actor.is_active and not actor.has_acted_this_round
++			return actor.is_active and actor.cached_action != null
+ 	)
+ 
+ 
+diff --git a/src/combat/combat.gd b/src/combat/combat.gd
+index 07b03e3..418c1d7 100644
+--- a/src/combat/combat.gd
++++ b/src/combat/combat.gd
+@@ -65,6 +65,7 @@ func start(arena: PackedScene) -> void:
+ 	await _ui.animation.animation_finished
+ 	
+ 	# Begin the combat logic. The turn queue takes over from here.
++	print(_active_arena.turn_queue)
+ 	_active_arena.turn_queue.next_round.call_deferred()
+ 	
+ 	# Respond to the turn queue's signal the lets us know when the player has won or lost combat.
+diff --git a/src/combat/ui/action_menu/ui_action_button.gd b/src/combat/ui/action_menu/ui_action_button.gd
+index 40316c3..1cfee56 100644
+--- a/src/combat/ui/action_menu/ui_action_button.gd
++++ b/src/combat/ui/action_menu/ui_action_button.gd
+@@ -10,11 +10,10 @@ var action: BattlerAction:
+ 			await ready
+ 		
+ 		_icon.texture = action.icon
+-		_name_label.text = action.label
++		_name_label.text = action.name
+ 		
+ 		await get_tree().process_frame
+ 		custom_minimum_size = $MarginContainer.size
+-		#size = $MarginContainer.size
+ 
+ @onready var _icon: = $MarginContainer/Items/Icon
+ @onready var _name_label: = $MarginContainer/Items/Name
+diff --git a/src/combat/ui/action_menu/ui_action_menu.gd b/src/combat/ui/action_menu/ui_action_menu.gd
+index 272143d..76d389a 100644
+--- a/src/combat/ui/action_menu/ui_action_menu.gd
++++ b/src/combat/ui/action_menu/ui_action_menu.gd
+@@ -15,38 +15,7 @@ signal action_focused(action: BattlerAction)
+ # (energy costs, for example).
+ # The action menu also needs to respond to Battler state, such as a change in energy points or the
+ # Battler's health.
+-@export var _battler: Battler:
+-	set(value):
+-		_battler = value
+-		
+-		if not is_inside_tree():
+-			await ready
+-		
+-		# If the battler currently choosing the action dies, close and free the menu.
+-		_battler.health_depleted.connect(
+-			func _on_battler_health_depleted():
+-				queue_free()
+-				CombatEvents.player_battler_selected.emit(null)
+-		)
+-		
+-		# If the battler's energy levels changed, re-evaluate which actions are available.
+-		_battler.stats.energy_changed.connect(
+-			func _on_battler_energy_changed():
+-				for entry: UIActionButton in _entries:
+-					var can_use_action: = _battler.stats.energy >= entry.action.energy_cost
+-					entry.disabled = !can_use_action or is_disabled
+-		)
+-
+-## Disables or enables clicking on/navigating to the various entries.
+-## Defaults to true, as most menus will animate into existence before being interactable.
+-var is_disabled: = true:
+-	set(value):
+-		is_disabled = value
+-		for entry in _entries:
+-			entry.disabled = is_disabled
+-		
+-		focus_first_entry()
+-		_menu_cursor.visible = !is_disabled
++@export var _battler: Battler
+ 
+ # Refer to the BattlerRoster to check whether or not an action is valid when it is selected.
+ # This allows us to prevent the player from selecting an invalid action.
+@@ -58,18 +27,15 @@ var _entries: Array[BaseButton] = []
+ @onready var _menu_cursor: = $MenuCursor as UIMenuCursor
+ 
+ 
+-
+ func _ready() -> void:
+ 	hide()
++	_menu_cursor.hide()
+ 	set_process_unhandled_input(false)
+ 
+ 
+ # Capture any input events that will signal going "back" in the menu hierarchy.
+ # This includes mouse or touch input outside of a menu or pressing the back button/key.
+ func _unhandled_input(event: InputEvent) -> void:
+-	if is_disabled:
+-		return
+-	
+ 	if event.is_action_released("select") or event.is_action_released("back"):
+ 		queue_free()
+ 		CombatEvents.player_battler_selected.emit(null)
+@@ -81,60 +47,36 @@ func _unhandled_input(event: InputEvent) -> void:
+ func setup(selected_battler: Battler, battler_roster: BattlerRoster) -> void:
+ 	_battler = selected_battler
+ 	_battler_roster = battler_roster
+-	_build_action_menu()
+ 	
+-	show()
+-	set_process_unhandled_input(true)
+-
+-
+-## Bring the first entry into input focus, moving the cursor to its position.
+-func focus_first_entry() -> void:
+-	if not _entries.is_empty():
+-		_entries[0].grab_focus()
+-		_menu_cursor.position = _entries[0].global_position + Vector2(0.0, _entries[0].size.y/2.0)
+-
+-
+-# Populate the menu with a list of actions.
+-func _build_action_menu() -> void:
++	# Create the list of action entries, a series of buttons allowing the player to select actions.
+ 	for action in _battler.actions:
+-		var can_use_action: = _battler.stats.energy >= action.energy_cost
++		#var new_entry = _create_entry() as UIActionButton
++		var new_entry: = entry_scene.instantiate()
++		assert(new_entry is UIActionButton, "Entries to the UIActionMenu must be UIActionButtons!" + 
++			" A non-UIActionButton entry_scene has been specified.")
++		add_child(new_entry)
+ 		
+-		var new_entry = _create_entry() as UIActionButton
+ 		new_entry.action = action
+-		new_entry.disabled = !can_use_action or is_disabled
+-		new_entry.focus_neighbor_right = "." # Don't allow input to jump to the player battler list.
++		new_entry.disabled = _battler.stats.energy < action.energy_cost
++		#new_entry.focus_neighbor_right = "." # Don't allow input to jump to the player battler list.
+ 		
+-		new_entry.focus_entered.connect(
+-			(func _on_action_entry_focused(entry_action: BattlerAction) -> void:
+-				if not is_disabled:
+-					action_focused.emit(entry_action)).bind(action)
+-		)
++		new_entry.focus_entered.connect(_on_entry_focused.bind(new_entry))
++		new_entry.mouse_entered.connect(_on_entry_focused.bind(new_entry))
++		new_entry.pressed.connect(_on_entry_pressed.bind(new_entry))
++		
++		_entries.append(new_entry)
+ 	
+ 	_loop_first_and_last_entries()
+-
+-
+-# Creates a button entry, based on the specified entry scene. Hooks up automatic callbacks to the
+-# button's signals that may be modified depending on the specific menu.
+-# Returns the created entry so that a menu may add additional functionality to the entry.
+-func _create_entry() -> BaseButton:
+-	var new_entry: = entry_scene.instantiate()
+-	assert(new_entry is BaseButton, "Entries to a UIMenuList must be derived from BaseButton!" + 
+-		" A non-BaseButton entry_scene has been specified.")
+-	add_child(new_entry)
+ 	
+-	# We're going to keep these as independent functions rather than inline lambdas, since each menu
+-	# will probably respond to these events differently. For example, a target menu will want to
+-	# highlight a specific battler when a new entry is focusd and an action menu will want to
+-	# forward which action was selected.
+-	new_entry.focus_entered.connect(_on_entry_focused.bind(new_entry))
+-	new_entry.mouse_entered.connect(_on_entry_focused.bind(new_entry))
+-	new_entry.pressed.connect(_on_entry_pressed.bind(new_entry))
+-	
+-	_entries.append(new_entry)
++	# Wait a frame for the menu elements to be setup, then place the cursor at the first entry.
++	await get_tree().process_frame
++	_menu_cursor.show()
++	if not _entries.is_empty():
++		_entries[0].grab_focus()
++		_menu_cursor.position = _entries[0].global_position + Vector2(0.0, _entries[0].size.y/2.0)
+ 	
+-	if is_disabled:
+-		new_entry.disabled = true
+-	return new_entry
++	show()
++	set_process_unhandled_input(true)
+ 
+ 
+ func _loop_first_and_last_entries() -> void:
+@@ -154,8 +96,9 @@ func _loop_first_and_last_entries() -> void:
+ 
+ # Moves the [UIMenuCursor] to the focused entry. Derivative menus may want to add additional
+ # behaviour.
+-func _on_entry_focused(entry: BaseButton) -> void:
++func _on_entry_focused(entry: UIActionButton) -> void:
+ 	_menu_cursor.move_to(entry.global_position + Vector2(0.0, entry.size.y/2.0))
++	action_focused.emit(entry.action)
+ 
+ 
+ # Override the base method to allow the player to select an action for the specified Battler.
+diff --git a/src/combat/ui/action_menu/ui_action_menu.tscn b/src/combat/ui/action_menu/ui_action_menu.tscn
+index ad22122..d307937 100644
+--- a/src/combat/ui/action_menu/ui_action_menu.tscn
++++ b/src/combat/ui/action_menu/ui_action_menu.tscn
+@@ -5,7 +5,6 @@
+ [ext_resource type="PackedScene" uid="uid://cxrn4uvha8g2w" path="res://src/combat/ui/cursors/ui_menu_cursor.tscn" id="3_ws14f"]
+ 
+ [node name="UIActionMenu" type="VBoxContainer"]
+-modulate = Color(1, 1, 1, 0)
+ anchors_preset = 3
+ anchor_left = 1.0
+ anchor_top = 1.0
+diff --git a/src/combat/ui/list_menu/ui_list_menu.gd b/src/combat/ui/list_menu/ui_list_menu.gd
+deleted file mode 100644
+index 1a2dc99..0000000
+--- a/src/combat/ui/list_menu/ui_list_menu.gd
++++ /dev/null
+@@ -1,101 +0,0 @@
+-## A list menu is a template menu that provides common functionality for the combat menus.
+-##
+-## A list menu has a number of button entries that may be clicked or navigated to with the arrows,
+-## buttons, D-pad, etc. A cursor follows the selected menu entry and player input is forwarded via
+-## a simple set of signals.
+-class_name UIListMenu extends VBoxContainer
+-
+-## The scene representing the different menu entries. The scene must be some derivation of 
+-## [BaseButton].
+-#@export var entry_scene: PackedScene
+-
+-### Disables or enables clicking on/navigating to the various entries.
+-### Defaults to true, as most menus will animate into existence before being interactable.
+-#var is_disabled: = true:
+-	#set(value):
+-		#is_disabled = value
+-		#for entry in _entries:
+-			#entry.disabled = is_disabled
+-		#
+-		#focus_first_entry()
+-		#_menu_cursor.visible = !is_disabled
+-
+-## Track all battler list entries in the following array. 
+-#var _entries: Array[BaseButton] = []
+-#
+-#@onready var _menu_cursor: = $MenuCursor as UIMenuCursor
+-
+-
+-## Bring the first entry into input focus, moving the cursor to its position.
+-func focus_first_entry() -> void:
+-	if not _entries.is_empty():
+-		_entries[0].grab_focus()
+-		_menu_cursor.position = _entries[0].global_position + Vector2(0.0, _entries[0].size.y/2.0)
+-
+-
+-#TODO Remove this code when finished.
+-## Fades in the battler list, allowing input and focusing the first button only after the animation
+-## has finished.
+-#func fade_in() -> void:
+-	#_anim.play("fade_in")
+-	#await _anim.animation_finished
+-	#is_disabled = false
+-	#
+-	#focus_first_entry()
+-#
+-#
+-### Fades out the battler list, disabling input to the list beforehand.
+-#func fade_out() -> void:
+-	#is_disabled = true
+-	#_anim.play("fade_out")
+-	#await _anim.animation_finished
+-
+-
+-# Creates a button entry, based on the specified entry scene. Hooks up automatic callbacks to the
+-# button's signals that may be modified depending on the specific menu.
+-# Returns the created entry so that a menu may add additional functionality to the entry.
+-func _create_entry() -> BaseButton:
+-	var new_entry: = entry_scene.instantiate()
+-	assert(new_entry is BaseButton, "Entries to a UIMenuList must be derived from BaseButton!" + 
+-		" A non-BaseButton entry_scene has been specified.")
+-	add_child(new_entry)
+-	
+-	# We're going to keep these as independent functions rather than inline lambdas, since each menu
+-	# will probably respond to these events differently. For example, a target menu will want to
+-	# highlight a specific battler when a new entry is focusd and an action menu will want to
+-	# forward which action was selected.
+-	new_entry.focus_entered.connect(_on_entry_focused.bind(new_entry))
+-	new_entry.mouse_entered.connect(_on_entry_focused.bind(new_entry))
+-	new_entry.pressed.connect(_on_entry_pressed.bind(new_entry))
+-	
+-	_entries.append(new_entry)
+-	
+-	if is_disabled:
+-		new_entry.disabled = true
+-	return new_entry
+-
+-
+-func _loop_first_and_last_entries() -> void:
+-	assert(not _entries.is_empty(), "No action entries for the menu to connect!")
+-	
+-	var last_entry_index: = _entries.size()-1
+-	var first_entry: = _entries[0]
+-	if last_entry_index > 0:
+-		var last_entry: = _entries[last_entry_index]
+-		first_entry.focus_neighbor_top = first_entry.get_path_to(last_entry)
+-		last_entry.focus_neighbor_bottom = last_entry.get_path_to(first_entry)
+-	
+-	elif last_entry_index == 0:
+-		first_entry.focus_neighbor_top = "."
+-		first_entry.focus_neighbor_bottom = "."
+-
+-
+-## Moves the [UIMenuCursor] to the focused entry. Derivative menus may want to add additional
+-## behaviour.
+-func _on_entry_focused(entry: BaseButton) -> void:
+-	_menu_cursor.move_to(entry.global_position + Vector2(0.0, entry.size.y/2.0))
+-
+-
+-## Hides (and disables) the menu. Derivative menus may want to add additional behaviour.
+-func _on_entry_pressed(_entry: BaseButton) -> void:
+-	hide()
+diff --git a/src/combat/ui/list_menu/ui_list_menu.gd.uid b/src/combat/ui/list_menu/ui_list_menu.gd.uid
+deleted file mode 100644
+index feb8a0f..0000000
+--- a/src/combat/ui/list_menu/ui_list_menu.gd.uid
++++ /dev/null
+@@ -1 +0,0 @@
+-uid://cc3iboci8fb5l
+diff --git a/src/combat/ui/list_menu/ui_list_menu.tscn b/src/combat/ui/list_menu/ui_list_menu.tscn
+deleted file mode 100644
+index b63a5eb..0000000
+--- a/src/combat/ui/list_menu/ui_list_menu.tscn
++++ /dev/null
+@@ -1,20 +0,0 @@
+-[gd_scene load_steps=3 format=3 uid="uid://ux2r727n3476"]
+-
+-[ext_resource type="Script" uid="uid://cc3iboci8fb5l" path="res://src/combat/ui/list_menu/ui_list_menu.gd" id="1_twydf"]
+-[ext_resource type="PackedScene" uid="uid://cxrn4uvha8g2w" path="res://src/combat/ui/cursors/ui_menu_cursor.tscn" id="2_eegdl"]
+-
+-[node name="ListMenu" type="VBoxContainer"]
+-modulate = Color(1, 1, 1, 0)
+-anchors_preset = 6
+-anchor_left = 1.0
+-anchor_top = 0.5
+-anchor_right = 1.0
+-anchor_bottom = 0.5
+-offset_left = -40.0
+-offset_top = -20.0
+-offset_bottom = 20.0
+-grow_horizontal = 0
+-grow_vertical = 2
+-script = ExtResource("1_twydf")
+-
+-[node name="MenuCursor" parent="." instance=ExtResource("2_eegdl")]
+diff --git a/src/combat/ui/ui_combat.gd b/src/combat/ui/ui_combat.gd
+index be26056..1837c7c 100644
+--- a/src/combat/ui/ui_combat.gd
++++ b/src/combat/ui/ui_combat.gd
+@@ -24,10 +24,8 @@ class_name UICombat extends Control
+ var _battlers: BattlerRoster
+ 
+ # The UI is responsible for relaying player input to the combat systems. In this case, we want to
+-# track which battler and action are currently selected, so that we may queue orders for player
+-# battlers once the player has selected an action and targets.
+-# One caveat is that the selected battler may die while the player is setting up an action, in which
+-# case we want the menus to close immediately.
++# track which battler and action are currently selected, so that we may queue orders for all player
++# battlers before executing them sequentially.
+ var _selected_battler: Battler = null:
+ 	set(value):
+ 		_selected_battler = value
+@@ -42,7 +40,7 @@ var _selected_action: BattlerAction = null
+ # This allows the cursor targets to be updated in real-time as Battler states change.
+ var _cursor: UIBattlerTargetingCursor = null
+ 
+-# UI elements - display
++# UI elements - effects
+ @onready var animation: = $AnimationPlayer as AnimationPlayer
+ @onready var _effect_label_builder: = $EffectLabelBuilder as UIEffectLabelBuilder
+ 
+@@ -52,7 +50,7 @@ var _cursor: UIBattlerTargetingCursor = null
+ @onready var _battler_list: = $PlayerMenus/PlayerBattlerList as UIPlayerBattlerList
+ 
+ 
+-## Prepare the menus for use by assigning appropriate [Battler] data.
++## Prepare the menus for use by assigning appropriate [BattlerRoster] data.
+ func setup(battler_data: BattlerRoster) -> void:
+ 	_battlers = battler_data
+ 	_effect_label_builder.setup(_battlers)
+@@ -60,8 +58,8 @@ func setup(battler_data: BattlerRoster) -> void:
+ 	
+ 	# If a player battler has been selected, the action menu should open so that the player may
+ 	# choose an action.
+-	# If the selected Battler had already queued an action, the player must rechoose that
+-	# action.
++	# If no battler is selected (i.e. it's time to execute the actions) then the menus will just be
++	# hidden.
+ 	CombatEvents.player_battler_selected.connect(
+ 		func _on_player_battler_selected(battler: Battler) -> void:
+ 			# Reset the action description bar.
+@@ -78,20 +76,6 @@ func setup(battler_data: BattlerRoster) -> void:
+ 				var empty_target_array: Array[Battler] = []
+ 				CombatEvents.action_selected.emit(null, _selected_battler, empty_target_array)
+ 	)
+-	
+-	# If there is a change in Battler states (for now, only consider a change in health points),
+-	# re-evaluate the targeting cursor's target list, if the cursor is currently active.
+-	for battler in _battlers.get_battlers():
+-		battler.stats.health_changed.connect(_on_battler_health_changed)
+-	
+-	# If a player Battler dies while the player is selecting an action or choosing targets, signal
+-	# that the targeting cursor/menu should close.
+-	for battler in _battlers.get_player_battlers():
+-		battler.health_depleted.connect(
+-			(func _on_player_battler_health_depleted(downed_battler: Battler):
+-				if downed_battler == _selected_battler:
+-					CombatEvents.player_battler_selected.emit(null)).bind(battler)
+-		)
+ 
+ 
+ func _create_action_menu() -> void:
+@@ -101,18 +85,16 @@ func _create_action_menu() -> void:
+ 	_action_menu_anchor.add_child(action_menu)
+ 	action_menu.setup(_selected_battler, _battlers)
+ 	
+-	# On combat end, remove the action menu immediately.
+-	_battlers.battlers_downed.connect(action_menu.fade_out)
+-	
+-	# Link the action menu to the action description bar.
++	# Link the action menu to the action description bar, providing a description of the
++	# highlighted action.
+ 	action_menu.action_focused.connect(
+ 		func _on_action_focused(action: BattlerAction) -> void:
+ 			_action_description.description = action.description
+ 	)
+ 	
+ 	# The action builder will wait until the player selects an action or presses 'back'.
+-	# Selecting an action will trigger the following signal, whereas pressing 'back'
+-	# will close the menu directly and deselect the current battler.
++	# Selecting an action will trigger the following signal, whereas pressing 'back' will try to
++	# return action selection to the previous player Battler.
+ 	action_menu.action_selected.connect(
+ 		func _on_action_selected(action: BattlerAction) -> void:
+ 			_selected_action = action
+@@ -129,9 +111,6 @@ func _create_targeting_cursor() -> void:
+ 	_cursor.targets = _selected_action.get_possible_targets(_selected_battler, _battlers)
+ 	add_child(_cursor)
+ 	
+-	# On combat end, remove the cursor from the scene tree.
+-	_battlers.battlers_downed.connect(_cursor.queue_free)
+-	
+ 	# Finally, connect to the cursor's signals that will indicate that targets have been chosen.
+ 	_cursor.targets_selected.connect(
+ 		func _on_cursor_targets_selected(targets: Array[Battler]) -> void:
+diff --git a/src/combat/ui/ui_combat.tscn b/src/combat/ui/ui_combat.tscn
+index c00d51c..b3c931d 100644
+--- a/src/combat/ui/ui_combat.tscn
++++ b/src/combat/ui/ui_combat.tscn
+@@ -1,7 +1,9 @@
+-[gd_scene load_steps=12 format=3 uid="uid://ic0pyjko2i46"]
++[gd_scene load_steps=14 format=3 uid="uid://ic0pyjko2i46"]
+ 
+ [ext_resource type="Script" uid="uid://ch0df68krwxr1" path="res://src/combat/ui/effect_labels/ui_effect_label_builder.gd" id="1_0i21q"]
+ [ext_resource type="PackedScene" uid="uid://bo6hj2mg02uef" path="res://src/combat/ui/effect_labels/ui_damage_label.tscn" id="2_0cqaj"]
++[ext_resource type="PackedScene" uid="uid://bipyuaeqoxmt2" path="res://src/combat/ui/action_menu/ui_action_menu.tscn" id="2_nv24v"]
++[ext_resource type="PackedScene" uid="uid://bu56ii26ps128" path="res://src/combat/ui/cursors/ui_battler_target_cursor.tscn" id="3_0i21q"]
+ [ext_resource type="PackedScene" uid="uid://dxyw5j7wr56hl" path="res://src/combat/ui/effect_labels/ui_missed_label.tscn" id="3_36thh"]
+ [ext_resource type="Script" uid="uid://smjuikb83bkc" path="res://src/combat/ui/ui_combat.gd" id="5_lubpu"]
+ [ext_resource type="Script" uid="uid://2bkem6rl5jl6" path="res://src/combat/ui/battler_entry/ui_player_battler_list.gd" id="6_nv24v"]
+@@ -120,6 +122,8 @@ anchor_bottom = 1.0
+ grow_horizontal = 2
+ grow_vertical = 2
+ script = ExtResource("5_lubpu")
++action_menu_scene = ExtResource("2_nv24v")
++target_cursor_scene = ExtResource("3_0i21q")
+ 
+ [node name="EffectLabelBuilder" type="Node2D" parent="."]
+ script = ExtResource("1_0i21q")

@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-history_2025-09-19_019b51c_009"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "cb76b0532693ad1d32a3c90e86a59edd3a9ee212"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: addons/dialogic/Editor/HomePage/icon_bg.png.import, addons/dialogic/Editor/Images/Dropdown/default.svg.import, addons/dialogic/Editor/Images/Dropdown/divide.svg.import, addons/dialogic/Editor/Images/Dropdown/join.svg.import, addons/dialogic/Editor/Images/Dropdown/leave.svg.import, addons/dialogic/Editor/Images/Dropdown/minus.svg.import, addons/dialogic/Editor/Images/Dropdown/multiply.svg.import, addons/dialogic/Editor/Images/Dropdown/plus.svg.import."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "history_2025-09-19_019b51c_009"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

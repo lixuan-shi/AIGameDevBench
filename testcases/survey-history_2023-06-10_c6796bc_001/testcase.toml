@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-history_2023-06-10_c6796bc_001"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "e9c651ce0bb929ce7b8c08497c97152692fdde80"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: assets/gui/cursors/cursor_default.png, assets/gui/cursors/cursor_default_small.png, assets/gui/cursors/cursor_default_small.png.import, assets/gui/cursors/cursor_default_tiny.png, assets/gui/cursors/cursor_default_tiny.png.import, assets/gui/cursors/cursor_interact.png, assets/gui/cursors/cursor_interact.png.import, assets/gui/cursors/cursor_interact_small.png."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "history_2023-06-10_c6796bc_001"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

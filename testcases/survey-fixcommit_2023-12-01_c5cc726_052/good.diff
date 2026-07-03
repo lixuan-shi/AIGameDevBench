@@ -1,0 +1,367 @@
+diff --git a/scripts/components/equipmentsynchronizercomponent/EquipmentSynchronizerComponent.gd b/scripts/components/equipmentsynchronizercomponent/EquipmentSynchronizerComponent.gd
+index 0f32b9e..7f3d6ab 100644
+--- a/scripts/components/equipmentsynchronizercomponent/EquipmentSynchronizerComponent.gd
++++ b/scripts/components/equipmentsynchronizercomponent/EquipmentSynchronizerComponent.gd
+@@ -161,7 +161,8 @@ func _on_delay_timer_timeout():
+ 	sync_equipment.rpc_id(1)
+ 
+ 
+-@rpc("call_remote", "any_peer", "reliable") func sync_equipment():
++@rpc("call_remote", "any_peer", "reliable")
++func sync_equipment():
+ 	if not G.is_server():
+ 		return
+ 
+@@ -174,7 +175,8 @@ func _on_delay_timer_timeout():
+ 	sync_response.rpc_id(id, to_json())
+ 
+ 
+-@rpc("call_remote", "authority", "reliable") func sync_response(equipment: Dictionary):
++@rpc("call_remote", "authority", "reliable")
++func sync_response(equipment: Dictionary):
+ 	from_json(equipment)
+ 
+ 
+@@ -189,12 +191,14 @@ func sync_equip_item(item_uuid: String, item_class: String):
+ 		item_added.emit(item_uuid, item_class)
+ 
+ 
+-@rpc("call_remote", "authority", "reliable") func sync_unequip_item(item_uuid: String):
++@rpc("call_remote", "authority", "reliable")
++func sync_unequip_item(item_uuid: String):
+ 	if _unequip_item(item_uuid) != null:
+ 		item_removed.emit(item_uuid)
+ 
+ 
+-@rpc("call_remote", "any_peer", "reliable") func remove_equipment_item(item_uuid: String):
++@rpc("call_remote", "any_peer", "reliable")
++func remove_equipment_item(item_uuid: String):
+ 	if not G.is_server():
+ 		return
+ 
+diff --git a/scripts/components/inventorysynchronizercomponent/InventorySynchronizerComponent.gd b/scripts/components/inventorysynchronizercomponent/InventorySynchronizerComponent.gd
+index dba5a6f..4584daf 100644
+--- a/scripts/components/inventorysynchronizercomponent/InventorySynchronizerComponent.gd
++++ b/scripts/components/inventorysynchronizercomponent/InventorySynchronizerComponent.gd
+@@ -148,7 +148,8 @@ func from_json(data: Dictionary) -> bool:
+ 	return true
+ 
+ 
+-@rpc("call_remote", "any_peer", "reliable") func sync_inventory():
++@rpc("call_remote", "any_peer", "reliable")
++func sync_inventory():
+ 	if not G.is_server():
+ 		return
+ 
+@@ -162,7 +163,8 @@ func from_json(data: Dictionary) -> bool:
+ 		sync_response.rpc_id(id, to_json())
+ 
+ 
+-@rpc("call_remote", "authority", "reliable") func sync_response(inventory: Dictionary):
++@rpc("call_remote", "authority", "reliable")
++func sync_response(inventory: Dictionary):
+ 	from_json(inventory)
+ 
+ 
+@@ -179,7 +181,8 @@ func sync_add_item(item_uuid: String, item_class: String, amount: int):
+ 	item_added.emit(item_uuid, item_class)
+ 
+ 
+-@rpc("call_remote", "authority", "reliable") func sync_remove_item(item_uuid: String):
++@rpc("call_remote", "authority", "reliable")
++func sync_remove_item(item_uuid: String):
+ 	var item: Item = get_item(item_uuid)
+ 	if item != null:
+ 		items.erase(item)
+@@ -187,17 +190,20 @@ func sync_add_item(item_uuid: String, item_class: String, amount: int):
+ 		item_removed.emit(item_uuid)
+ 
+ 
+-@rpc("call_remote", "authority", "reliable") func sync_add_gold(total: int, amount: int):
++@rpc("call_remote", "authority", "reliable")
++func sync_add_gold(total: int, amount: int):
+ 	gold = total
+ 	gold_added.emit(total, amount)
+ 
+ 
+-@rpc("call_remote", "authority", "reliable") func sync_remove_gold(total: int, amount: int):
++@rpc("call_remote", "authority", "reliable")
++func sync_remove_gold(total: int, amount: int):
+ 	gold = total
+ 	gold_removed.emit(total, amount)
+ 
+ 
+-@rpc("call_remote", "any_peer", "reliable") func use_inventory_item(item_uuid: String):
++@rpc("call_remote", "any_peer", "reliable")
++func use_inventory_item(item_uuid: String):
+ 	if not G.is_server():
+ 		return
+ 
+@@ -213,7 +219,8 @@ func sync_add_item(item_uuid: String, item_class: String, amount: int):
+ 	use_item(item_uuid)
+ 
+ 
+-@rpc("call_remote", "any_peer", "reliable") func drop_inventory_item(item_uuid: String):
++@rpc("call_remote", "any_peer", "reliable")
++func drop_inventory_item(item_uuid: String):
+ 	if not G.is_server():
+ 		return
+ 
+diff --git a/scripts/components/playerunstuckcomponent/PlayerUnstuckComponent.gd b/scripts/components/playerunstuckcomponent/PlayerUnstuckComponent.gd
+index 57211e0..5624ae2 100644
+--- a/scripts/components/playerunstuckcomponent/PlayerUnstuckComponent.gd
++++ b/scripts/components/playerunstuckcomponent/PlayerUnstuckComponent.gd
+@@ -17,7 +17,8 @@ func unstuck():
+ 	_unstuck.rpc_id(1)
+ 
+ 
+-@rpc("call_remote", "any_peer", "reliable") func _unstuck():
++@rpc("call_remote", "any_peer", "reliable")
++func _unstuck():
+ 	if not G.is_server():
+ 		return
+ 
+diff --git a/scripts/components/shopsynchronizercomponent/ShopSynchronizerComponent.gd b/scripts/components/shopsynchronizercomponent/ShopSynchronizerComponent.gd
+index 8ff8f87..ec8b8d1 100644
+--- a/scripts/components/shopsynchronizercomponent/ShopSynchronizerComponent.gd
++++ b/scripts/components/shopsynchronizercomponent/ShopSynchronizerComponent.gd
+@@ -102,13 +102,15 @@ func _on_shop_item_bought(player_id: int, item_uuid: String):
+ 			player.inventory.add_gold(shop_item["price"])
+ 
+ 
+-@rpc("call_remote", "authority", "reliable") func sync_shop(shop: Dictionary):
++@rpc("call_remote", "authority", "reliable")
++func sync_shop(shop: Dictionary):
+ 	from_json(shop)
+ 
+ 	G.shop_opened.emit(target_node.name)
+ 
+ 
+-@rpc("call_remote", "any_peer", "reliable") func buy_shop_item(item_uuid: String):
++@rpc("call_remote", "any_peer", "reliable")
++func buy_shop_item(item_uuid: String):
+ 	if not G.is_server():
+ 		return
+ 
+diff --git a/scripts/network/rpcs/clientgateway/client.gd b/scripts/network/rpcs/clientgateway/client.gd
+index 7f93c14..d2625ac 100644
+--- a/scripts/network/rpcs/clientgateway/client.gd
++++ b/scripts/network/rpcs/clientgateway/client.gd
+@@ -8,7 +8,8 @@ signal server_info_received(response: Dictionary)
+ 
+ signal player_logged_in(id: int, username: String)
+ 
+-@rpc("call_remote", "any_peer", "reliable") func create_account(username, password):
++@rpc("call_remote", "any_peer", "reliable")
++func create_account(username, password):
+ 	if not C.is_server():
+ 		return
+ 
+@@ -27,7 +28,8 @@ func create_account_response(error: bool, reason: String = ""):
+ 	account_created.emit({"error": error, "reason": reason})
+ 
+ 
+-@rpc("call_remote", "any_peer", "reliable") func authenticate(username, password):
++@rpc("call_remote", "any_peer", "reliable")
++func authenticate(username, password):
+ 	if not C.is_server():
+ 		return
+ 
+@@ -54,11 +56,13 @@ func create_account_response(error: bool, reason: String = ""):
+ 	authentication_response.rpc_id(id, true)
+ 
+ 
+-@rpc("call_remote", "authority", "reliable") func authentication_response(response: bool):
++@rpc("call_remote", "authority", "reliable")
++func authentication_response(response: bool):
+ 	authenticated.emit(response)
+ 
+ 
+-@rpc("call_remote", "any_peer", "reliable") func get_server():
++@rpc("call_remote", "any_peer", "reliable")
++func get_server():
+ 	if not C.is_server():
+ 		return
+ 
+@@ -99,7 +103,8 @@ func create_account_response(error: bool, reason: String = ""):
+ 	get_server_response.rpc_id(id, false, server.name, server.address, server.port, cookie)
+ 
+ 
+-@rpc("call_remote", "authority", "reliable") func get_server_response(
++@rpc("call_remote", "authority", "reliable")
++func get_server_response(
+ 	error: bool, server_name: String, address: String, port: int, cookie: String
+ ):
+ 	server_info_received.emit(
+diff --git a/scripts/network/rpcs/gameserver/clock.gd b/scripts/network/rpcs/gameserver/clock.gd
+index e6d1320..46d87ca 100644
+--- a/scripts/network/rpcs/gameserver/clock.gd
++++ b/scripts/network/rpcs/gameserver/clock.gd
+@@ -21,7 +21,8 @@ func _physics_process(delta):
+ 	delta_latency = 0
+ 
+ 
+-@rpc("call_remote", "any_peer", "reliable") func fetch_server_time(client_time: float):
++@rpc("call_remote", "any_peer", "reliable")
++func fetch_server_time(client_time: float):
+ 	if not G.is_server():
+ 		return
+ 
+@@ -35,7 +36,8 @@ func return_server_time(server_time: float, client_time: float):
+ 	G.clock = server_time + latency
+ 
+ 
+-@rpc("call_remote", "any_peer", "reliable") func get_latency(client_time: float):
++@rpc("call_remote", "any_peer", "reliable")
++func get_latency(client_time: float):
+ 	if not G.is_server():
+ 		return
+ 
+@@ -43,7 +45,8 @@ func return_server_time(server_time: float, client_time: float):
+ 	return_latency.rpc_id(id, client_time)
+ 
+ 
+-@rpc("call_remote", "authority", "reliable") func return_latency(client_time: float):
++@rpc("call_remote", "authority", "reliable")
++func return_latency(client_time: float):
+ 	latency_buffer.append((Time.get_unix_time_from_system() - client_time) / 2)
+ 	if latency_buffer.size() == LATENCY_BUFFER_SIZE:
+ 		var total_latency = 0
+diff --git a/scripts/network/rpcs/gameserver/player.gd b/scripts/network/rpcs/gameserver/player.gd
+index d711940..9e47d94 100644
+--- a/scripts/network/rpcs/gameserver/player.gd
++++ b/scripts/network/rpcs/gameserver/player.gd
+@@ -12,7 +12,8 @@ signal message_sent(from: int, type: String, to: String, message: String)
+ signal message_received(type: String, from: String, message: String)
+ signal player_portalled(server_name: String, address: String, port: int, cookie: String)
+ 
+-@rpc("call_remote", "any_peer", "reliable") func authenticate(username: String, cookie: String):
++@rpc("call_remote", "any_peer", "reliable")
++func authenticate(username: String, cookie: String):
+ 	if not G.is_server():
+ 		return
+ 
+@@ -38,7 +39,8 @@ signal player_portalled(server_name: String, address: String, port: int, cookie:
+ 	authentication_response.rpc_id(id, true)
+ 
+ 
+-@rpc("call_remote", "authority", "reliable") func authentication_response(response: bool):
++@rpc("call_remote", "authority", "reliable")
++func authentication_response(response: bool):
+ 	authenticated.emit(response)
+ 
+ 
+@@ -47,7 +49,8 @@ func add_player(id: int, username: String, pos: Vector2):
+ 	player_added.emit(id, username, pos)
+ 
+ 
+-@rpc("call_remote", "any_peer", "reliable") func get_player():
++@rpc("call_remote", "any_peer", "reliable")
++func get_player():
+ 	if not G.is_server():
+ 		return
+ 
+@@ -74,7 +77,8 @@ func add_other_player(username: String, pos: Vector2, loop_animation: String):
+ 	other_player_added.emit(username, pos, loop_animation)
+ 
+ 
+-@rpc("call_remote", "authority", "reliable") func remove_other_player(username: String):
++@rpc("call_remote", "authority", "reliable")
++func remove_other_player(username: String):
+ 	other_player_removed.emit(username)
+ 
+ 
+diff --git a/scripts/network/rpcs/gameserver/sync.gd b/scripts/network/rpcs/gameserver/sync.gd
+index c3265db..ffdff8a 100644
+--- a/scripts/network/rpcs/gameserver/sync.gd
++++ b/scripts/network/rpcs/gameserver/sync.gd
+@@ -32,7 +32,8 @@ func playersynchronizer_sync_input(c: int, d: Vector2, t: float, m: Vector2):
+ 		user.player.component_list["player_synchronizer"].sync_input(c, d, t, m)
+ 
+ 
+-@rpc("call_remote", "any_peer", "reliable") func playersynchronizer_sync_interact(t: String):
++@rpc("call_remote", "any_peer", "reliable")
++func playersynchronizer_sync_interact(t: String):
+ 	if not G.is_server():
+ 		return
+ 
+@@ -66,7 +67,8 @@ func positionsynchronizer_sync(n: String, t: float, p: Vector2, v: Vector2):
+ 		entity.component_list["position_synchronizer"].sync(t, p, v)
+ 
+ 
+-@rpc("call_remote", "any_peer", "reliable") func statssynchronizer_sync_stats(n: String):
++@rpc("call_remote", "any_peer", "reliable")
++func statssynchronizer_sync_stats(n: String):
+ 	if not G.is_server():
+ 		return
+ 
+@@ -102,7 +104,8 @@ func statssynchronizer_sync_response(n: String, d: Dictionary):
+ 		entity.component_list["stats_synchronizer"].sync_response(d)
+ 
+ 
+-@rpc("call_remote", "authority", "reliable") func statssynchronizer_sync_int_change(
++@rpc("call_remote", "authority", "reliable")
++func statssynchronizer_sync_int_change(
+ 	n: String, t: float, s: StatsSynchronizerComponent.TYPE, v: int
+ ):
+ 	var entity: Node = G.world.get_entity_by_name(n)
+@@ -117,7 +120,8 @@ func statssynchronizer_sync_response(n: String, d: Dictionary):
+ 		entity.component_list["stats_synchronizer"].sync_int_change(t, s, v)
+ 
+ 
+-@rpc("call_remote", "authority", "reliable") func statssynchronizer_sync_float_change(
++@rpc("call_remote", "authority", "reliable")
++func statssynchronizer_sync_float_change(
+ 	n: String, t: float, s: StatsSynchronizerComponent.TYPE, v: float
+ ):
+ 	var entity: Node = G.world.get_entity_by_name(n)
+@@ -286,7 +290,8 @@ func networkviewsynchronizer_remove_item(n: String, iu: String):
+ 		entity.component_list["networkview_synchronizer"].remove_item(iu)
+ 
+ 
+-@rpc("call_remote", "any_peer", "reliable") func networkviewsynchronizer_sync_bodies_in_view():
++@rpc("call_remote", "any_peer", "reliable")
++func networkviewsynchronizer_sync_bodies_in_view():
+ 	if not G.is_server():
+ 		return
+ 
+@@ -334,7 +339,8 @@ func actionsynchronizer_sync_skill_use(n: String, t: float, p: Vector2, s: Strin
+ 		entity.component_list["action_synchronizer"].sync_skill_use(t, p, s)
+ 
+ 
+-@rpc("call_remote", "any_peer", "reliable") func skillcomponent_sync_skills(n: String):
++@rpc("call_remote", "any_peer", "reliable")
++func skillcomponent_sync_skills(n: String):
+ 	if not G.is_server():
+ 		return
+ 
+diff --git a/scripts/network/rpcs/servergateway/server.gd b/scripts/network/rpcs/servergateway/server.gd
+index 5100c46..4b2bf3f 100644
+--- a/scripts/network/rpcs/servergateway/server.gd
++++ b/scripts/network/rpcs/servergateway/server.gd
+@@ -42,11 +42,13 @@ func register_server(server_name: String, address: String, port: int, portals_in
+ 	register_response.rpc_id(id, true)
+ 
+ 
+-@rpc("call_remote", "authority", "reliable") func register_response(response: bool):
++@rpc("call_remote", "authority", "reliable")
++func register_response(response: bool):
+ 	server_registered.emit(response)
+ 
+ 
+-@rpc("call_remote", "authority", "reliable") func register_user(username: String, cookie: String):
++@rpc("call_remote", "authority", "reliable")
++func register_user(username: String, cookie: String):
+ 	S.register_user(username, cookie)
+ 
+ 
+@@ -91,7 +93,8 @@ func enter_portal(username: String, server_name: String, portal_name: String):
+ 	)
+ 
+ 
+-@rpc("call_remote", "authority", "reliable") func portal_response(
++@rpc("call_remote", "authority", "reliable")
++func portal_response(
+ 	response: bool,
+ 	username: String,
+ 	server_name: String,

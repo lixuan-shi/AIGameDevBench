@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-01-23_dc2e8ee_004"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "ff0fc58ad13d75d24f7e342d4973254c6cb35fdb"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rts"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: source/match/FogOfWar.gd, source/shaders/3d/simple_fog_of_war.gdshader."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-01-23_dc2e8ee_004"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

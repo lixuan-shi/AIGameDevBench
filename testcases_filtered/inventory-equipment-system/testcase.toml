@@ -1,0 +1,29 @@
+[testcase]
+id = "inventory-equipment-system"
+category = "behavior_logic"
+source_kind = "folder"
+source_repo = "authored:representative-set"
+task = """
+Implement the inventory and equipment systems across res://scripts/inventory.gd and res://scripts/equipment.gd.
+
+Inventory (slot-limited, stacking):
+- capacity is the maximum number of distinct SLOTS (stacks), not total items.
+- add(item_id, qty): if a stack for item_id already exists, increase its quantity (no new slot). Otherwise, if a free slot exists, create a new stack with that quantity. If all slots are full and the item is not already stacked, add nothing and return false. Return true when something was added.
+- total_quantity() = sum of all stack quantities; slot_count() = number of occupied slots.
+
+Equipment (one item per slot, attack bonus):
+- equip(slot, bonus): if that slot already holds something, remove its bonus first, then apply the new bonus. total_bonus = sum of currently-equipped slots. Re-equipping the same slot must REPLACE, never double-count.
+- unequip(slot): remove that slot's item and its bonus.
+"""
+
+[verifier]
+type = "godot_scene_assert"
+entry = "verifier_scene.tscn"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+author = "Claude"
+created = "2026-06-30"
+notes = "behavior_logic/hard (multi-trap, two files). 6 independent traps: slot create, stacking-no-new-slot, capacity rejection, equip bonus, re-equip replace-not-double, unequip removal. A harness that does the happy path but misses capacity or re-equip-double lands partial. Baseline stubs -> noop=0. bad.diff implements all but double-counts on re-equip -> fails reequip (and, fail-fast, unequip) -> 4/6 = 0.67."

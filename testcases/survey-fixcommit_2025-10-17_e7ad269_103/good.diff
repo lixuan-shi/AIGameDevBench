@@ -1,0 +1,50 @@
+diff --git a/Assets/Sprites/UI/Title1.json b/Assets/Sprites/UI/Title1.json
+index 9851ac0..7be8e6f 100644
+--- a/Assets/Sprites/UI/Title1.json
++++ b/Assets/Sprites/UI/Title1.json
+@@ -31,7 +31,7 @@
+ 			"Autumn": {"source": "TitleSMBLL.png", "rect": [352, 88, 176, 88], "properties": {"star_offset_x": 0, "star_offset_y": -4}},
+ 			"Beach": {"source": "TitleSMBLL.png", "rect": [0, 176, 176, 88], "properties": {"star_offset_x": 0, "star_offset_y": -4}},
+ 			"Mountain": {"source": "TitleSMBLL.png", "rect": [176, 176, 176, 88], "properties": {"star_offset_x": 0, "star_offset_y": -4}},
+-			"Space": {"source": "TitleSMBLL.png", "rect": [352, 176, 176, 88], "properties": {"star_offset_x": 0, "star_offset_y": -0}}
++			"Space": {"source": "TitleSMBLL.png", "rect": [352, 176, 176, 88], "properties": {"star_offset_x": 0, "star_offset_y": -4}}
+ 		},
+ 		"SMBANN": {
+ 			"default": {"source": "TitleSMBANN.png", "rect": [0, 0, 176, 88], "properties": {"star_offset_x": -88, "star_offset_y": 4}},
+@@ -42,7 +42,7 @@
+ 			"Autumn": {"source": "TitleSMBANN.png", "rect": [352, 88, 176, 88], "properties": {"star_offset_x": -88, "star_offset_y": 4}},
+ 			"Beach": {"source": "TitleSMBANN.png", "rect": [0, 176, 176, 88], "properties": {"star_offset_x": -88, "star_offset_y": 4}},
+ 			"Mountain": {"source": "TitleSMBANN.png", "rect": [176, 176, 176, 88], "properties": {"star_offset_x": -88, "star_offset_y": 4}},
+-			"Space": {"source": "TitleSMBANN.png", "rect": [352, 176, 176, 88], "properties": {"star_offset_x": 0, "star_offset_y": -0}}
++			"Space": {"source": "TitleSMBANN.png", "rect": [352, 176, 176, 88], "properties": {"star_offset_x": -88, "star_offset_y": 4}}
+ 		}
+ 	}
+ }
+diff --git a/Resources/SpriteFrames/Player/Mario/Big.tres b/Resources/SpriteFrames/Player/Mario/Big.tres
+index 71a8675..0d52ded 100644
+--- a/Resources/SpriteFrames/Player/Mario/Big.tres
++++ b/Resources/SpriteFrames/Player/Mario/Big.tres
+@@ -1,7 +1,7 @@
+ [gd_resource type="SpriteFrames" load_steps=25 format=3 uid="uid://cjblhx4flkqva"]
+ 
+-[ext_resource type="Texture2D" uid="uid://cf6up03lxcul2" path="res://Assets/Sprites/Players/Mario/Big.png" id="1_akfsq"]
+-[ext_resource type="Texture2D" uid="uid://ecig0d3sw5jm" path="res://Assets/Sprites/Players/Mario/Small.png" id="1_dg100"]
++[ext_resource type="Texture2D" uid="uid://b45d7xacnaoxl" path="res://Assets/Sprites/Players/Mario/Big.png" id="1_akfsq"]
++[ext_resource type="Texture2D" uid="uid://d8g0ff0oepgy" path="res://Assets/Sprites/Players/Mario/Small.png" id="1_dg100"]
+ 
+ [sub_resource type="AtlasTexture" id="AtlasTexture_a6q03"]
+ atlas = ExtResource("1_akfsq")
+diff --git a/Scripts/Parts/PlayerSprite.gd b/Scripts/Parts/PlayerSprite.gd
+index 0d878a4..3105d14 100644
+--- a/Scripts/Parts/PlayerSprite.gd
++++ b/Scripts/Parts/PlayerSprite.gd
+@@ -33,5 +33,7 @@ func update() -> void:
+ 			offset.y = -(sprite_frames.get_frame_texture(animation, frame).get_height() / 2.0)
+ 
+ func on_animation_changed() -> void:
+-	if sprite_frames.has_animation(animation) == false and Player.ANIMATION_FALLBACKS.has(animation):
+-		play(Player.ANIMATION_FALLBACKS[animation])
++	var fallback = animation
++	while not sprite_frames.has_animation(fallback) and Player.ANIMATION_FALLBACKS.has(fallback):
++		fallback = Player.ANIMATION_FALLBACKS[fallback]
++	play(fallback)

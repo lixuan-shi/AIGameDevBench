@@ -1,0 +1,9 @@
+{
+  "baseline_scene": "baseline/scenes/main.tscn",
+  "scene": "scenes/main.tscn",
+  "expected": {
+    "added_nodes": ["Enemies/SpawnPoint"],
+    "removed_nodes": ["Level/SpawnPoint"],
+    "changed_props": {}
+  }
+}

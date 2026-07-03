@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2024-01-08_18454a9_082"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "512893f1de7819a108b86ef99a352b54502cc34d"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scripts/components/common/updatefacecomponent/UpdateFaceComponent.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2024-01-08_18454a9_082"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

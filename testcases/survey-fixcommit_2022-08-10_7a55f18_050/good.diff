@@ -1,0 +1,144 @@
+diff --git a/scenes/title/options/OptionsMenu.gd b/scenes/title/options/OptionsMenu.gd
+index 725d825..11ff846 100644
+--- a/scenes/title/options/OptionsMenu.gd
++++ b/scenes/title/options/OptionsMenu.gd
+@@ -31,11 +31,15 @@ func _on_MusicVolume_value_changed(value) -> void:
+ 
+ 
+ func _on_SFXVolume_value_changed(value) -> void:
++	if (value != Settings.volume_sfx):
++		$Audio/SFX.play()
+ 	Settings.volume_sfx = value
+ 	EventBus.emit_signal("volume_changed", "sfx")
+ 
+ 
+ func _on_VoiceVolume_value_changed(value) -> void:
++	if (value != Settings.volume_voice):
++		$Audio/Voice.play()
+ 	Settings.volume_voice = value
+ 	EventBus.emit_signal("volume_changed", "voice")
+ 
+diff --git a/scenes/title/options/OptionsMenu.tscn b/scenes/title/options/OptionsMenu.tscn
+index d572715..0117875 100644
+--- a/scenes/title/options/OptionsMenu.tscn
++++ b/scenes/title/options/OptionsMenu.tscn
+@@ -1,4 +1,4 @@
+-[gd_scene load_steps=16 format=2]
++[gd_scene load_steps=18 format=2]
+ 
+ [ext_resource path="res://fonts/ALittleNameCalle.ttf" type="DynamicFontData" id=1]
+ [ext_resource path="res://scenes/ui/Themes/Default/default.tres" type="Theme" id=2]
+@@ -12,6 +12,8 @@
+ [ext_resource path="res://scripts/Audio.gd" type="Script" id=10]
+ [ext_resource path="res://scenes/title/options/controls/SliderOption.tscn" type="PackedScene" id=12]
+ [ext_resource path="res://scenes/title/options/OptionsMenu.gd" type="Script" id=13]
++[ext_resource path="res://audio/sfx/coin.wav" type="AudioStream" id=14]
++[ext_resource path="res://audio/voice/marwing/en/MW1-0_LR1.wav" type="AudioStream" id=16]
+ 
+ [sub_resource type="DynamicFont" id=1]
+ size = 48
+@@ -205,10 +207,6 @@ text = "OFF"
+ margin_top = 44.0
+ margin_right = 680.0
+ margin_bottom = 84.0
+-value_label_mapping = {
+-false: "OFF",
+-true: "ON"
+-}
+ 
+ [node name="OptionLabel" parent="CustomTabContainer/Panel/GraphicsSettings/ScreenShake" index="1"]
+ text = "SCREEN SHAKE"
+@@ -217,10 +215,6 @@ text = "SCREEN SHAKE"
+ margin_top = 88.0
+ margin_right = 680.0
+ margin_bottom = 128.0
+-value_label_mapping = {
+-false: "OFF",
+-true: "ON"
+-}
+ 
+ [node name="OptionLabel" parent="CustomTabContainer/Panel/GraphicsSettings/CRTFilter" index="1"]
+ text = "CRT FILTER"
+@@ -234,7 +228,6 @@ margin_left = -83.0
+ margin_top = -173.0
+ margin_right = 107.0
+ margin_bottom = -101.0
+-shortcut_in_tooltip = false
+ shortcut = SubResource( 8 )
+ text = "Back to title"
+ redirect_scene = "res://scenes/title/TitleScreen.tscn"
+@@ -249,6 +242,14 @@ volume_db = -20.0
+ autoplay = true
+ bus = "music"
+ 
++[node name="SFX" type="AudioStreamPlayer" parent="Audio"]
++stream = ExtResource( 14 )
++bus = "sfx"
++
++[node name="Voice" type="AudioStreamPlayer" parent="Audio"]
++stream = ExtResource( 16 )
++bus = "voice"
++
+ [connection signal="value_changed" from="CustomTabContainer/Panel/AudioSettings/GameVolume" to="." method="_on_GameVolume_value_changed"]
+ [connection signal="value_changed" from="CustomTabContainer/Panel/AudioSettings/MusicVolume" to="." method="_on_MusicVolume_value_changed"]
+ [connection signal="value_changed" from="CustomTabContainer/Panel/AudioSettings/SFXVolume" to="." method="_on_SFXVolume_value_changed"]
+diff --git a/scenes/ui/PauseMenu.gd b/scenes/ui/PauseMenu.gd
+index 3cd20fb..39696f4 100644
+--- a/scenes/ui/PauseMenu.gd
++++ b/scenes/ui/PauseMenu.gd
+@@ -338,6 +338,7 @@ func volume_select(delta: int, label: RichTextLabel):
+ 				+ (">" if 10 > Settings.volume_sfx else " ")
+ 				+ "\n"
+ 			)
++			$"PauseMenu/SFXMenu/SFX Player".play()
+ 		4:
+ 			Settings.volume_voice = int(clamp(Settings.volume_voice + delta, 0, 10))
+ 			label.text = (
+@@ -350,6 +351,7 @@ func volume_select(delta: int, label: RichTextLabel):
+ 				+ (">" if 10 > Settings.volume_voice else " ")
+ 				+ "\n"
+ 			)
++			$"PauseMenu/SFXMenu/Voice Player".play()
+ 
+ 	# reapply the wave
+ 	set_item_style()
+diff --git a/scenes/ui/PauseMenu.tscn b/scenes/ui/PauseMenu.tscn
+index 3a9025f..7998c6b 100644
+--- a/scenes/ui/PauseMenu.tscn
++++ b/scenes/ui/PauseMenu.tscn
+@@ -1,7 +1,9 @@
+-[gd_scene load_steps=4 format=2]
++[gd_scene load_steps=6 format=2]
+ 
+ [ext_resource path="res://fonts/ALittleNameCalle.ttf" type="DynamicFontData" id=1]
+ [ext_resource path="res://scenes/ui/PauseMenu.gd" type="Script" id=2]
++[ext_resource path="res://audio/voice/marwing/en/MW1-0_LR1.wav" type="AudioStream" id=3]
++[ext_resource path="res://audio/sfx/coin.wav" type="AudioStream" id=4]
+ 
+ [sub_resource type="DynamicFont" id=1]
+ font_data = ExtResource( 1 )
+@@ -231,9 +233,6 @@ anchor_right = 1.0
+ anchor_bottom = 1.0
+ margin_left = -5.0
+ margin_right = -5.0
+-__meta__ = {
+-"_edit_use_anchors_": false
+-}
+ 
+ [node name="BackLabel" type="RichTextLabel" parent="PauseMenu/SFXMenu"]
+ anchor_left = 0.355
+@@ -317,6 +316,11 @@ bbcode_enabled = true
+ text = "
+ VOICE VOLUME: <  10  >
+ "
+-__meta__ = {
+-"_edit_use_anchors_": false
+-}
++
++[node name="SFX Player" type="AudioStreamPlayer" parent="PauseMenu/SFXMenu"]
++stream = ExtResource( 4 )
++bus = "sfx"
++
++[node name="Voice Player" type="AudioStreamPlayer" parent="PauseMenu/SFXMenu"]
++stream = ExtResource( 3 )
++bus = "voice"

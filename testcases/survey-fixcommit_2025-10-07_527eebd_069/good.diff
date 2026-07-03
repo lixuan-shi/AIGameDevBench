@@ -1,0 +1,20 @@
+diff --git a/Scripts/Classes/Entities/Player.gd b/Scripts/Classes/Entities/Player.gd
+index 5928fc2..897f6eb 100644
+--- a/Scripts/Classes/Entities/Player.gd
++++ b/Scripts/Classes/Entities/Player.gd
+@@ -629,12 +629,12 @@ func death_load() -> void:
+ 	}
+ 
+ 	# Determine which action to take
+-	if Global.lives <= 0 and Settings.file.difficulty.inf_lives == 0:
++	if death_actions.has(Global.current_game_mode):
++		death_actions[Global.current_game_mode].call()
++	elif Global.lives <= 0 and Settings.file.difficulty.inf_lives == 0:
+ 		death_actions["game_over"].call()
+ 	elif Global.time <= 0:
+ 		death_actions["time_up"].call()
+-	elif death_actions.has(Global.current_game_mode):
+-		death_actions[Global.current_game_mode].call()
+ 	else:
+ 		death_actions["default_reload"].call()
+ 

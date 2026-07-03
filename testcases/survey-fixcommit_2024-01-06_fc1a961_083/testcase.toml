@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2024-01-06_fc1a961_083"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "54f3d47eee3eafd232df2b4772b7265b0010e4a3"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scripts/components/networking/projectilesynchronizercomponent/Projectile2D.gd, scripts/components/networking/projectilesynchronizercomponent/ProjectileSynchronizerComponent.tscn, scripts/components/networking/projectilesynchronizercomponent/Projectiles/Arrow.tscn, scripts/components/networking/projectilesynchronizercomponent/Projectiles/DamageProjectile.gd, scripts/components/networking/projectilesynchronizercomponent/projectilesynchronizercomponent.gd, scripts/singletons/jdungeon.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2024-01-06_fc1a961_083"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

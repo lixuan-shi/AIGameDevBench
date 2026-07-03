@@ -1,0 +1,11 @@
+diff --git a/scenes/platformer/characters/Player.gd b/scenes/platformer/characters/Player.gd
+index 9145131..92ff668 100644
+--- a/scenes/platformer/characters/Player.gd
++++ b/scenes/platformer/characters/Player.gd
+@@ -419,5 +419,5 @@ func flash_sprite() -> void:
+ 
+ 
+ func _end_flash_sprite() -> void:
+-	effect_anim.stop()
++	effect_anim.play("RESET")
+ 	hitbox.set_deferred('monitoring', true)

@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-08-06_cea778c_046"
+category = "intent_translation"
+source_kind = "git"
+baseline_ref = "093fa71e20df47de0c1156822445d5b39826f489"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\a-little-game-called-mario"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/levels/sokoban/level/SokobanLevel.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-08-06_cea778c_046"
+bad_case_type = "B2"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

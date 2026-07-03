@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-history_2025-06-03_ab337b1_005"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "468ada866774d227db74a9bf534195f5b4d4e56e"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: src/Main2.tscn, src/field/field_cursor.gd, src/field/field_cursor.gd.uid, src/field/gameboard/gameboard.gd, src/field/gameboard/pathfinder.gd, src/field/gamepieces/controller.gd, src/field/gamepieces/controllers/cursor/field_cursor.gd, src/field/gamepieces/controllers/cursor/field_cursor.gd.uid."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "history_2025-06-03_ab337b1_005"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

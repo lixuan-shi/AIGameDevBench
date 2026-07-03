@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-history_2023-08-21_9cbd293_003"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "41b9d2d73a8d4b4d66a08531b01d7b2c357b9e9a"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: .gitattributes, .gitignore, CHANGELOG.md, CREDITS.md, LICENSE, README.md, addons/dialogic/Editor/CharacterEditor/char_edit_p_section_exports.gd, addons/dialogic/Editor/CharacterEditor/char_edit_p_section_exports.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "history_2023-08-21_9cbd293_003"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

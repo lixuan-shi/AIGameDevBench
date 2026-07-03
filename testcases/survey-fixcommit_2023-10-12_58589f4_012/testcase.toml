@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-10-12_58589f4_012"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "db9aaedad63051cb47737a5a2829d2f33b0280c9"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/enemies/common/ai/conditionals/is_in_combat/IsInCombat.gd, scenes/enemies/common/ai/sequences/attack_sequence/Attack.gd, scenes/enemies/common/ai/sequences/leash_sequence/ShouldLeash.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-10-12_58589f4_012"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

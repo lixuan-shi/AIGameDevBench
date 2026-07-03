@@ -1,0 +1,67 @@
+diff --git a/source/match/Match.tscn b/source/match/Match.tscn
+index e757409..98d3db4 100644
+--- a/source/match/Match.tscn
++++ b/source/match/Match.tscn
+@@ -82,9 +82,6 @@ fog_height_density = 1.2
+ material = ExtResource("6_u47mu")
+ size = Vector2(50, 50)
+ 
+-[sub_resource type="PlaneMesh" id="PlaneMesh_ge0xh"]
+-size = Vector2(200, 200)
+-
+ [sub_resource type="BoxShape3D" id="BoxShape3D_dua43"]
+ size = Vector3(1, 1, 100)
+ 
+@@ -117,7 +114,6 @@ render_priority = 1
+ shader = ExtResource("13_jo8b7")
+ shader_parameter/color = Color(0, 0, 0, 1)
+ shader_parameter/texture_units_per_world_unit = 2
+-shader_parameter/lowest_y_allowed = -0.1
+ shader_parameter/debug_texture_view = false
+ shader_parameter/world_visibility_texture = SubResource("ViewportTexture_7yqgo")
+ 
+@@ -185,11 +181,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25, 0, 25)
+ mesh = SubResource("PlaneMesh_5wwb3")
+ skeleton = NodePath("../../../DummyContent")
+ 
+-[node name="Background" type="MeshInstance3D" parent="Map/Geometry/Terrain"]
+-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -12.2756, 0)
+-mesh = SubResource("PlaneMesh_ge0xh")
+-skeleton = NodePath("../..")
+-
+ [node name="Boundry" type="Area3D" parent="Map/Geometry"]
+ collision_layer = 2
+ collision_mask = 0
+diff --git a/source/shaders/3d/simple_fog_of_war.gdshader b/source/shaders/3d/simple_fog_of_war.gdshader
+index d204ef1..ec4987c 100644
+--- a/source/shaders/3d/simple_fog_of_war.gdshader
++++ b/source/shaders/3d/simple_fog_of_war.gdshader
+@@ -4,7 +4,6 @@ render_mode unshaded;
+ uniform vec4 color : source_color = vec4(vec3(0.0), 1.0);
+ uniform sampler2D world_visibility_texture : hint_default_white, filter_linear, repeat_disable;
+ uniform int texture_units_per_world_unit = 2;
+-uniform float lowest_y_allowed = -0.1; // TODO: try getting rid of it using dx/dy
+ uniform bool debug_texture_view = false;
+ uniform sampler2D depth_texture : hint_depth_texture;
+ 
+@@ -38,7 +37,7 @@ void fragment()
+       INV_VIEW_MATRIX * inverse(PROJECTION_MATRIX) * vec4(normalized_device_coordinates, 1.0);
+   world_position.xyz /= world_position.w;
+ 
+-  if (depth == 1.0 || world_position.y < lowest_y_allowed)
++  if (depth == 1.0)
+   {
+     ALPHA = 1.0;
+   }
+diff --git a/tests/manual/TestPlayerVsAI.tscn b/tests/manual/TestPlayerVsAI.tscn
+index 17c98fa..daac0b0 100644
+--- a/tests/manual/TestPlayerVsAI.tscn
++++ b/tests/manual/TestPlayerVsAI.tscn
+@@ -43,7 +43,6 @@ render_priority = 1
+ shader = ExtResource("12_cnst8")
+ shader_parameter/color = Color(0, 0, 0, 1)
+ shader_parameter/texture_units_per_world_unit = 2
+-shader_parameter/lowest_y_allowed = -0.1
+ shader_parameter/debug_texture_view = false
+ shader_parameter/world_visibility_texture = SubResource("ViewportTexture_v46ss")
+ 

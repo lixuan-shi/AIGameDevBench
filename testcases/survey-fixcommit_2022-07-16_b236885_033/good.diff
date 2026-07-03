@@ -1,0 +1,140 @@
+diff --git a/audio/sfx/metal_scrape.wav.import b/audio/sfx/metal_scrape.wav.import
+new file mode 100644
+index 0000000..3654b36
+--- /dev/null
++++ b/audio/sfx/metal_scrape.wav.import
+@@ -0,0 +1,21 @@
++[remap]
++
++importer="wav"
++type="AudioStreamSample"
++path="res://.import/metal_scrape.wav-ac218ae0d7de3432566e1deacf4338fc.sample"
++
++[deps]
++
++source_file="res://audio/sfx/metal_scrape.wav"
++dest_files=[ "res://.import/metal_scrape.wav-ac218ae0d7de3432566e1deacf4338fc.sample" ]
++
++[params]
++
++force/8_bit=false
++force/mono=false
++force/max_rate=false
++force/max_rate_hz=44100
++edit/trim=false
++edit/normalize=false
++edit/loop=false
++compress/mode=0
+diff --git a/graphics/sprites/vfx/spark_star.png.import b/graphics/sprites/vfx/spark_star.png.import
+new file mode 100644
+index 0000000..f1c6578
+--- /dev/null
++++ b/graphics/sprites/vfx/spark_star.png.import
+@@ -0,0 +1,35 @@
++[remap]
++
++importer="texture"
++type="StreamTexture"
++path="res://.import/spark_star.png-f5c849dc7cded0d80d46d2ef63bf554f.stex"
++metadata={
++"vram_texture": false
++}
++
++[deps]
++
++source_file="res://graphics/sprites/vfx/spark_star.png"
++dest_files=[ "res://.import/spark_star.png-f5c849dc7cded0d80d46d2ef63bf554f.stex" ]
++
++[params]
++
++compress/mode=0
++compress/lossy_quality=0.7
++compress/hdr_mode=0
++compress/bptc_ldr=0
++compress/normal_map=0
++flags/repeat=0
++flags/filter=false
++flags/mipmaps=false
++flags/anisotropic=false
++flags/srgb=2
++process/fix_alpha_border=true
++process/premult_alpha=false
++process/HDR_as_SRGB=false
++process/invert_color=false
++process/normal_map_invert_y=false
++stream=false
++size_limit=0
++detect_3d=false
++svg/scale=1.0
+diff --git a/scenes/ui/AchievementGet.gd b/scenes/ui/AchievementGet.gd
+index 7f173ed..1373b20 100644
+--- a/scenes/ui/AchievementGet.gd
++++ b/scenes/ui/AchievementGet.gd
+@@ -1,5 +1,7 @@
+ extends RichTextLabel
+ 
++export(float, 1, 15, 0.05) var show_time_sec: float = 3.25
++
+ var coinsSinceStartingLevel := 0
+ var totalShots := 0
+ var currentLevel := 0
+@@ -73,17 +75,14 @@ func show_completion_message(achievement: Achievement):
+ 		+ tr("ACHIEVEMENT UNLOCKED: %s") % tr(achievement.description)
+ 		+ "[/center][/rainbow]"
+ 	)
+-	clear_text_after_seconds()
++	show_and_clear_text_after_seconds(show_time_sec)
+ 
+ 
+-func clear_text_after_seconds():
+-	var t = Timer.new()
+-	t.set_wait_time(3.25)
+-	t.set_one_shot(true)
+-	self.add_child(t)
+-	t.start()
+-	yield(t, "timeout")
++func show_and_clear_text_after_seconds(time_sec):
++	self.show()
++	yield(get_tree().create_timer(time_sec), "timeout")
+ 	self.clear()
++	self.hide()
+ 
+ 
+ func _on_level_completed(_data):
+diff --git a/scenes/ui/UI.tscn b/scenes/ui/UI.tscn
+index d612287..f17d36d 100644
+--- a/scenes/ui/UI.tscn
++++ b/scenes/ui/UI.tscn
+@@ -329,22 +329,21 @@ script = ExtResource( 10 )
+ 
+ [node name="AchievementLabel" type="RichTextLabel" parent="UI"]
+ visible = false
+-anchor_left = 0.03
+-anchor_top = 0.05
+-anchor_right = 0.481
+-anchor_bottom = 0.217
+-margin_left = 14.28
+-margin_top = 479.0
+-margin_right = 22.456
+-margin_bottom = 423.8
++anchor_top = 1.0
++anchor_bottom = 1.0
++margin_top = -144.0
++margin_right = 512.0
++margin_bottom = -80.0
++grow_vertical = 0
+ rect_scale = Vector2( 2, 2 )
+ mouse_filter = 2
+ custom_fonts/normal_font = ExtResource( 1 )
+ bbcode_enabled = true
++text = "
++"
++fit_content_height = true
++scroll_active = false
+ script = ExtResource( 3 )
+-__meta__ = {
+-"_edit_use_anchors_": false
+-}
+ 
+ [node name="PlayerDiedPanel" type="Panel" parent="UI"]
+ pause_mode = 2

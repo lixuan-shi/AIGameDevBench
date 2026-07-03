@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-09-29_487c6af_056"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "370a6c045f53009df43edf4bb5db1726ab25b9ad"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Levels/ChallengeModeResults.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-09-29_487c6af_056"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

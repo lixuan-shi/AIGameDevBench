@@ -34,6 +34,7 @@ class SurveyBadCaseVerifier:
         checks: list[CheckResult] = []
         checks.append(_made_relevant_change(expected, current_diff))
         checks.append(_does_not_reproduce_bad_diff(testcase, current_diff))
+        checks.append(_oracle_is_discriminating(testcase, expected, bench_record))
 
         validation = run_validation(workspace, changed_files, {"global": {"godot": {"binary": godot_binary}}})
         if expected.get("original_l0_pass") is False:
@@ -102,6 +103,7 @@ class SurveyBadCaseVerifier:
             "changed_relevant_file",
             "changed_file",
             "does_not_reproduce_original_bad_diff",
+            "oracle_is_discriminating",
             "original_human_intervention_context_available",
             "original_multi_round_context_available",
         }
@@ -178,6 +180,50 @@ def _does_not_reproduce_bad_diff(testcase: Testcase, current_diff: str) -> Check
         detail="current diff matches the original Survey bad-case diff" if same else "",
         expected="different from original bad diff",
         actual="same as bad.diff" if same else "different",
+    )
+
+
+def _oracle_is_discriminating(testcase: Testcase, expected: dict[str, Any],
+                              bench_record: dict[str, Any]) -> CheckResult:
+    """A survey case is only scoreable if its oracle can tell a real fix from a
+    superficial edit. Discriminating signals, any one of which suffices:
+      - a non-empty bad.diff (encodes a specific wrong edit to avoid);
+      - a runtime regression assertion (original_l0_pass/l1_pass == False);
+      - a process signal (human-intervention ratio / rounds) with transcript context.
+    When NONE is present the effective oracle degrades to "edited a relevant file
+    and the project still loads", which cannot distinguish correctness. Such cases
+    are flagged non-scoreable rather than silently awarded points."""
+    bad_diff_path = testcase.dir / "bad.diff"
+    has_bad_diff = (
+        bad_diff_path.exists()
+        and bool(bad_diff_path.read_text(encoding="utf-8", errors="replace").strip())
+    )
+    has_runtime_oracle = (
+        expected.get("original_l0_pass") is False
+        or expected.get("original_l1_pass") is False
+    )
+    human_ratio = expected.get("original_human_intervention_ratio")
+    rounds = expected.get("original_rounds_to_resolution")
+    has_process_oracle = (
+        (isinstance(human_ratio, (int, float)) and human_ratio > 0.4)
+        or (isinstance(rounds, int) and rounds > 4)
+    ) and _has_agent_context(bench_record)
+
+    discriminating = has_bad_diff or has_runtime_oracle or has_process_oracle
+    signals = []
+    if has_bad_diff:
+        signals.append("non-empty bad.diff")
+    if has_runtime_oracle:
+        signals.append("runtime l0/l1 regression")
+    if has_process_oracle:
+        signals.append("process context")
+    return CheckResult(
+        "oracle_is_discriminating",
+        discriminating,
+        detail=", ".join(signals) if signals
+        else "oracle degrades to 'relevant file edited + project loads' — cannot verify correctness",
+        expected="at least one discriminating oracle signal",
+        actual=", ".join(signals) if signals else "none",
     )
 
 

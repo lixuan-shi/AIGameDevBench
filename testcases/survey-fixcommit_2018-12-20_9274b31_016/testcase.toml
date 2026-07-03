@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2018-12-20_9274b31_016"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "ae090fe257e962751a3b36209268b063040d0583"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: godot/combat/Rewards.gd, godot/combat/battlers/skills/Skills.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2018-12-20_9274b31_016"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

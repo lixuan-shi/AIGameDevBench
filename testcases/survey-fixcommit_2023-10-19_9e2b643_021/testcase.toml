@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-10-19_9e2b643_021"
+category = "precise_edit"
+source_kind = "git"
+baseline_ref = "9322468cd5a12910c3525647b3b472d5e2de1785"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/enemies/common/avoidance_rays/AvoidanceRays.gd, scenes/ui/game_menu/game_menu.gd, scenes/ui/options_menu/input_remapping.gd, scenes/ui/options_menu/options_menu.gd, scenes/ui/options_menu/volume_slider.gd, scenes/world/World.tscn, scenes/world/clientfsm.gd, scripts/classes/JPlayerInput.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-10-19_9e2b643_021"
+bad_case_type = "C3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"
