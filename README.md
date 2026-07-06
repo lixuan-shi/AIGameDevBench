@@ -47,6 +47,7 @@ runner:
   准备隔离工作区                        # 见下方"两种起点"
   driver.run(task, workspace)          # noop | patch | command(你的 AI harness)
   godot --import (folder 型)            # 构建资源缓存，让场景能加载
+                                        #   ↳ 缓存已在且未改动可导入资产时自动跳过(省~2.5s/次)
   L0/L1 门禁                            # 场景能加载？无坏引用？否则直接 0 分
   注入黄金验证器 -> 打分                 # 打完分即删除（防作弊）
 ```
@@ -127,7 +128,23 @@ aigdbench run --testcases-dir ./testcases_filtered \
 
 其它要点：
 
+- **并行评测**：`--jobs N`（`-j N`）同时跑 N 个 testcase（默认 1 = 串行）。harness 与 Godot 都是子进程，
+  线程池并行其 I/O 等待即可。每个 testcase 用独立工作区和独立 driver，**结果与串行完全一致**（含顺序、分数、
+  failure_stage）;report 里 testcase 顺序仍按输入顺序排，稳定可 diff。跑 runtime（Godot）验证器时注意机器负载。
+- **重复评测求方差**：`--repeat N`（默认 1）让每个 testcase 跑 N 次。AI harness 有随机性，单次运行分不清
+  「真强」还是「运气好」。开了之后每个 testcase 的 report 记录带一个 `repeat` 块（每次 attempt 的分数列表、
+  mean、std、95% 置信区间、pass@1、各 attempt 的 failure_stage 分布），记录的 `score` 取 N 次均值;report 顶层
+  还写 `mean_score_ci95`（整套的置信区间）。屏幕摘要打成 `mean X.XXX ± Y.YYY [95% CI ...]`。与 `--jobs` 组合时，
+  (testcase × attempt) 会被展平进同一个线程池，最大化并行。dashboard 的均分柱会画出置信区间带，
+  点开某 case 能看到 N 次分数的分布小图。（CI 用正态近似，N 小时仅作离散度参考，非严格区间。）
 - harness 输出**实时打印到屏幕**（带 testcase id 前缀），卡住的提示第一时间可见；`--no-stream` 关闭。
+  `--jobs > 1` 时自动改为「整块汇总」：每个 testcase 完成时一次性打印它的完整输出块，不逐行交错;
+  完整日志仍逐个写 `--log-dir`。
+- **harness 内部活动记录**：`--harness-format {auto,stream-json,text}`（默认 `auto`）把 harness 的 stdout
+  解析成结构化的**逐 turn 事件**（tool 调用、输出、token 用量），写进 report 的 `ai_agent_context`，
+  dashboard 的 AI activity 面板会像展示 survey 行一样把它们逐 turn 展开。`auto` 先按行试 stream-json 再回退到
+  文本启发式;若 harness 能吐 JSON 事件流（如 Claude Code `--output-format stream-json --verbose`），
+  用 `stream-json` 最精确、还能拿到 token 数。
 - **超时保护**：`--timeout` 是总上限（大任务动辄几分钟，设宽松些）；另有审批提示检测器，
   识别到 "waiting on your permission approval" 之类会立即中止并给出提示。
 - 任何失败（超时/审批阻塞/非零退出）都会把日志尾部打到屏幕，该 testcase 记 0 分，批次继续。
@@ -141,11 +158,32 @@ aigdbench run --testcases-dir ./testcases_filtered \
 `--report` 写一份 JSON 汇总（每个 testcase 的 score / status / wall_time / exit_code /
 stalled·blocked 标志 / 日志路径，以及总体均值）。完整输出也写到 `--log-dir`。
 
+每条 testcase 记录还带两个用于**结果分析**的结构化字段：
+
+- **`failure_stage`** —— 这次运行失败/停在哪一层，便于画失败漏斗、区分「流程失败」与「能力不足」：
+  `no_change`（harness 什么都没改）/ `harness_error`（超时·卡死·审批阻塞·非零退出）/
+  `l0` · `l1`（准入门禁拒绝了改动）/ `verifier`（过了门禁但验证器自身报错）/
+  `none`（验证器正常跑完——score 可能仍 <1，那是能力差距而非流程失败）。
+- **`timings`** —— 分层耗时（毫秒）：`import_ms` / `l0_ms` / `l1_ms` / `verifier_ms` / `total_ms`
+  （command driver 另有 `harness_ms`）。用于**耗时 / 正确性 tradeoff** 分析——例如 folder 型
+  case 的 `import_ms`（godot 资源导入）本是整条 pipeline 的耗时大头（~2.5s 的 Godot 启动+扫描）。
+  另有布尔 `import_skipped`：当 workspace 已有 `.godot/` 缓存、且 harness 未改动任何可导入资产
+  （`.png`/`.ogg`/`.svg`/`.import` 等）时，这个冗余的 import pass 会被**跳过**，`import_ms` 归零。
+  script/scene（`.gd`/`.tscn`/`.tres`）改动不触发重导入;无缓存、改了资产、或改动未知时照常 import
+  （对正确性零风险）。这在 `--repeat N` 下收益乘以 N。
+
+批次结尾会打印一行 `--- failure stages: ...` 汇总；dashboard 的 timing 视图也会显示每层均耗时与失败漏斗。
+
 > **示例脚本**：`scripts/run_bench50.sh` 是一个用 `claude -p` 跑整套 `testcases_filtered/`
 > 的完整脚本，结果与日志都落在 `bench_runs/` 下。建议在 `tmux` 里运行以便断开重连。
 
 **手动回路**（不想用 command driver 时）：手工完成任务 → `git diff > ai.diff` →
 `aigdbench run --driver patch --patch ai.diff` 出分。
+
+> **patch 应用的鲁棒性**：`--driver patch` 应用 diff 时容忍几类常见的「语义正确但格式不规整」的补丁——
+> CRLF/LF 与空白差异（`--ignore-whitespace`）、hunk 头 `@@ -a,b +c,d @@` 行数算错（`--recount`，
+> 以正文的 +/-/context 行为准）、以及 hunk 内空行丢了行首空格（自动补 `" "`）。这些在 harness/LLM
+> 产出的 diff 里很常见;基准只看语义改动，所以不因格式瑕疵拒绝一个正确的补丁。
 
 ---
 
@@ -272,13 +310,34 @@ aigdbench run --testcase gdb-task_0002 --driver patch --patch ./testcases/gdb-ta
 # 用真实 harness 评测整个（推荐）集合，写报告
 aigdbench run --testcases-dir ./testcases_filtered --driver command \
   --harness-cmd 'claude -p {task} --dangerously-skip-permissions' \
-  --harness my-claude-code --timeout 900 \
+  --harness my-claude-code --timeout 900 --jobs 4 --repeat 3 \
   --log-dir ./harness-logs --workspace-root ./bench-workspaces \
   --report ./report.json
 
 # 可视化并对比所有 report*.json
 aigdbench serve --reports-dir . --testcases-dir ./testcases_filtered
+
+# 统计对比两个 harness（配对 bootstrap：均分差 + 95% CI + p 值）
+aigdbench compare --report-a report_claude.json --report-b report_codex.json
 ```
+
+### 统计显著性对比（`aigdbench compare`）
+
+两个 report 跑同一套 testcase 后，`compare` 在**共同 case** 上做**配对 bootstrap**——对每个 case 的分数差
+`d_i = A_i − B_i` 重采样求分布——输出均分差、95% 置信区间、双尾 p 值，把「A 比 B 强」从目视变成可判定：
+
+```
+--- compare: A=claude  vs  B=codex  (10 shared testcase(s))
+  A mean 0.843   B mean 0.105
+  mean diff (A-B): +0.738  [95% CI +0.527, +0.909]  p=0.0000
+  verdict: significant (CI excludes 0); point estimate favors claude
+  per-category mean diff (A-B): behavior_logic +0.738 (n=10)
+  top 5 contributing testcase(s): gdb-task_0002 +1.000 ...
+```
+
+配对（同 case 求差）消掉了 case 间难度方差，比直接比两个独立均值敏感得多。`--iters` 控制重采样次数、
+`--seed` 保证可复现;还会按 category 拆分差异、并列出贡献最大的 top-N testcase，定位差异来源。
+配合 `--repeat` 跑出的稳定分数一起用最佳。
 
 ---
 

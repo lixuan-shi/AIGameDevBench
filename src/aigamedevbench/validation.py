@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import shutil
 import subprocess
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -23,6 +24,10 @@ class VerificationResult:
     l1_pass: bool = True
     l0_details: list[str] = field(default_factory=list)
     l1_details: list[str] = field(default_factory=list)
+    # Per-stage wall time in milliseconds. Populated by run_validation so the
+    # report can show where the (often godot-import-dominated) time goes, not
+    # just the harness's wall_time. Keys: import_ms, l0_ms, l1_ms, validation_ms.
+    timings: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {
@@ -30,36 +35,71 @@ class VerificationResult:
             "l1_pass": self.l1_pass,
             "l0_details": self.l0_details,
             "l1_details": self.l1_details,
+            "timings": self.timings,
         }
 
 
 # --- Godot import cache ---
 
+# File extensions whose (re)import Godot must perform: textures, audio, fonts,
+# meshes, and the .import sidecars that describe them. Editing a .gd/.tscn/.tres
+# does NOT need a reimport pass — those are read directly at scene load.
+_IMPORTABLE_EXTS = {
+    ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tga", ".svg", ".exr", ".hdr",
+    ".ogg", ".wav", ".mp3",
+    ".ttf", ".otf", ".woff", ".woff2",
+    ".obj", ".glb", ".gltf", ".fbx", ".dae",
+    ".import",
+}
+
+
+def _has_importable_changes(changed_files: list[str] | None) -> bool:
+    """Whether the harness touched any file that requires a Godot (re)import.
+
+    Conservative: with changed_files unknown (None) we assume yes, so we never
+    skip an import that might have been needed. A changed .gd/.tscn/.tres never
+    triggers a reimport; a new/changed .png/.ogg/.import etc. does."""
+    if changed_files is None:
+        return True
+    for rel in changed_files:
+        dot = rel.rfind(".")
+        if dot != -1 and rel[dot:].lower() in _IMPORTABLE_EXTS:
+            return True
+    return False
+
+
 def godot_import(project_root: Path, godot_binary: str = "godot",
-                 timeout: int = 120) -> str | None:
+                 timeout: int = 120,
+                 changed_files: list[str] | None = None) -> tuple[str | None, bool]:
     """Build the Godot import cache (.godot/imported/*) for the workspace.
 
-    Folder-type baselines ship without .godot/ (the importer strips it), so any
-    scene referencing an imported resource (a PNG as CompressedTexture2D) fails
-    to load until an import pass runs. This must happen before L0 boots changed
-    scenes AND before the runtime verifier boots its scene; both share the same
-    workspace, so a single pass here covers both. Idempotent: if the cache is
-    already present Godot re-imports nothing.
+    Folder-type baselines carry a .godot/ cache (regenerated locally, gitignored)
+    that folder_workspace copies into the workspace. When that cache is already
+    present AND the harness changed no importable asset, the ~2.5s `--import`
+    pass (Godot boot + filesystem scan, dominated by fixed startup cost, not
+    asset work) is redundant: the scene loads directly from the copied cache. We
+    skip it in that case — a large win under --repeat, which pays it N times.
 
-    Returns None on success, or a short diagnostic string on failure. A failure
-    here (timeout, missing binary, non-zero exit) leaves the cache incomplete,
-    which later makes a verifier's load() return null, crash before
-    get_tree().quit(), and hang until the verifier timeout — surfacing as a
-    misleading "godot timed out". Reporting the import failure up front turns
-    that silent root cause into a visible diagnostic.
+    A missing .godot/ (cold worktree, git-type case), a changed asset, or unknown
+    changes all force the real import pass, so correctness is never traded away.
+
+    Returns (error, skipped): error is None on success or a short diagnostic
+    string on failure (a failure leaves the cache incomplete, which later makes a
+    verifier's load() return null and hang until timeout — surfaced here up front
+    instead of as a misleading "godot timed out"). skipped is True when the
+    import pass was safely elided.
     """
     resolved = resolve_godot_binary(godot_binary)
     if resolved is None:
         if _is_explicit_binary(godot_binary):
-            return f"godot binary '{godot_binary}' not found (check --godot-binary)"
-        return None  # no godot: not an import failure; downstream skips godot too
+            return f"godot binary '{godot_binary}' not found (check --godot-binary)", False
+        return None, False  # no godot: not an import failure; downstream skips godot too
     if not (project_root / "project.godot").exists():
-        return None  # not a Godot project (e.g. a py_config data repo): nothing to import
+        return None, False  # not a Godot project (e.g. a py_config data repo): nothing to import
+    # Skip the redundant pass when a cache is already present and nothing that
+    # needs (re)import changed.
+    if (project_root / ".godot").is_dir() and not _has_importable_changes(changed_files):
+        return None, True
     try:
         proc = subprocess.run(
             [resolved, "--headless", "--path", str(project_root), "--import"],
@@ -67,13 +107,13 @@ def godot_import(project_root: Path, godot_binary: str = "godot",
             timeout=timeout,
         )
     except subprocess.TimeoutExpired:
-        return f"godot --import timed out after {timeout}s (import cache may be incomplete)"
+        return f"godot --import timed out after {timeout}s (import cache may be incomplete)", False
     except FileNotFoundError:
-        return None
+        return None, False
     if proc.returncode != 0:
         tail = (proc.stderr or "").strip().splitlines()[-1:] or [""]
-        return f"godot --import exited {proc.returncode}: {tail[0]}"
-    return None
+        return f"godot --import exited {proc.returncode}: {tail[0]}", False
+    return None, False
 
 
 # --- L0: GDScript syntax + headless scene load ---
@@ -248,18 +288,38 @@ def run_l1(project_root: Path, changed_files: list[str]) -> tuple[bool, list[str
 
 def run_validation(repo_root: Path, changed_files: list[str], config: dict) -> VerificationResult:
     godot_binary = config.get("global", {}).get("godot", {}).get("binary", "godot")
+    stage_start = time.perf_counter()
     # Build the import cache once before any headless boot (L0 here, and the
     # runtime verifier later) so scenes with imported resources can load.
-    import_error = godot_import(repo_root, godot_binary)
+    # godot_import is typically the most expensive gate step (~2.5s of Godot
+    # startup), so time it separately AND skip it when safe (cache present + no
+    # asset change) — the report attributes both the cost and the skip.
+    import_error, import_skipped = godot_import(repo_root, godot_binary,
+                                                changed_files=changed_files)
+    import_ms = (time.perf_counter() - stage_start) * 1000.0
+
+    stage_start = time.perf_counter()
     scenes = [f for f in changed_files if f.endswith(".tscn")]
     l0_pass, l0_details = run_l0(repo_root, scenes, godot_binary)
+    l0_ms = (time.perf_counter() - stage_start) * 1000.0
     if import_error is not None:
         # An incomplete import cache is the upstream cause of later "load() == null"
         # verifier hangs; record it on L0 (and fail the gate) so it is visible.
         l0_details = [f"import: {import_error}", *l0_details]
         l0_pass = False
+
+    stage_start = time.perf_counter()
     l1_pass, l1_details = run_l1(repo_root, changed_files)
+    l1_ms = (time.perf_counter() - stage_start) * 1000.0
+
     return VerificationResult(
         l0_pass=l0_pass, l1_pass=l1_pass,
         l0_details=l0_details, l1_details=l1_details,
+        timings={
+            "import_ms": round(import_ms, 1),
+            "import_skipped": import_skipped,
+            "l0_ms": round(l0_ms, 1),
+            "l1_ms": round(l1_ms, 1),
+            "validation_ms": round(import_ms + l0_ms + l1_ms, 1),
+        },
     )

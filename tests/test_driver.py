@@ -70,11 +70,14 @@ def test_command_driver_records_outcome(tmp_path):
     drv.run("task", ws)
     o = drv.last_outcome
     assert set(o) == {"exit_code", "wall_time", "timed_out", "stalled",
-                      "blocked_on_approval", "log_path"}
+                      "blocked_on_approval", "log_path", "ai_agent_context"}
     assert o["exit_code"] == 0
     assert o["timed_out"] is False
     assert o["wall_time"] >= 0.0
     assert Path(o["log_path"]).exists()
+    # The event parser always populates a context block (turns may be empty for
+    # a harness that emits no recognisable events).
+    assert set(o["ai_agent_context"]) == {"turns", "total_tokens"}
 
 
 def test_command_driver_nonzero_exit_does_not_raise(tmp_path):

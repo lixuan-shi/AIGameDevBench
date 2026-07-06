@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 from typing import Callable, Protocol
 
+from aigamedevbench.harness_events import EventParser
 from aigamedevbench.workspace import apply_patch
 
 
@@ -66,11 +67,16 @@ class CommandHarnessDriver:
 
     def __init__(self, cmd_template: str, timeout: float = 600.0,
                  log_dir: Path | None = None, stall_timeout: float = 0.0,
-                 on_line: Callable[[str], None] | None = None):
+                 on_line: Callable[[str], None] | None = None,
+                 harness_format: str = "auto"):
         self.cmd_template = cmd_template
         self.timeout = timeout
         self.stall_timeout = stall_timeout
         self.on_line = on_line
+        # How to parse the harness's stdout into structured events for the report:
+        # "auto" (try stream-json per line, fall back to a text heuristic),
+        # "stream-json" (strict), or "text" (heuristic only). See harness_events.
+        self.harness_format = harness_format
         self.log_dir = Path(log_dir) if log_dir is not None else None
         self.label = ""
         self.last_outcome: dict | None = None
@@ -124,8 +130,14 @@ class CommandHarnessDriver:
         except Exception:
             pass
 
-    def _emit(self, line: str, sink: list[str]) -> None:
+    def _emit(self, line: str, sink: list[str],
+              parser: EventParser | None = None) -> None:
         sink.append(line)
+        if parser is not None:
+            try:
+                parser.feed(line)
+            except Exception:
+                pass  # a parser bug must never abort the run
         if self.on_line is not None:
             try:
                 self.on_line(line)
@@ -143,6 +155,11 @@ class CommandHarnessDriver:
         argv: list[str] = []
         log_path = None
         proc: subprocess.Popen | None = None
+        # Structured-event parser for this run. The driver instance still holds
+        # per-run state (label / last_outcome), so concurrent runs must each use
+        # their OWN driver instance (the CLI builds one per testcase via a
+        # factory); this parser is local to run() regardless.
+        parser = EventParser(self.harness_format)
         try:
             # Inside the try so a malformed template (shlex.split ValueError),
             # an unwritable workspace, or a log-dir mkdir failure is recorded as
@@ -193,7 +210,7 @@ class CommandHarnessDriver:
                 if item is None:
                     break
                 last_activity = time.perf_counter()
-                self._emit(item.rstrip("\n"), lines)
+                self._emit(item.rstrip("\n"), lines, parser)
                 if self._is_approval_block(item):
                     blocked_on_approval = True
                     break
@@ -246,6 +263,7 @@ class CommandHarnessDriver:
             except Exception:  # a logging failure must not abort the batch
                 pass
 
+        events = parser.finalize()
         self.last_outcome = {
             "exit_code": exit_code,
             "wall_time": wall_time,
@@ -253,4 +271,10 @@ class CommandHarnessDriver:
             "stalled": stalled,
             "blocked_on_approval": blocked_on_approval,
             "log_path": str(log_path) if log_path is not None else None,
+            # Structured record of what the harness did this run, in the same
+            # shape the dashboard renders for survey rows (turns + token count).
+            "ai_agent_context": {
+                "turns": events["turns"],
+                "total_tokens": events["total_tokens"],
+            },
         }

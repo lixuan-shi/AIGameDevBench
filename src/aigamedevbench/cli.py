@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import click
@@ -11,16 +13,16 @@ def _config(godot_binary: str) -> dict:
     return {"global": {"godot": {"binary": godot_binary}}}
 
 
-def _echo_harness_failure(testcase_id: str, outcome: dict, tail_lines: int = 30) -> None:
-    """Print a harness failure (timeout, stall, approval-block, or non-zero exit)
-    and its log tail to the screen so problems are visible immediately instead of
-    buried in a log file."""
+def _fmt_harness_failure(testcase_id: str, outcome: dict, tail_lines: int = 30) -> list[str]:
+    """Lines describing a harness failure (timeout, stall, approval-block, or
+    non-zero exit) plus its log tail, so problems are visible immediately instead
+    of buried in a log file. Empty list if the harness did not fail."""
     timed_out = outcome.get("timed_out")
     stalled = outcome.get("stalled")
     blocked = outcome.get("blocked_on_approval")
     exit_code = outcome.get("exit_code", 0)
     if not (timed_out or stalled or blocked) and exit_code == 0:
-        return
+        return []
     if blocked:
         reason = "BLOCKED ON APPROVAL"
     elif stalled:
@@ -29,27 +31,28 @@ def _echo_harness_failure(testcase_id: str, outcome: dict, tail_lines: int = 30)
         reason = "TIMEOUT"
     else:
         reason = f"exit_code={exit_code}"
-    click.echo(f"  !! harness {reason} for {testcase_id}", err=True)
+    out = [f"  !! harness {reason} for {testcase_id}"]
     log_path = outcome.get("log_path")
     if not log_path:
-        click.echo("     (no log captured - run with --log-dir to capture output)", err=True)
-        return
+        out.append("     (no log captured - run with --log-dir to capture output)")
+        return out
     try:
         text = Path(log_path).read_text(encoding="utf-8", errors="replace")
     except OSError as e:
-        click.echo(f"     (could not read log {log_path}: {e})", err=True)
-        return
-    lines = text.splitlines()
-    click.echo(f"     log: {log_path}", err=True)
-    for line in lines[-tail_lines:]:
-        click.echo(f"     | {line}", err=True)
+        out.append(f"     (could not read log {log_path}: {e})")
+        return out
+    out.append(f"     log: {log_path}")
+    for line in text.splitlines()[-tail_lines:]:
+        out.append(f"     | {line}")
+    return out
 
 
-def _echo_verifier_result(verifier_result, tail_detail: int = 200) -> None:
-    """Print the verifier's per-check breakdown (and any error) to the screen so
-    the user can see *why* a testcase scored what it did, not just the score."""
+def _fmt_verifier_result(verifier_result, tail_detail: int = 200) -> list[str]:
+    """Lines for the verifier's per-check breakdown (and any error) so the user
+    can see *why* a testcase scored what it did, not just the score."""
+    out: list[str] = []
     if verifier_result.error:
-        click.echo(f"     verifier error: {verifier_result.error}", err=True)
+        out.append(f"     verifier error: {verifier_result.error}")
     for c in verifier_result.checks:
         mark = "PASS" if c.passed else "FAIL"
         line = f"     [{mark}] {c.name}"
@@ -60,29 +63,91 @@ def _echo_verifier_result(verifier_result, tail_detail: int = 200) -> None:
             line += f" - {detail}"
         if c.expected is not None or c.actual is not None:
             line += f" (expected: {c.expected!r}, actual: {c.actual!r})"
+        out.append(line)
+    return out
+
+
+def _echo_verifier_result(verifier_result, tail_detail: int = 200) -> None:
+    """Thin wrapper: echo the verifier breakdown lines to stderr."""
+    for line in _fmt_verifier_result(verifier_result, tail_detail):
         click.echo(line, err=True)
 
 
-def _echo_diff(result, max_lines: int = 40) -> None:
-    """Log what the harness changed: a per-file summary plus a capped preview of
-    the diff, so the modification is visible on screen and in the log without
-    dumping a huge patch. The full diff lives in the report and --artifacts-dir."""
+def _fmt_diff(result, max_lines: int = 40) -> list[str]:
+    """Lines describing what the harness changed: a per-file summary plus a
+    capped diff preview. The full diff lives in the report and --artifacts-dir."""
     diff = result.diff or ""
     if not diff.strip():
-        click.echo("     changes: (none)", err=True)
-        return
+        return ["     changes: (none)"]
     files = [ln[len("+++ b/"):] for ln in diff.splitlines()
              if ln.startswith("+++ b/") and not ln.endswith("/dev/null")]
+    out: list[str] = []
     if files:
-        click.echo(f"     changed {len(files)} file(s): {', '.join(files)}", err=True)
+        out.append(f"     changed {len(files)} file(s): {', '.join(files)}")
     lines = diff.splitlines()
-    click.echo("     --- diff ---", err=True)
+    out.append("     --- diff ---")
     for ln in lines[:max_lines]:
-        click.echo(f"     | {ln}", err=True)
+        out.append(f"     | {ln}")
     if len(lines) > max_lines:
-        click.echo(f"     | ... ({len(lines) - max_lines} more lines)", err=True)
+        out.append(f"     | ... ({len(lines) - max_lines} more lines)")
     if result.artifacts_path:
-        click.echo(f"     saved: {result.artifacts_path}", err=True)
+        out.append(f"     saved: {result.artifacts_path}")
+    return out
+
+
+def _format_result_block(tc, result, streamed_lines: list[str] | None,
+                         label: str | None = None) -> list[str]:
+    """Compose the full on-screen block for one finished testcase/attempt: any
+    buffered harness output (parallel mode), the result row, the verifier
+    breakdown, the diff, and a harness-failure tail. Returned as a list so the
+    caller can flush it atomically (parallel runs must not interleave mid-line).
+    `label` overrides the row id (e.g. "case#2" for the 2nd repeat attempt)."""
+    row_id = label or tc.id
+    block: list[str] = []
+    if streamed_lines:
+        block.extend(streamed_lines)
+    stage = result.failure_stage
+    stage_tag = "" if stage == "none" else f"\t[{stage}]"
+    block.append(
+        f"{row_id}\t{tc.category}\t{result.verifier_result.status}\t{result.score:.2f}{stage_tag}")
+    block.extend(_fmt_verifier_result(result.verifier_result))
+    block.extend(_fmt_diff(result))
+    if result.harness_outcome:
+        block.extend(_fmt_harness_failure(row_id, result.harness_outcome))
+    return block
+
+
+def _aggregate_testcase(attempt_recs: list[dict], repeat: int) -> dict:
+    """Fold N attempt records of one testcase into a single report record.
+
+    For repeat == 1 (or a single surviving attempt) the record is returned as-is
+    (fully backward compatible — no `repeat` block). For repeat > 1 a
+    representative attempt is chosen (the first full pass, else the first) to
+    carry the diff/log/checks for drill-down, and a `repeat` block is attached
+    with the per-attempt score distribution and stats. The record's top-level
+    `score` becomes the mean, so existing consumers (matrix, mean_score) keep
+    working and simply see the averaged score."""
+    from aigamedevbench.stats import aggregate_scores, combine_repeat_stages
+    if not attempt_recs:
+        return {"score": 0.0, "status": "error", "failure_stage": "error",
+                "error": "no attempts completed"}
+    if len(attempt_recs) == 1:
+        return attempt_recs[0]
+
+    scores = [float(r.get("score", 0.0) or 0.0) for r in attempt_recs]
+    stages = [r.get("failure_stage", "none") for r in attempt_recs]
+    # Representative attempt: prefer a full pass so drill-down shows a successful
+    # diff when one exists; otherwise the first attempt.
+    rep = next((r for r, s in zip(attempt_recs, scores) if s >= 1.0), attempt_recs[0])
+    agg = aggregate_scores(scores)
+    record = dict(rep)  # copy so we don't mutate the representative attempt
+    record["score"] = agg["mean"]
+    record["repeat"] = {
+        **agg,
+        "scores": [round(s, 6) for s in scores],
+        "failure_stages": combine_repeat_stages(stages),
+    }
+    return record
 
 
 @click.group()
@@ -228,40 +293,78 @@ def scaffold_cmd(testcases_dir: str, testcase_id: str, category: str, task: str,
                    "throwaway workspace is deleted after the run, so without this the "
                    "agent's code is lost.")
 @click.option("--stream/--no-stream", "stream", default=True,
-              help="Stream harness output live to the screen (default: on).")
+              help="Stream harness output live to the screen (default: on). "
+                   "Ignored when --jobs > 1: parallel runs buffer each testcase's "
+                   "output and print it as one block on completion, to avoid "
+                   "interleaving. The full per-testcase log still goes to --log-dir.")
+@click.option("--jobs", "-j", "jobs", default=1, type=int,
+              help="Run this many testcases concurrently (default: 1 = serial). "
+                   "Harness and Godot both run as subprocesses, so a thread pool "
+                   "parallelises the I/O-bound wait. Each testcase gets its own "
+                   "isolated workspace and driver, so results are identical to a "
+                   "serial run. Mind machine load with runtime (Godot) verifiers.")
+@click.option("--harness-format", "harness_format",
+              type=click.Choice(["auto", "stream-json", "text"]), default="auto",
+              help="How to parse the harness's stdout into structured per-turn "
+                   "events (tool calls, tokens) for the report/dashboard. "
+                   "'auto' tries stream-json per line then falls back to a text "
+                   "heuristic; 'stream-json' is strict (pass e.g. Claude Code "
+                   "--output-format stream-json --verbose); 'text' is heuristic only.")
+@click.option("--repeat", "repeat", default=1, type=int,
+              help="Run each testcase this many times (default: 1). An AI harness "
+                   "is stochastic, so a single pass cannot separate a real skill "
+                   "gap from luck. With --repeat > 1 each testcase's report record "
+                   "carries a `repeat` block (per-attempt scores, mean, std, a 95%% "
+                   "confidence interval, pass@1) and its `score` is the mean. "
+                   "Combines with --jobs: (testcase x attempt) tasks are flattened "
+                   "into the same thread pool.")
 @click.option("--godot-binary", default="godot", help="Godot executable for L0/runtime verifiers")
 def run_cmd(testcases_dir: str, testcase_id: str | None, harness_id: str,
             driver: str, patch_file: str | None, harness_cmd: str | None,
             timeout: float, stall_timeout: float, log_dir: str, report_file: str | None,
             workspace_root: str | None, artifacts_dir: str | None,
-            stream: bool, godot_binary: str):
+            stream: bool, jobs: int, harness_format: str, repeat: int,
+            godot_binary: str):
     """Run testcases against a harness driver (executed inside the target game repo)."""
     from aigamedevbench.testcase import discover_testcases
     from aigamedevbench.runner import run_testcase
     from aigamedevbench.driver import NoOpDriver, PatchDriver, CommandHarnessDriver
 
     config = _config(godot_binary)
-
+    jobs = max(1, jobs)
+    repeat = max(1, repeat)
+    patch_text = None
     if driver == "patch":
         if not patch_file:
             click.echo("--patch FILE required with --driver patch")
             return
-        drv = PatchDriver(Path(patch_file).read_text(encoding="utf-8"))
-    elif driver == "command":
-        if not harness_cmd:
-            click.echo("--harness-cmd TEMPLATE required with --driver command")
-            return
-        # Stream each harness line live (prefixed) so a stuck prompt is visible
-        # the instant it appears, not after the timeout fires.
-        on_line = None
-        if stream:
+        patch_text = Path(patch_file).read_text(encoding="utf-8")
+    elif driver == "command" and not harness_cmd:
+        click.echo("--harness-cmd TEMPLATE required with --driver command")
+        return
+
+    # Live streaming only makes sense serially and without repeats: with >1 job
+    # or >1 attempt, lines from different runs interleave unreadably, so we buffer
+    # and flush per block instead.
+    live_stream = stream and jobs == 1 and repeat == 1
+
+    def make_driver(label: str, sink: list[str] | None):
+        """Build a FRESH driver per testcase so concurrent runs share no mutable
+        state (label / last_outcome / event parser are all per-instance)."""
+        if driver == "patch":
+            return PatchDriver(patch_text or "")
+        if driver == "command":
             def on_line(line: str) -> None:
-                click.echo(f"  [{drv.label}] {line}", err=True)
-        drv = CommandHarnessDriver(harness_cmd, timeout=timeout,
-                                   log_dir=Path(log_dir), stall_timeout=stall_timeout,
-                                   on_line=on_line)
-    else:
-        drv = NoOpDriver()
+                if live_stream:
+                    click.echo(f"  [{label}] {line}", err=True)
+                elif sink is not None:
+                    sink.append(f"  [{label}] {line}")
+            d = CommandHarnessDriver(harness_cmd, timeout=timeout,
+                                     log_dir=Path(log_dir), stall_timeout=stall_timeout,
+                                     on_line=on_line, harness_format=harness_format)
+            d.label = label
+            return d
+        return NoOpDriver()
 
     testcases = discover_testcases(Path(testcases_dir))
     if testcase_id:
@@ -282,46 +385,178 @@ def run_cmd(testcases_dir: str, testcase_id: str | None, harness_id: str,
         except (RuntimeError, FileNotFoundError):
             repo_root = None
 
-    total = 0.0
-    records = []
-    for tc in testcases:
-        if isinstance(drv, CommandHarnessDriver):
-            drv.label = tc.id
+    def run_attempt(tc, attempt: int):
+        """Run one attempt of one testcase. Returns (record, output-block). The
+        block is buffered (not printed) so the caller flushes it atomically."""
+        label = tc.id if repeat == 1 else f"{tc.id}#{attempt + 1}"
+        sink: list[str] = []
+        drv = make_driver(label, sink)
         try:
             result = run_testcase(repo_root, tc, drv, harness_id, config,
                                   workspace_root=workspace_root,
                                   artifacts_dir=artifacts_dir)
         except Exception as e:
-            # One un-runnable testcase (e.g. a git-type case with no repo root,
-            # or a bad baseline_ref) must not kill the rest of the batch.
-            click.echo(f"{tc.id}\t{tc.category}\terror\t0.00\t{e}")
-            records.append({"testcase_id": tc.id, "category": tc.category,
-                            "score": 0.0, "status": "error", "error": str(e)})
-            continue
-        total += result.score
-        click.echo(f"{tc.id}\t{tc.category}\t{result.verifier_result.status}\t{result.score:.2f}")
-        _echo_verifier_result(result.verifier_result)
-        _echo_diff(result)
-        # Surface harness failures on screen immediately (don't make the user dig
-        # through log files): if the command harness timed out or exited non-zero,
-        # echo the tail of its log right after the result row.
-        if isinstance(drv, CommandHarnessDriver) and drv.last_outcome is not None:
-            _echo_harness_failure(tc.id, drv.last_outcome)
+            # One un-runnable attempt (e.g. a git-type case with no repo root, or
+            # a bad baseline_ref) must not kill the rest of the batch.
+            rec = {"testcase_id": tc.id, "category": tc.category,
+                   "score": 0.0, "status": "error", "failure_stage": "error",
+                   "error": str(e)}
+            return rec, [f"{label}\t{tc.category}\terror\t0.00\t{e}"]
         record = result.to_dict()
-        if isinstance(drv, CommandHarnessDriver) and drv.last_outcome is not None:
-            record.update(drv.last_outcome)
-        records.append(record)
+        block = _format_result_block(tc, result, sink if not live_stream else None,
+                                     label=label)
+        return record, block
 
+    lock = threading.Lock()
+    # One slot per (testcase, attempt), so results land in a deterministic place
+    # regardless of completion order — the report stays stable and diffable.
+    attempts = [(ti, a) for ti in range(len(testcases)) for a in range(repeat)]
+    slots: list[dict | None] = [None] * len(attempts)
+
+    def _flush(block):
+        with lock:
+            for line in block:
+                click.echo(line, err=True)
+
+    if jobs == 1:
+        for idx, (ti, a) in enumerate(attempts):
+            record, block = run_attempt(testcases[ti], a)
+            slots[idx] = record
+            _flush(block)
+    else:
+        with ThreadPoolExecutor(max_workers=jobs) as ex:
+            futs = {ex.submit(run_attempt, testcases[ti], a): idx
+                    for idx, (ti, a) in enumerate(attempts)}
+            for fut in as_completed(futs):
+                idx = futs[fut]
+                record, block = fut.result()
+                slots[idx] = record
+                _flush(block)
+
+    # Group attempts back by testcase (input order) and aggregate.
+    records: list[dict] = []
+    for ti, tc in enumerate(testcases):
+        attempt_recs = [slots[idx] for idx, (t, _a) in enumerate(attempts)
+                        if t == ti and slots[idx] is not None]
+        records.append(_aggregate_testcase(attempt_recs, repeat))
+
+    total = sum(float(r.get("score", 0.0) or 0.0) for r in records)
     mean = total / len(testcases) if testcases else 0.0
     if testcases:
-        click.echo(f"--- mean score: {mean:.3f} over {len(testcases)} testcase(s)")
+        # Suite-level mean of per-testcase means, plus a CI derived from the
+        # spread of per-testcase scores (how much the suite score itself moves).
+        from aigamedevbench.stats import aggregate_scores
+        suite = aggregate_scores([float(r.get("score", 0.0) or 0.0) for r in records])
+        ci = suite["ci95"]
+        repeat_note = f" (repeat={repeat})" if repeat > 1 else ""
+        click.echo(
+            f"--- mean score: {mean:.3f} ± {(ci[1]-ci[0])/2:.3f} "
+            f"[95% CI {ci[0]:.3f}, {ci[1]:.3f}] over {len(testcases)} testcase(s){repeat_note}")
+        # Failure funnel: aggregate across ALL attempts (not just representatives)
+        # so a flaky harness's intermittent no_change/harness_error is visible.
+        stage_counts: dict[str, int] = {}
+        for rec in records:
+            rpt = rec.get("repeat") or {}
+            per = rpt.get("failure_stages")
+            if per:
+                for s, n in per.items():
+                    stage_counts[s] = stage_counts.get(s, 0) + n
+            else:
+                s = rec.get("failure_stage", "none")
+                stage_counts[s] = stage_counts.get(s, 0) + 1
+        breakdown = ", ".join(f"{s}={n}" for s, n in sorted(stage_counts.items()))
+        click.echo(f"--- failure stages: {breakdown}")
 
     if report_file:
         import json
         report = {"harness": harness_id, "count": len(testcases),
-                  "mean_score": mean, "testcases": records}
+                  "repeat": repeat, "mean_score": mean,
+                  "mean_score_ci95": suite["ci95"] if testcases else [0.0, 0.0],
+                  "testcases": records}
         Path(report_file).write_text(json.dumps(report, indent=2), encoding="utf-8")
         click.echo(f"--- report written to {report_file}")
+
+
+@main.command("compare")
+@click.option("--report-a", "report_a", required=True, type=click.Path(exists=True),
+              help="First run's report JSON (harness A)")
+@click.option("--report-b", "report_b", required=True, type=click.Path(exists=True),
+              help="Second run's report JSON (harness B)")
+@click.option("--iters", default=10000, type=int,
+              help="Bootstrap resamples (default 10000)")
+@click.option("--seed", default=0, type=int, help="RNG seed for reproducibility")
+@click.option("--top", default=5, type=int,
+              help="Show this many testcases that contribute most to the difference")
+def compare_cmd(report_a: str, report_b: str, iters: int, seed: int, top: int):
+    """Statistically compare two harness runs on their shared testcases.
+
+    Runs a paired bootstrap over the per-testcase score differences and reports
+    the mean difference, a 95% confidence interval, and a two-sided p-value — so
+    "harness A beats B" becomes a claim you can judge, not eyeball. Pairing on
+    the same testcases removes per-testcase difficulty variance.
+    """
+    import json
+    from aigamedevbench.stats import paired_bootstrap, paired_scores
+
+    rep_a = json.loads(Path(report_a).read_text(encoding="utf-8"))
+    rep_b = json.loads(Path(report_b).read_text(encoding="utf-8"))
+    name_a = rep_a.get("harness") or Path(report_a).stem
+    name_b = rep_b.get("harness") or Path(report_b).stem
+
+    ids, sa, sb = paired_scores(rep_a, rep_b)
+    if not ids:
+        click.echo("No common testcases between the two reports — nothing to compare.")
+        return
+    res = paired_bootstrap(sa, sb, iters=iters, seed=seed)
+
+    click.echo(f"--- compare: A={name_a}  vs  B={name_b}  ({res['n']} shared testcase(s))")
+    click.echo(f"  A mean {res['mean_a']:.3f}   B mean {res['mean_b']:.3f}")
+    ci = res["ci95"]
+    click.echo(f"  mean diff (A-B): {res['mean_diff']:+.3f}  "
+               f"[95% CI {ci[0]:+.3f}, {ci[1]:+.3f}]  p={res['p_value']:.4f}")
+    # A CI that excludes 0 (equivalently p<0.05) is the "significant" signal.
+    verdict = ("significant (CI excludes 0)" if ci[0] > 0 or ci[1] < 0
+               else "not significant (CI spans 0)")
+    better = name_a if res["mean_diff"] > 0 else name_b
+    if abs(res["mean_diff"]) < 1e-9:
+        click.echo("  verdict: identical mean")
+    else:
+        click.echo(f"  verdict: {verdict}; point estimate favors {better}")
+
+    # Per-category mean difference, so a gap can be localised to a capability.
+    by_cat_a = _scores_by_category(rep_a)
+    by_cat_b = _scores_by_category(rep_b)
+    cats = sorted(set(by_cat_a) & set(by_cat_b))
+    if cats:
+        click.echo("  per-category mean diff (A-B):")
+        for c in cats:
+            common = sorted(set(by_cat_a[c]) & set(by_cat_b[c]))
+            if not common:
+                continue
+            d = sum(by_cat_a[c][t] - by_cat_b[c][t] for t in common) / len(common)
+            click.echo(f"    {c:24s} {d:+.3f}  (n={len(common)})")
+
+    # Which testcases drive the difference (largest |a-b|), so you know WHERE
+    # the harnesses diverge, not just that they do.
+    diffs = sorted(((a - b, t) for t, a, b in zip(ids, sa, sb)),
+                   key=lambda x: abs(x[0]), reverse=True)
+    shown = [(d, t) for d, t in diffs if abs(d) > 1e-9][:top]
+    if shown:
+        click.echo(f"  top {len(shown)} contributing testcase(s):")
+        for d, t in shown:
+            click.echo(f"    {t:40s} {d:+.3f}")
+
+
+def _scores_by_category(report: dict) -> dict:
+    """{category: {testcase_id: score}} for per-category paired diffs."""
+    out: dict[str, dict] = {}
+    for tc in report.get("testcases", []):
+        cat = tc.get("category", "")
+        tid = tc.get("testcase_id")
+        if tid is None:
+            continue
+        out.setdefault(cat, {})[tid] = float(tc.get("score", 0.0) or 0.0)
+    return out
 
 
 @main.command("serve")
