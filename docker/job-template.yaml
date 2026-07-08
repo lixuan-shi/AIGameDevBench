@@ -36,7 +36,11 @@ spec:
       containers:
         - name: runner
           image: ${IMAGE}
-          imagePullPolicy: IfNotPresent
+          # Always: a mutable tag like :latest is re-pushed between runs, and
+          # IfNotPresent would keep a stale cached image on the node (e.g. one
+          # built before the harness CLI was added). Always guarantees each Job
+          # pulls the current image. Use an immutable tag/digest to pin instead.
+          imagePullPolicy: Always
           env:
             - name: TESTCASE
               value: "${TESTCASE}"
