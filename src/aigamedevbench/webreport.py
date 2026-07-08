@@ -176,6 +176,8 @@ INDEX_HTML = r"""<!DOCTYPE html>
                  padding:6px 10px; }
   details.turn > summary { cursor:pointer; color:var(--fg); }
   details.turn[open] > summary { margin-bottom:6px; }
+  details.turn.turn-bottleneck { border-color:#e5484d; box-shadow:0 0 0 1px #e5484d33; }
+  .bottleneck { color:#e5484d; font-weight:600; font-size:11px; }
   .turn .lbl { color:var(--muted); margin:6px 0 2px; }
   .logbox { background:#0c0e14; border:1px solid var(--line); border-radius:6px;
             padding:10px; max-height:320px; overflow:auto; white-space:pre-wrap;
@@ -501,11 +503,20 @@ function renderActivity(detail) {
   let h = "";
   const turns = detail.ai_turns || [];
   if (turns.length) {
+    const slow = detail.slowest_turn || null;
+    const slowTurn = slow ? slow.turn : null;
     h += '<div class="act"><h3>AI activity';
     if (detail.total_tokens) h += ` <small>(${detail.total_tokens} tokens)</small>`;
+    if (detail.total_turn_ms != null) h += ` <small>· ${(detail.total_turn_ms/1000).toFixed(1)}s in turns</small>`;
     h += "</h3>";
     for (const t of turns) {
-      h += `<details class="turn" open><summary>turn ${esc(t.turn)}</summary>`;
+      // Per-turn duration in the summary; the single slowest turn is flagged as
+      // the bottleneck so you can see WHERE the harness spent its time.
+      const isBottleneck = (slowTurn != null && t.turn === slowTurn);
+      const dur = (t.duration_ms != null) ? ` · ${(t.duration_ms/1000).toFixed(1)}s` : "";
+      const flag = isBottleneck ? ' <span class="bottleneck">⚠ bottleneck</span>' : "";
+      h += `<details class="turn${isBottleneck ? ' turn-bottleneck' : ''}" open>` +
+           `<summary>turn ${esc(t.turn)}${dur}${flag}</summary>`;
       if (t.agent_input) h += `<div class="lbl">input</div><div class="logbox">${esc(t.agent_input)}</div>`;
       if (t.agent_output) h += `<div class="lbl">output</div><div class="logbox">${esc(t.agent_output)}</div>`;
       if (t.tool_calls && t.tool_calls.length) {
@@ -1315,6 +1326,8 @@ def report_detail(report: dict, testcase_id: str,
                 "log_text": _read_log_tail(log_path, reports_dir),
                 "ai_turns": ai_turns,
                 "total_tokens": ctx.get("total_tokens") if isinstance(ctx, dict) else None,
+                "slowest_turn": ctx.get("slowest_turn") if isinstance(ctx, dict) else None,
+                "total_turn_ms": ctx.get("total_turn_ms") if isinstance(ctx, dict) else None,
                 "wall_time": tc.get("wall_time"),
                 "failure_stage": tc.get("failure_stage", "none"),
                 "timings": tc.get("timings") or {},

@@ -114,6 +114,15 @@ RUN_ID="r$$"
 mkdir -p "$OUT_DIR" "$OUT_DIR/logs"
 rm -f "$OUT_DIR"/*.json 2>/dev/null || true
 
+# --- 0. Ensure on-demand project snapshots exist BEFORE the build ------------
+# git-derived filtered cases (survey-history_*) reference shared snapshots that
+# are NOT committed; the image COPYs testcases_filtered/, so materialise them on
+# the host first (one-time network clone; idempotent). See scripts/make_snapshots.py.
+if [[ "$DO_BUILD" == "1" ]] && ls testcases_filtered/*/snapshot.json >/dev/null 2>&1; then
+  echo ">>> Ensuring project snapshots for git-derived filtered cases..."
+  python3 "$REPO_ROOT/scripts/make_snapshots.py" --testcases-dir testcases_filtered
+fi
+
 # --- 1. Build + push image ---------------------------------------------------
 if [[ "$DO_BUILD" == "1" ]]; then
   echo ">>> Building $IMAGE from source (Godot $GODOT_VERSION)..."

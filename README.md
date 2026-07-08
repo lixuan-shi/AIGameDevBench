@@ -237,10 +237,16 @@ aigdbench serve --reports-dir . --testcases-dir ./testcases_filtered
 
 从完整库里人为**再平衡**挑出的 30 个最有代表性、oracle 最鲁棒的 case。特点：
 
-- **全部自包含 folder 型**，任意目录可跑；
-- **5 个 category 全覆盖**：behavior_logic ×19、precise_edit ×4、intent_translation ×3、architecture ×2、visual_audio ×2；
-- **5 种验证器全覆盖**：`godot_scene_assert` ×21、`py_config` ×3、`py_gdscript_ast` ×2、`py_tscn_diff` ×2、`visual_static` ×2；
+- **26 个自包含 folder 型**（任意目录可跑）+ **4 个源自真实 git bug-fix commit 的高区分度 case**（见下）；
+- **5 个 category 全覆盖**：behavior_logic ×15、architecture ×6、precise_edit ×4、intent_translation ×3、visual_audio ×2；
+- **6 种验证器全覆盖**：`godot_scene_assert` ×17、`survey_bad_case` ×4、`py_config` ×3、`py_gdscript_ast` ×2、`py_tscn_diff` ×2、`visual_static` ×2；
 - 全部通过 `aigdbench audit`（noop 0 / golden 1），并带有分级陷阱（部分正确 → 部分分）。
+
+> **4 个 git bug-fix case（`survey-history_*`）**：从 `gdquest-demos/godot-open-rpg` 的真实修复 commit 挖掘而来，比手工 case 更有区分度（真实的资源导入崩溃、组合缺陷）。从 16 个"oracle 有区分度"的候选里筛出——只保留 golden 在真实 Godot 下能干净通过 L0/L1 门禁的 4 个（其余候选撞上项目主场景的既有崩溃，与被测 bug 无关）。为保持**完全离线**又不臃肿仓库，它们不 vendored 整份项目树，而是引用一份**共享项目快照**（`manifest` 里的 `snapshot` 字段 + 各 case 的 `snapshot.json` 记录 repo + base commit）。快照**不入库**，首次运行前本地生成一次：
+> ```bash
+> python3 scripts/make_snapshots.py --testcases-dir testcases_filtered   # 需联网 clone 一次
+> ```
+> 生成后这些 case 与其它 folder 型一样纯离线运行。打分用 `scoring.mode="gated"`（改了相关文件且清除 L0/L1 回归→1，否则→0），并复用 `survey_bad_case.json` 内藏 oracle（`good.diff` 为 golden）。
 
 选取标准与逐类代表性例子见 [`docs/filtered_dataset_report.md`](docs/filtered_dataset_report.md)；
 完整库分布见 [`docs/full_dataset_report.md`](docs/full_dataset_report.md)。

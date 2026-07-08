@@ -9,6 +9,22 @@ from pathlib import Path
 
 from aigamedevbench.godot_bin import resolve_godot_binary
 
+# Path prefixes whose files are NOT the case's subject and must not gate it.
+# Third-party plugins under addons/ ship editor-only scenes/scripts (they wire
+# signals to @tool editor methods and load editor singletons) that legitimately
+# error under a headless runtime boot — noise unrelated to any testcase's bug.
+# Overridable via config global.validation.excluded_path_prefixes.
+DEFAULT_EXCLUDED_PREFIXES = ("addons/",)
+
+
+def _norm(rel: str) -> str:
+    return str(rel).replace("\\", "/")
+
+
+def _is_excluded(rel: str, excluded_prefixes: tuple[str, ...]) -> bool:
+    r = _norm(rel)
+    return any(r.startswith(p) for p in excluded_prefixes)
+
 
 def _is_explicit_binary(binary: str) -> bool:
     """A path-like binary (has a separator or drive colon) was deliberately
@@ -174,9 +190,13 @@ def check_gd_syntax(project_root: Path, gd_files: list[str]) -> list[str]:
     return issues
 
 
-def run_l0(project_root: Path, scenes: list[str], godot_binary: str = "godot") -> tuple[bool, list[str]]:
+def run_l0(project_root: Path, scenes: list[str], godot_binary: str = "godot",
+           excluded_prefixes: tuple[str, ...] = DEFAULT_EXCLUDED_PREFIXES) -> tuple[bool, list[str]]:
     issues: list[str] = []
-    gd_files = [str(p.relative_to(project_root)) for p in project_root.rglob("*.gd")]
+    # Third-party plugin scripts (addons/) are not the case's subject; skip them
+    # so their editor-only code can't fail the syntax gate.
+    gd_files = [str(p.relative_to(project_root)) for p in project_root.rglob("*.gd")
+                if not _is_excluded(p.relative_to(project_root), excluded_prefixes)]
     issues.extend(check_gd_syntax(project_root, gd_files))
 
     resolved = resolve_godot_binary(godot_binary)
@@ -274,10 +294,16 @@ def check_signal_targets(project_root: Path, tscn_files: list[str]) -> list[str]
     return issues
 
 
-def run_l1(project_root: Path, changed_files: list[str]) -> tuple[bool, list[str]]:
-    tscn_files = [f for f in changed_files if f.endswith(".tscn")]
+def run_l1(project_root: Path, changed_files: list[str],
+           excluded_prefixes: tuple[str, ...] = DEFAULT_EXCLUDED_PREFIXES) -> tuple[bool, list[str]]:
+    tscn_files = [f for f in changed_files
+                  if f.endswith(".tscn") and not _is_excluded(f, excluded_prefixes)]
     if not tscn_files:
-        tscn_files = [str(p.relative_to(project_root)) for p in project_root.rglob("*.tscn")]
+        # Fallback: scan the whole project, but never gate on third-party plugin
+        # scenes (addons/) — their editor scenes wire signals to @tool methods
+        # absent at runtime, which is noise unrelated to the case under test.
+        tscn_files = [str(p.relative_to(project_root)) for p in project_root.rglob("*.tscn")
+                      if not _is_excluded(p.relative_to(project_root), excluded_prefixes)]
     if not tscn_files:
         return True, []
     issues: list[str] = []
@@ -288,6 +314,11 @@ def run_l1(project_root: Path, changed_files: list[str]) -> tuple[bool, list[str
 
 def run_validation(repo_root: Path, changed_files: list[str], config: dict) -> VerificationResult:
     godot_binary = config.get("global", {}).get("godot", {}).get("binary", "godot")
+    # Path prefixes excluded from L0/L1 gating (default: third-party addons/).
+    # Configurable via global.validation.excluded_path_prefixes.
+    validation_cfg = config.get("global", {}).get("validation", {})
+    excluded_prefixes = tuple(validation_cfg.get("excluded_path_prefixes",
+                                                 DEFAULT_EXCLUDED_PREFIXES))
     stage_start = time.perf_counter()
     # Build the import cache once before any headless boot (L0 here, and the
     # runtime verifier later) so scenes with imported resources can load.
@@ -299,8 +330,9 @@ def run_validation(repo_root: Path, changed_files: list[str], config: dict) -> V
     import_ms = (time.perf_counter() - stage_start) * 1000.0
 
     stage_start = time.perf_counter()
-    scenes = [f for f in changed_files if f.endswith(".tscn")]
-    l0_pass, l0_details = run_l0(repo_root, scenes, godot_binary)
+    scenes = [f for f in changed_files
+              if f.endswith(".tscn") and not _is_excluded(f, excluded_prefixes)]
+    l0_pass, l0_details = run_l0(repo_root, scenes, godot_binary, excluded_prefixes)
     l0_ms = (time.perf_counter() - stage_start) * 1000.0
     if import_error is not None:
         # An incomplete import cache is the upstream cause of later "load() == null"
@@ -309,7 +341,7 @@ def run_validation(repo_root: Path, changed_files: list[str], config: dict) -> V
         l0_pass = False
 
     stage_start = time.perf_counter()
-    l1_pass, l1_details = run_l1(repo_root, changed_files)
+    l1_pass, l1_details = run_l1(repo_root, changed_files, excluded_prefixes)
     l1_ms = (time.perf_counter() - stage_start) * 1000.0
 
     return VerificationResult(

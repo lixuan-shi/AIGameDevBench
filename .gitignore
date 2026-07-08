@@ -37,3 +37,9 @@ tt_cases.txt
 testcases/**/.godot/
 testcases_filtered/**/.godot/
 **/*.gd.uid
+
+# On-demand project snapshots for git-derived filtered cases. Large project
+# trees generated locally by scripts/make_snapshots.py from public repos; the
+# repo tracks only each case's snapshot.json (repo + base commit) + good.diff.
+testcases/_snapshots/
+testcases_filtered/_snapshots/

@@ -39,12 +39,20 @@ args=(run
 case "$DRIVER" in
   patch)
     # Golden fix shipped alongside the testcase. Validates the full pipeline
-    # (patch should score 1.00).
-    patch_file="$TESTCASES_DIR/$TESTCASE/fix.diff"
-    if [[ ! -f "$patch_file" ]]; then
-      echo "[entrypoint] ERROR: no fix.diff for $TESTCASE at $patch_file" | tee -a "$runlog"
+    # (patch should score 1.00). Authored folder cases carry fix.diff; the
+    # git-derived survey-history cases carry good.diff — accept either.
+    patch_file=""
+    for cand in fix.diff good.diff; do
+      if [[ -f "$TESTCASES_DIR/$TESTCASE/$cand" ]]; then
+        patch_file="$TESTCASES_DIR/$TESTCASE/$cand"
+        break
+      fi
+    done
+    if [[ -z "$patch_file" ]]; then
+      echo "[entrypoint] ERROR: no golden patch (fix.diff|good.diff) for $TESTCASE under $TESTCASES_DIR/$TESTCASE" | tee -a "$runlog"
       exit 3
     fi
+    echo "[entrypoint] golden patch: $patch_file" | tee -a "$runlog"
     args+=(--patch "$patch_file")
     ;;
   command)

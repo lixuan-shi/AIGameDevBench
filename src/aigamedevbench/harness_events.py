@@ -27,6 +27,7 @@ the dashboard's renderActivity() expects.
 
 import json
 import re
+import time
 from dataclasses import dataclass, field
 
 # Tool-name markers for the text heuristic. Deliberately small and conservative:
@@ -46,12 +47,18 @@ class _Turn:
     turn: int
     agent_output_parts: list[str] = field(default_factory=list)
     tool_calls: list[str] = field(default_factory=list)
+    # Wall-clock (ms) relative to the parser's run start, stamped when the turn
+    # first gets content; duration_ms is filled in when the turn closes. Both are
+    # None until measured so a caller can tell "not timed" from "0 ms".
+    start_ms: float | None = None
+    duration_ms: float | None = None
 
     def to_dict(self) -> dict:
         return {
             "turn": self.turn,
             "agent_output": "\n".join(p for p in self.agent_output_parts if p).strip(),
             "tool_calls": self.tool_calls,
+            "duration_ms": self.duration_ms,
         }
 
     def is_empty(self) -> bool:
@@ -61,23 +68,36 @@ class _Turn:
 class EventParser:
     """Incremental parser. Call feed(line) per stdout line, then finalize()."""
 
-    def __init__(self, fmt: str = "auto"):
+    def __init__(self, fmt: str = "auto", clock=time.perf_counter):
         if fmt not in ("auto", "stream-json", "text"):
             fmt = "auto"
         self.fmt = fmt
         self._turns: list[_Turn] = []
         self._cur: _Turn | None = None
         self._total_tokens: int | None = None
+        # Injectable monotonic clock (seconds) so tests can drive deterministic
+        # per-turn durations. The run start is stamped lazily on the first turn
+        # so idle time before any harness output isn't attributed to a turn.
+        self._clock = clock
+        self._run_start: float | None = None
 
     # --- turn bookkeeping ---
 
+    def _now_ms(self) -> float:
+        now = self._clock()
+        if self._run_start is None:
+            self._run_start = now
+        return (now - self._run_start) * 1000.0
+
     def _ensure_turn(self) -> _Turn:
         if self._cur is None:
-            self._cur = _Turn(turn=len(self._turns) + 1)
+            self._cur = _Turn(turn=len(self._turns) + 1, start_ms=self._now_ms())
         return self._cur
 
     def _close_turn(self) -> None:
         if self._cur is not None and not self._cur.is_empty():
+            if self._cur.start_ms is not None:
+                self._cur.duration_ms = round(self._now_ms() - self._cur.start_ms, 1)
             self._turns.append(self._cur)
         self._cur = None
 
@@ -161,7 +181,26 @@ class EventParser:
             if len(d["agent_output"]) > 4000:
                 d["agent_output"] = d["agent_output"][:4000] + "\n...(truncated)"
             turns.append(d)
-        return {"turns": turns, "total_tokens": self._total_tokens}
+        # Bottleneck analysis: which single turn cost the most wall time, and the
+        # sum of all measured turn durations. Both derived from timed turns only
+        # (duration_ms is None for a turn the clock never measured).
+        timed = [t for t in self._turns if t.duration_ms is not None]
+        slowest_turn = None
+        total_turn_ms = None
+        if timed:
+            total_turn_ms = round(sum(t.duration_ms for t in timed), 1)
+            worst = max(timed, key=lambda t: t.duration_ms)
+            slowest_turn = {
+                "turn": worst.turn,
+                "duration_ms": worst.duration_ms,
+                "tool_calls": list(worst.tool_calls),
+            }
+        return {
+            "turns": turns,
+            "total_tokens": self._total_tokens,
+            "slowest_turn": slowest_turn,
+            "total_turn_ms": total_turn_ms,
+        }
 
 
 def _try_parse_json(line: str) -> dict | None:

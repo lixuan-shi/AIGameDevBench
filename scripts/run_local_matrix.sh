@@ -97,8 +97,12 @@ if [[ "$ENGINE" == "podman" && "$PODMAN_FIX" == "1" ]]; then
   # local disk. Override with PODMAN_ROOT if /tmp is unsuitable.
   PODMAN_ROOT="${PODMAN_ROOT:-/tmp/podman-store-$USER}"
   mkdir -p "$PODMAN_ROOT"
-  ENGINE_ARGS=(--root "$PODMAN_ROOT" --storage-driver vfs)
-  echo ">>> podman store: $PODMAN_ROOT (vfs)"
+  # /tmp is local ext4 and supports xattrs, so overlay works here and (unlike
+  # vfs) doesn't copy every layer — vfs blew up /tmp during the build. Override
+  # the driver with PODMAN_DRIVER if /tmp can't do overlay.
+  PODMAN_DRIVER="${PODMAN_DRIVER:-overlay}"
+  ENGINE_ARGS=(--root "$PODMAN_ROOT" --storage-driver "$PODMAN_DRIVER")
+  echo ">>> podman store: $PODMAN_ROOT ($PODMAN_DRIVER)"
 fi
 ENG() { "$ENGINE" "${ENGINE_ARGS[@]}" "$@"; }
 
@@ -111,6 +115,19 @@ fi
 mkdir -p "$OUT_DIR" "$OUT_DIR/logs"
 # Start clean so a stale report from a previous run can't leak into aggregation.
 rm -f "$OUT_DIR"/*.json 2>/dev/null || true
+
+# --- 0. Ensure on-demand project snapshots exist BEFORE the build ------------
+# The git-derived filtered cases (survey-history_*) reference shared project
+# snapshots that are NOT committed (see scripts/make_snapshots.py). The Docker
+# build COPYs testcases_filtered/ into the image, so any missing snapshot would
+# ship a broken case. Materialise them on the host first (needs a one-time
+# network clone; idempotent — existing snapshots are skipped). Skipped with
+# --no-build (reusing an image that already bundles them) or when the tree has
+# no snapshot.json files.
+if [[ "$DO_BUILD" == "1" ]] && ls testcases_filtered/*/snapshot.json >/dev/null 2>&1; then
+  echo ">>> Ensuring project snapshots for git-derived filtered cases..."
+  python3 "$REPO_ROOT/scripts/make_snapshots.py" --testcases-dir testcases_filtered
+fi
 
 # --- 1. Build image from source ----------------------------------------------
 if [[ "$DO_BUILD" == "1" ]]; then
@@ -135,6 +152,22 @@ TC_ARR=($TESTCASES)
 echo ">>> ${#TC_ARR[@]} testcase(s), driver=$DRIVER, concurrency=$JOBS"
 
 # --- 3. Fan out: one container per testcase, gated at $JOBS ------------------
+# For DRIVER=command the harness inside the container needs its provider
+# credentials. Forward any of these that are set in the host environment.
+CRED_ENVS=(
+  ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN ANTHROPIC_BASE_URL
+  CLAUDE_CODE_OAUTH_TOKEN
+  OPENAI_API_KEY OPENAI_BASE_URL
+)
+CRED_ARGS=()
+for _v in "${CRED_ENVS[@]}"; do
+  [[ -n "${!_v:-}" ]] && CRED_ARGS+=(-e "$_v=${!_v}")
+done
+# Claude Code refuses --dangerously-skip-permissions as root (containers run as
+# root). IS_SANDBOX=1 is the official container/CI escape hatch. Harmless for
+# other harnesses.
+CRED_ARGS+=(-e "IS_SANDBOX=1")
+
 declare -A PIDS=()
 launch() {
   local tc="$1"
@@ -146,6 +179,7 @@ launch() {
     -e HARNESS_ID="$DRIVER" \
     -e TESTCASES_DIR="$TESTCASES_DIR" \
     ${HARNESS_CMD:+-e HARNESS_CMD="$HARNESS_CMD"} \
+    "${CRED_ARGS[@]}" \
     -v "$OUT_DIR:/out:z" \
     "$IMAGE" \
     > "$OUT_DIR/logs/${tc}.container.log" 2>&1 &

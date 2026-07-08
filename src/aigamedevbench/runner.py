@@ -69,6 +69,15 @@ class RunResult:
         if isinstance(self.harness_outcome.get("wall_time"), (int, float)):
             d["timings"] = {**self.timings,
                             "harness_ms": round(self.harness_outcome["wall_time"] * 1000.0, 1)}
+        # Surface the harness's worst single turn (its internal bottleneck) into
+        # the timings block, alongside the pipeline stages, so the slowest step
+        # is comparable with import/L0/verify cost.
+        ctx = self.harness_outcome.get("ai_agent_context")
+        if isinstance(ctx, dict):
+            slowest = ctx.get("slowest_turn")
+            if isinstance(slowest, dict) and isinstance(slowest.get("duration_ms"), (int, float)):
+                d["timings"] = {**d.get("timings", self.timings),
+                                "slowest_turn_ms": slowest["duration_ms"]}
         return d
 
 
@@ -76,7 +85,24 @@ class RunResult:
 def _workspace_for(repo_root: Path | None, testcase: Testcase,
                    workspace_root: Path | str | None = None):
     if testcase.source_kind == "folder":
-        with folder_workspace(testcase.dir / "baseline", workspace_root) as ws:
+        # A folder-type case normally carries its own baseline/ dir. When it names
+        # a shared `snapshot`, the baseline instead comes from
+        # <testcases-dir>/_snapshots/<snapshot>/ — one offline project tree reused
+        # by many git-derived bug-fix cases (see Testcase.snapshot). Either way we
+        # go through folder_workspace (copytree + throwaway git init), so change
+        # detection and git-apply work identically.
+        if testcase.snapshot:
+            baseline_dir = testcase.dir.parent / "_snapshots" / testcase.snapshot
+            if not baseline_dir.is_dir() or not any(baseline_dir.iterdir()):
+                raise FileNotFoundError(
+                    f"testcase '{testcase.id}' references snapshot "
+                    f"'{testcase.snapshot}' which is not present at {baseline_dir}. "
+                    f"Snapshots are generated on demand (not committed) — run:\n"
+                    f"    python3 scripts/make_snapshots.py "
+                    f"--testcases-dir {testcase.dir.parent}")
+        else:
+            baseline_dir = testcase.dir / "baseline"
+        with folder_workspace(baseline_dir, workspace_root) as ws:
             yield ws
     else:
         source_repo = Path(testcase.source_repo) if testcase.source_repo else repo_root

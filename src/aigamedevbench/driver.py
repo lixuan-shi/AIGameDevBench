@@ -276,5 +276,10 @@ class CommandHarnessDriver:
             "ai_agent_context": {
                 "turns": events["turns"],
                 "total_tokens": events["total_tokens"],
+                # Per-turn timing bottleneck: the slowest single turn and the
+                # total measured turn wall-time, so the report/dashboard can show
+                # WHERE the harness spent its time, not just how long overall.
+                "slowest_turn": events.get("slowest_turn"),
+                "total_turn_ms": events.get("total_turn_ms"),
             },
         }

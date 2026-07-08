@@ -466,6 +466,25 @@ def run_cmd(testcases_dir: str, testcase_id: str | None, harness_id: str,
                 stage_counts[s] = stage_counts.get(s, 0) + 1
         breakdown = ", ".join(f"{s}={n}" for s, n in sorted(stage_counts.items()))
         click.echo(f"--- failure stages: {breakdown}")
+        # Bottleneck: the single slowest harness turn across the whole batch, so
+        # a run where the harness burned most of its time in one step is visible
+        # at a glance (only meaningful for command-driver runs that emit turns).
+        worst = None  # (duration_ms, testcase_id, turn, tool_calls)
+        for rec in records:
+            ctx = rec.get("ai_agent_context")
+            slow = ctx.get("slowest_turn") if isinstance(ctx, dict) else None
+            if isinstance(slow, dict) and isinstance(slow.get("duration_ms"), (int, float)):
+                cand = (slow["duration_ms"], rec.get("testcase_id", "?"),
+                        slow.get("turn"), slow.get("tool_calls") or [])
+                if worst is None or cand[0] > worst[0]:
+                    worst = cand
+        if worst is not None:
+            dur_s = worst[0] / 1000.0
+            tools = ", ".join(str(t) for t in worst[3][:3])
+            tool_note = f" [{tools}]" if tools else ""
+            click.echo(
+                f"--- slowest turn (bottleneck): {worst[1]} turn {worst[2]} "
+                f"{dur_s:.1f}s{tool_note}")
 
     if report_file:
         import json
