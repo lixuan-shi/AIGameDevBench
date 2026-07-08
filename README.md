@@ -352,10 +352,108 @@ aigdbench compare --report-a report_claude.json --report-b report_codex.json
 | 脚本 | 作用 |
 |---|---|
 | `run_bench50.sh` | 用 `claude -p` 跑整套 `testcases_filtered/`，结果/代码/日志落在 `bench_runs/` |
+| `run_k8s_matrix.sh` | 构建/推送 runner 镜像，一 testcase 一 k8s Job 并行 fan-out，聚合 `report.{json,md}` |
+| `build_runner_image.sh` | 构建含 **claude CLI + 最新 agentic-game-development 插件**的 runner 镜像 |
+| `bench-orchestrator.sh` | 由 GitHub webhook 触发一次全量并行 bench（见下方「webhook 自动触发」） |
+| `compare-and-maybe-release.sh` | bench 完成后对比插件基线，优于则自动打新 release |
 | `import_gamedevbench.py` | 把 GameDevBench 的自包含 task 导入成本仓 folder 型 testcase |
 | `mine_retry_sessions.py` | 扫本地 Claude/Codex 对话历史，挖掘"反复重试"的真实开发会话 |
 | `audit_testcases.py` | 门禁整套 testcase，写机器可读健康快照 |
 | `_*.py` | 数据集统计 / oracle 强度分析 / survey 任务脱敏改写等一次性辅助脚本 |
+
+---
+
+## Webhook 自动触发：push → 并行 bench → 优于基线则自动发布
+
+一条 GitHub webhook 投递可以自动跑一次**全量并行 benchmark**（每个 testcase 一个隔离的
+k8s Job，harness = **claude + `agentic-game-development` 插件最新 skill**），跑完自动和
+`agentic-game-development` **上一个 release 的成绩**对比——**优于就在插件仓自动打新 release**。
+
+### 端到端流程
+
+```text
+game repo push
+  └─▶ https://hook.omgwow.tech/github            (GitHub webhook)
+        └─▶ github-webhook receiver (k8s webhook ns，已部署)
+              │  ① 校验 HMAC；② 仅 push 事件
+              │  ③ fire-and-forget 转发（不阻塞、照常回 202）
+              ▼
+        POST $BENCH_TRIGGER_URL/trigger  {delivery, repo, ref, after}
+              └─▶ bench-orchestrator.sh（常驻本机，tmux）
+                    ① x-bench-token 校验 + 按 delivery id 去重
+                    ② run_k8s_matrix.sh：一 testcase 一 Job（-j 并发 gated）
+                    │     · 镜像内 claude -p {task} --plugin-dir /opt/agd-plugin
+                    │     · 凭证来自 k8s Secret aigdbench-harness
+                    │     · 从每个 pod 日志收集 report → 聚合 report.{json,md}
+                    ③ compare-and-maybe-release.sh：
+                          · 读 report.json 的 mean_score
+                          · 对比 agentic-game-development/workflow/benchmark-baseline.json
+                          · 若 delta > MIN_DELTA：bump 插件版本 + 刷新基线 + push main
+                          · release-on-bump.yml 检测到版本变更 → 自动打 release
+```
+
+每次投递的产物落在 `results/<delivery>/`：`report.json` / `report.md` / 各 pod 日志 /
+`batch.log`（fan-out 日志）/ `release.log`（对比+发布日志）/ `trigger.meta`（触发溯源）。
+
+### 前置准备（各做一次）
+
+1. **runner 镜像**（含 claude + 插件）：
+   ```bash
+   scripts/build_runner_image.sh -i harbor.omgwow.ai/<proj>/aigdbench-runner:latest --push
+   ```
+   > 若目标集群是本机单节点 k3s、且无 registry 推送权限，可改为导入本地 containerd：
+   > `docker save <img> | sudo k3s ctr -n k8s.io images import -`（Job 用 `imagePullPolicy: IfNotPresent`）。
+
+2. **harness 凭证 Secret**（default ns）：
+   ```bash
+   kubectl -n default create secret generic aigdbench-harness \
+     --from-literal=HARNESS_CMD='claude -p {task} --dangerously-skip-permissions --plugin-dir /opt/agd-plugin' \
+     --from-literal=ANTHROPIC_API_KEY=sk-... \
+     --from-literal=IS_SANDBOX=1          # 容器以 root 运行时，claude 需要它才允许 --dangerously-skip-permissions
+   ```
+   （网关部署可再加 `ANTHROPIC_BASE_URL` / `ANTHROPIC_MODEL`。）
+
+3. **receiver 转发**：由 receiver 镜像作者按 [`docs/webhook-forward-contract.md`](docs/webhook-forward-contract.md)
+   加两个 env（`BENCH_TRIGGER_URL` / `BENCH_TRIGGER_TOKEN`）并重建镜像；部署侧按
+   `../winter-update-runbook.md` 更新镜像并 `kubectl -n webhook set env` 注入这两个 env。
+
+### 常驻 orchestrator（tmux）
+
+```bash
+scripts/bench-orchestrator.sh --mode http --port 8899 --token <shared-token> \
+  --image harbor.omgwow.ai/<proj>/aigdbench-runner:latest \
+  --secret aigdbench-harness --jobs 16 \
+  --testcases-dir /app/testcases_filtered \
+  --plugin-repo ../agentic-game-development \
+  --auto-release --min-delta 0 --bump patch
+```
+
+- `--mode http`：收 receiver 转发的 `POST /trigger`（`GET /healthz` 探活）。
+- `--auto-release`：**打开**才会真正 bump+push；不加则只对比、打印结论、不动 release（安全默认）。
+- `--min-delta N`：mean_score 至少要涨这么多才算「优于」（默认 0，即严格 > 基线）。
+
+### 无需改 receiver 的 fallback
+
+若 receiver 到本机网络不通、或暂时不改 receiver 源码，用 `--mode watch-logs`：
+orchestrator 直接 tail receiver 的 pod 日志（凭 `pods/log` 权限），对每条 `accepted GitHub
+webhook delivery`（仅 `push` 事件、按 delivery id 去重）触发同一套 bench + 对比 + 发布。
+
+```bash
+scripts/bench-orchestrator.sh --mode watch-logs \
+  --webhook-kubeconfig ~/mc-winter-zhao-kubeconfig --webhook-ns webhook \
+  --image ... --secret aigdbench-harness --plugin-repo ../agentic-game-development --auto-release
+```
+
+### 对比与发布判定
+
+`compare-and-maybe-release.sh` 读取 `agentic-game-development/workflow/benchmark-baseline.json`
+（**仓内文件为准**，同时每次发布会把它作为 release 资产上传做溯源）：
+
+- **无基线**（首次）：以当前插件版本建立基线，**不发布**。
+- **未优于基线**（`delta <= min-delta`）：不动任何东西。
+- **优于基线**：bump 两个 manifest（`.codex-plugin` / `.claude-plugin`）+ 刷新基线 →
+  commit + **push main** → `release-on-bump.yml` 自动打包并发布新 release。
+  Claude Code 订阅了 marketplace 的客户端下次启动即自动拉到新版。
 
 ---
 

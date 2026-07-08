@@ -44,7 +44,18 @@
 #   --webhook-kubeconfig F  kubeconfig that can read the receiver's logs
 #                                                            (WEBHOOK_KUBECONFIG, default ~/mc-winter-zhao-kubeconfig)
 #   --no-build          pass through: reuse pushed image, skip build/push in matrix
+#   --plugin-repo DIR   agentic-game-development checkout for baseline compare/release
+#                                                            (PLUGIN_REPO, default ../agentic-game-development)
+#   --auto-release      if the run beats the stored baseline, bump the plugin
+#                       version + push main (release-on-bump.yml then publishes).
+#                       OFF by default: without it, the compare step only reports.
+#   --min-delta N       min mean-score gain to count as an improvement (MIN_DELTA, default 0)
+#   --bump T            patch|minor|major bump on release       (BUMP, default patch)
 #   -h                  help
+#
+# After each batch, scripts/compare-and-maybe-release.sh compares the run's mean
+# score to $PLUGIN_REPO/workflow/benchmark-baseline.json and, on improvement with
+# --auto-release, cuts a new release. Per-batch release log: results/<id>/release.log.
 #
 # Each triggered batch runs run_k8s_matrix.sh with --no-build/--no-push (the
 # image is built once ahead of time by build_runner_image.sh), driver=command,
@@ -72,6 +83,12 @@ BENCH_TRIGGER_TOKEN="${BENCH_TRIGGER_TOKEN:-}"
 WEBHOOK_NS="${WEBHOOK_NS:-webhook}"
 WEBHOOK_KUBECONFIG="${WEBHOOK_KUBECONFIG:-$HOME/mc-winter-zhao-kubeconfig}"
 NO_BUILD_FLAG="--no-build"   # image is prebuilt; matrix should not rebuild by default
+# Post-benchmark: compare mean score vs the plugin's stored baseline and, if the
+# run improved, auto-release a new agentic-game-development version.
+PLUGIN_REPO="${PLUGIN_REPO:-$REPO_ROOT/../agentic-game-development}"
+AUTO_RELEASE=0          # off unless --auto-release given (safety)
+MIN_DELTA="${MIN_DELTA:-0}"
+BUMP="${BUMP:-patch}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -90,6 +107,10 @@ while [[ $# -gt 0 ]]; do
     --webhook-kubeconfig) WEBHOOK_KUBECONFIG="$2"; shift 2;;
     --no-build) NO_BUILD_FLAG="--no-build"; shift;;
     --build) NO_BUILD_FLAG=""; shift;;
+    --plugin-repo) PLUGIN_REPO="$2"; shift 2;;
+    --auto-release) AUTO_RELEASE=1; shift;;
+    --min-delta) MIN_DELTA="$2"; shift 2;;
+    --bump) BUMP="$2"; shift 2;;
     -h|--help) sed -n '2,60p' "$0"; exit 0;;
     *) echo "unknown option: $1" >&2; exit 2;;
   esac
@@ -157,6 +178,22 @@ EOF
     ec=$?
     echo "EXIT=$ec" >> "$out/batch.log"
     log "batch delivery=$id finished exit=$ec (report: $out/report.md)"
+
+    # --- Post-benchmark: compare vs plugin baseline, maybe auto-release -------
+    # Only when the batch produced a report. Non-improving runs are a no-op; an
+    # improving run bumps the plugin version and pushes main (release-on-bump.yml
+    # then publishes). --auto-release must be set for any write to happen.
+    if [[ -f "$out/report.json" ]]; then
+      local rel_flags=(--report "$out/report.json" --plugin-repo "$PLUGIN_REPO"
+                       --min-delta "$MIN_DELTA" --bump "$BUMP" --delivery "$id")
+      [[ "$AUTO_RELEASE" == "1" ]] && rel_flags+=(--auto-release)
+      "$REPO_ROOT/scripts/compare-and-maybe-release.sh" "${rel_flags[@]}" \
+        >> "$out/release.log" 2>&1 \
+        && log "batch delivery=$id compare/release step done (see $out/release.log)" \
+        || log "batch delivery=$id compare/release step FAILED (see $out/release.log)"
+    else
+      log "batch delivery=$id: no report.json; skipping compare/release"
+    fi
   ) &
   log "batch delivery=$id dispatched (pid=$!)"
 }
