@@ -67,6 +67,21 @@ RUN python -m pip install -e ".[dev]" \
     && chmod +x /usr/local/bin/entrypoint.sh \
     && aigdbench --version
 
+# --- Bake in the agentic-game-development plugin (DRIVER=command + claude) ----
+# The build wrapper (scripts/build_runner_image.sh) vendors the plugin's latest
+# skills into docker/vendor/agd-plugin BEFORE `docker build`, so this COPY picks
+# up the current plugin. Two install paths, belt-and-suspenders:
+#   1. personal skills at /root-of-HOME/.claude/skills  -> `claude -p` auto-loads
+#      each SKILL.md by description (no settings.json, no marketplace).
+#   2. the whole plugin at /opt/agd-plugin -> pass `--plugin-dir /opt/agd-plugin`
+#      in HARNESS_CMD for a deterministic, namespaced load.
+# HOME=/tmp (set below), so personal skills live at /tmp/.claude/skills.
+# The build context is the AIGameDevBench repo root; vendor dir is gitignored.
+COPY docker/vendor/agd-plugin /opt/agd-plugin
+RUN mkdir -p /tmp/.claude/skills \
+    && cp -r /opt/agd-plugin/skills/. /tmp/.claude/skills/ \
+    && ls /tmp/.claude/skills
+
 # Godot writes an editor config dir; give it a writable HOME.
 ENV HOME=/tmp \
     TESTCASES_DIR=/app/testcases \

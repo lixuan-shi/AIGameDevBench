@@ -15,6 +15,10 @@ report.json
 report_*.json
 *.report.json
 
+# bench-orchestrator.sh runtime outputs (per-delivery results + dedupe state)
+results/
+.orchestrator/
+
 # Mined private conversation history — never commit (personal data)
 mined_sessions/
 retry_scenarios.json
@@ -23,6 +27,10 @@ inspect_*.json
 bench-workspaces/
 bench_runs/
 survey_bad_cases.json
+
+# Vendored agentic-game-development plugin, synced at image-build time by
+# scripts/build_runner_image.sh (never committed; always pulled fresh).
+docker/vendor/
 
 # Scratch / working files at repo root (not part of the deliverable)
 err.log
