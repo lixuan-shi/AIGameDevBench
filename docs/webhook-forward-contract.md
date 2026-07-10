@@ -86,3 +86,61 @@ if (url) {
 > 注：若 receiver pod 到 orchestrator 主机（`10.0.1.135`）网络不可达，我们有**无需改 receiver**
 > 的 fallback：orchestrator `--mode watch-logs` 直接 tail receiver 日志按 delivery 去重触发。
 > 但优先用本转发方案（更实时、可带 token、无需读日志权限）。
+
+---
+
+## v2 追加：转发 `pull_request` 事件（gated 候选流程）
+
+> 用于 `docs/spec-v2.md` 的 **PR 触发 gated benchmark**：PR 的 head 作为候选被隔离评测，
+> 只有严格优于历史最高分才自动 merge + 发布。**向后兼容**——不转发 PR 事件时，只有旧的
+> push 事后流程生效。orchestrator 已能同时处理 push 与 pull_request（按事件分发）。
+
+### receiver 需要做的
+1. 允许集加入 `pull_request`（GitHub 仓库 Settings→Webhooks 勾选 “Pull requests”；
+   receiver env `ALLOWED_GITHUB_EVENTS` 加 `pull_request`）。
+2. HMAC 校验通过后，对 `X-GitHub-Event: pull_request` 也转发（同一 `/trigger` 端点、同一 token）。
+3. **只转发 `action ∈ {opened, synchronize, reopened, ready_for_review}`**——其余（closed/labeled…）不转发。
+   （orchestrator 侧也会再过滤一次，双保险。）
+
+### PR 转发 body（在 push 字段基础上增加）
+```
+POST $BENCH_TRIGGER_URL   (Headers 同上: Content-Type + x-bench-token)
+Body (JSON):
+  {
+    "event":     "pull_request",                 // 必填, 区分事件类型
+    "action":    "<payload.action>",             // opened|synchronize|reopened|...
+    "delivery":  "<X-GitHub-Delivery>",          // 必填
+    "repo":      "<payload.repository.full_name>",// 如 "omgwowai/agentic-game-development"
+    "pr_number": <payload.pull_request.number>,  // 必填(PR 号, merge 对象)
+    "head_sha":  "<payload.pull_request.head.sha>", // 必填(候选 commit, 去重键)
+    "base_ref":  "<payload.pull_request.base.ref>"  // 通常 "main"
+  }
+```
+- orchestrator 也接受**嵌套** `"pull_request": {"number":..,"head":{"sha":..},"base":{"ref":..}}`
+  形式（原始 GitHub payload 直传）——二者任一即可。
+- **去重键是 `head_sha`**（不是 delivery）：`synchronize` 每次 push 到 PR 都重投递，同一 head 只测一次。
+
+### orchestrator 端（已实现）
+`POST /trigger` 收到 PR 事件 → 校验 → 立即回 202 → 后台调
+`scripts/bench-candidate.sh --pr <n> --commit <head_sha> --repo <o/r> [--auto-release]`：
+建候选镜像 `:<head_sha>` → 并行 benchmark → 门禁 `mean_score > best_score` →
+达标（且 `--auto-release`）则 `gh pr merge --squash` + 版本 bump + 发布，否则只在 PR 评论分数。
+
+### Node 参考片段（PR 分支，追加到 push 分支旁）
+```js
+// event === 'pull_request' 且 action ∈ 允许集:
+const url = process.env.BENCH_TRIGGER_URL;
+if (url && ['opened','synchronize','reopened','ready_for_review'].includes(payload.action)) {
+  const pr = payload.pull_request || {};
+  const body = JSON.stringify({
+    event: 'pull_request', action: payload.action,
+    delivery: req.headers['x-github-delivery'] || '',
+    repo: payload.repository?.full_name || '',
+    pr_number: pr.number, head_sha: pr.head?.sha || '', base_ref: pr.base?.ref || 'main',
+  });
+  const headers = { 'Content-Type': 'application/json' };
+  const tok = process.env.BENCH_TRIGGER_TOKEN;
+  if (tok) headers['x-bench-token'] = tok;
+  fetch(url, { method:'POST', headers, body }).catch(e => log.warn(String(e)));
+}
+```

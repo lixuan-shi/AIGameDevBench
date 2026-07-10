@@ -112,6 +112,15 @@ BUMP="${BUMP:-patch}"
 REBUILD=0
 REBUILD_IMPORT_K3S="${REBUILD_IMPORT_K3S:-0}"  # 0 => --rebuild pushes to registry; 1 => import into local k3s instead
 PLUGIN_BASE_REF="${PLUGIN_BASE_REF:-origin/main}"  # diff base for "this run's plugin changes"
+# --- v2: PR-triggered gated candidate flow (see docs/spec-v2.md) --------------
+# A `pull_request` webhook is dispatched to scripts/bench-candidate.sh, which
+# benchmarks the PR head in isolation and (with --auto-release) merges+releases
+# only if it strictly beats the historical best. `push` events keep the legacy
+# post-hoc path (launch_batch). IMAGE_REPO is the repo WITHOUT tag; the candidate
+# appends an immutable :<sha> tag itself.
+IMAGE_REPO="${IMAGE_REPO:-harbor.omgwow.ai/beaver_hub-public/aigdbench-runner}"
+CANDIDATE_ENGINE="${CANDIDATE_ENGINE:-auto}"   # docker|podman|auto for candidate image build
+# Reuse AUTO_RELEASE/MIN_DELTA/BUMP (declared above) for the candidate gate too.
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -137,6 +146,8 @@ while [[ $# -gt 0 ]]; do
     --rebuild) REBUILD=1; shift;;
     --rebuild-import-k3s) REBUILD=1; REBUILD_IMPORT_K3S=1; shift;;
     --plugin-base-ref) PLUGIN_BASE_REF="$2"; shift 2;;
+    --image-repo) IMAGE_REPO="$2"; shift 2;;
+    --candidate-engine) CANDIDATE_ENGINE="$2"; shift 2;;
     -h|--help) sed -n '2,60p' "$0"; exit 0;;
     *) echo "unknown option: $1" >&2; exit 2;;
   esac
@@ -322,6 +333,37 @@ PY
   log "batch delivery=$id dispatched (pid=$!)"
 }
 
+# --- Launch a PR-triggered gated CANDIDATE (v2, see docs/spec-v2.md) ----------
+# pull_request events go here: benchmark the PR head in isolation on an immutable
+# candidate image and (with --auto-release) merge+release only if it strictly
+# beats the historical best. De-duped by head.sha (a PR's synchronize re-fires
+# on every push, but the same head only needs one run).
+launch_candidate() {
+  local delivery="$1" repo="$2" pr="$3" head_sha="$4" base_ref="${5:-main}"
+  [[ -n "$head_sha" ]] || { log "PR event without head_sha; skipping"; return 0; }
+  [[ -n "$repo" ]] || { log "PR event without repo; skipping"; return 0; }
+  # De-dupe by head.sha (not delivery): synchronize re-delivers the same head.
+  local key="pr-${pr}-${head_sha}"
+  if grep -qxF "$key" "$SEEN_FILE" 2>/dev/null; then
+    log "candidate $key already processed; skipping"
+    return 0
+  fi
+  echo "$key" >> "$SEEN_FILE"
+
+  local cand_flags=(--commit "$head_sha" --pr "$pr" --repo "$repo"
+                    --delivery "$delivery" --image-repo "$IMAGE_REPO"
+                    --secret "$HARNESS_SECRET" --jobs "$JOBS"
+                    --testcases-dir "$TESTCASES_DIR"
+                    --local-testcases-dir "$LOCAL_TESTCASES_DIR"
+                    --namespace "$NAMESPACE" --results-root "$RESULTS_ROOT"
+                    --plugin-repo "$PLUGIN_REPO" --bump "$BUMP"
+                    --engine "$CANDIDATE_ENGINE")
+  [[ "$AUTO_RELEASE" == "1" ]] && cand_flags+=(--auto-release)
+  log "CANDIDATE PR #$pr head=$head_sha repo=$repo -> bench-candidate.sh"
+  ( "$REPO_ROOT/scripts/bench-candidate.sh" "${cand_flags[@]}" ) &
+  log "candidate PR #$pr dispatched (pid=$!)"
+}
+
 # --- Mode: watch-logs ---------------------------------------------------------
 run_watch_logs() {
   [[ -r "$WEBHOOK_KUBECONFIG" ]] \
@@ -335,23 +377,36 @@ run_watch_logs() {
       logs -f --tail=0 deployment/github-webhook 2>/dev/null \
   | while IFS= read -r line; do
       case "$line" in *'accepted GitHub webhook delivery'*) ;; *) continue;; esac
-      # Parse the JSON line safely; skip non-push events.
+      # Parse the JSON line safely; dispatch push vs pull_request.
       eval "$(printf '%s' "$line" | python3 -c '
 import sys, json, shlex
 try:
     o = json.loads(sys.stdin.readline())
 except Exception:
     sys.exit(0)
-ev = o.get("event") or ""
-if ev != "push":
-    sys.exit(0)
+ev = (o.get("event") or "").lower()
 d = o.get("delivery") or ""
 r = o.get("repository") or ""
-print("D=%s R=%s" % (shlex.quote(d), shlex.quote(r)))
+pr = o.get("pull_request") or {}
+prnum = str(o.get("pr_number") or pr.get("number") or "")
+head = str(o.get("head_sha") or (pr.get("head") or {}).get("sha") or "")
+base = str(o.get("base_ref") or (pr.get("base") or {}).get("ref") or "main")
+action = (o.get("action") or "").lower()
+if ev in ("pull_request","pr") or (prnum and head):
+    if action and action not in ("opened","synchronize","reopened","ready_for_review"):
+        sys.exit(0)
+    if not (prnum and head):
+        sys.exit(0)
+    print("EV=pr D=%s R=%s PR=%s HEAD=%s BASE=%s" % tuple(
+        shlex.quote(x) for x in (d, r, prnum, head, base)))
+elif ev == "push":
+    print("EV=push D=%s R=%s" % (shlex.quote(d), shlex.quote(r)))
 ')"
-      [[ -n "${D:-}" ]] || continue
-      launch_batch "$D" "${R:-}" "" ""
-      unset D R
+      case "${EV:-}" in
+        pr)   [[ -n "${HEAD:-}" ]] && launch_candidate "$D" "${R:-}" "$PR" "$HEAD" "${BASE:-main}" ;;
+        push) [[ -n "${D:-}" ]] && launch_batch "$D" "${R:-}" "" "" ;;
+      esac
+      unset EV D R PR HEAD BASE
     done
 }
 
@@ -369,9 +424,14 @@ run_http() {
   # substitution keeps k8s/launch logic in bash and avoids heredoc-in-pipeline
   # ordering hazards.
   while IFS= read -r cmdline; do
-    # cmdline is: DELIVERY<TAB>REPO<TAB>REF<TAB>SHA  (already validated by server)
-    IFS=$'\t' read -r d r ref sha <<<"$cmdline"
-    launch_batch "$d" "$r" "$ref" "$sha"
+    # cmdline is TAB-separated, first column is the event:
+    #   push          EVENT=push  \t d \t repo \t ref \t sha \t \t \t
+    #   pull_request  EVENT=pr    \t d \t repo \t \t \t prnum \t head_sha \t base_ref
+    IFS=$'\t' read -r ev d r ref sha pr head_sha base_ref <<<"$cmdline"
+    case "$ev" in
+      pr)   launch_candidate "$d" "$r" "$pr" "$head_sha" "${base_ref:-main}" ;;
+      *)    launch_batch "$d" "$r" "$ref" "$sha" ;;
+    esac
   done < <(python3 - <<'PY'
 import json, os, sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -379,9 +439,10 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 TOKEN = os.environ.get("BENCH_TRIGGER_TOKEN", "")
 PORT = int(os.environ.get("PORT", "8899"))
 
-def emit(delivery, repo, ref, sha):
-    # One tab-separated line to stdout -> bash launch_batch. Flush immediately.
-    sys.stdout.write("\t".join([delivery, repo or "", ref or "", sha or ""]) + "\n")
+def emit(ev, delivery, repo, ref, sha, pr="", head_sha="", base_ref=""):
+    # One tab-separated line to stdout -> bash dispatch. Flush immediately.
+    sys.stdout.write("\t".join([ev, delivery, repo or "", ref or "", sha or "",
+                                pr or "", head_sha or "", base_ref or ""]) + "\n")
     sys.stdout.flush()
 
 class H(BaseHTTPRequestHandler):
@@ -414,10 +475,29 @@ class H(BaseHTTPRequestHandler):
         delivery = str(o.get("delivery") or "").strip()
         if not delivery:
             self._send(400, {"error": "missing delivery"}); return
-        emit(delivery, str(o.get("repo") or ""), str(o.get("ref") or ""),
+        # Event type: explicit "event" field, else infer from payload shape.
+        # A pull_request delivery carries pr_number/head_sha (see spec-v2 contract);
+        # some receivers nest it under o["pull_request"].
+        event = str(o.get("event") or "").strip().lower()
+        pr = o.get("pull_request") or {}
+        pr_number = str(o.get("pr_number") or o.get("pr") or pr.get("number") or "").strip()
+        head_sha = str(o.get("head_sha") or (pr.get("head") or {}).get("sha") or "").strip()
+        base_ref = str(o.get("base_ref") or (pr.get("base") or {}).get("ref") or "main").strip()
+        action = str(o.get("action") or "").strip().lower()
+        is_pr = event in ("pull_request", "pr") or bool(pr_number and head_sha)
+        if is_pr:
+            # Only act on states where the head is a fresh candidate.
+            if action and action not in ("opened", "synchronize", "reopened", "ready_for_review"):
+                self._send(202, {"accepted": False, "skipped": action}); return
+            if not (pr_number and head_sha):
+                self._send(400, {"error": "pull_request missing pr_number/head_sha"}); return
+            emit("pr", delivery, str(o.get("repo") or ""), "", "", pr_number, head_sha, base_ref)
+            self._send(202, {"accepted": True, "event": "pull_request", "pr": pr_number})
+            return
+        # Default: push event (legacy post-hoc path).
+        emit("push", delivery, str(o.get("repo") or ""), str(o.get("ref") or ""),
              str(o.get("after") or o.get("sha") or ""))
-        # Accept fast; the benchmark runs asynchronously on the bash side.
-        self._send(202, {"accepted": True, "delivery": delivery})
+        self._send(202, {"accepted": True, "event": "push", "delivery": delivery})
 
 HTTPServer(("0.0.0.0", PORT), H).serve_forever()
 PY
