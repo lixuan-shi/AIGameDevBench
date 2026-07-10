@@ -46,8 +46,12 @@
 #   --no-build          pass through: reuse pushed image, skip build/push in matrix
 #   --plugin-repo DIR   agentic-game-development checkout for baseline compare/release
 #                                                            (PLUGIN_REPO, default ../agentic-game-development)
-#   --rebuild           per trigger: git-pull the plugin repo and rebuild+import the
-#                       runner image so the LATEST plugin is benchmarked (REBUILD=1)
+#   --rebuild           per trigger: git-pull the plugin repo and rebuild the runner
+#                       image so the LATEST plugin is benchmarked; publishes by
+#                       pushing to the registry (Job's imagePullPolicy: Always then
+#                       pulls the fresh :latest) (REBUILD=1)
+#   --rebuild-import-k3s like --rebuild but loads the image into local k3s containerd
+#                       instead of pushing (single-node k3s w/o registry push)
 #   --plugin-base-ref R diff base for "this run's plugin changes" recorded in the
 #                       report (PLUGIN_BASE_REF, default origin/main)
 #   --auto-release      if the run is NOT LOWER than the stored baseline, bump the
@@ -102,6 +106,7 @@ BUMP="${BUMP:-patch}"
 # the LATEST plugin is what gets benchmarked. On => matrix reuses the freshly
 # imported local image (implies --no-build in the matrix). Off => reuse $IMAGE as-is.
 REBUILD=0
+REBUILD_IMPORT_K3S="${REBUILD_IMPORT_K3S:-0}"  # 0 => --rebuild pushes to registry; 1 => import into local k3s instead
 PLUGIN_BASE_REF="${PLUGIN_BASE_REF:-origin/main}"  # diff base for "this run's plugin changes"
 
 while [[ $# -gt 0 ]]; do
@@ -126,6 +131,7 @@ while [[ $# -gt 0 ]]; do
     --min-delta) MIN_DELTA="$2"; shift 2;;
     --bump) BUMP="$2"; shift 2;;
     --rebuild) REBUILD=1; shift;;
+    --rebuild-import-k3s) REBUILD=1; REBUILD_IMPORT_K3S=1; shift;;
     --plugin-base-ref) PLUGIN_BASE_REF="$2"; shift 2;;
     -h|--help) sed -n '2,60p' "$0"; exit 0;;
     *) echo "unknown option: $1" >&2; exit 2;;
@@ -215,16 +221,20 @@ EOF
 
   # --- Per-trigger: pull the plugin repo + rebuild the runner image ------------
   # So the LATEST agentic-game-development plugin is what this run benchmarks.
-  # build_runner_image.sh does the git pull + vendors the plugin + builds +
-  # imports into local k3s. We capture the plugin's git state (commit + the diff
-  # of THIS run's plugin changes vs $PLUGIN_BASE_REF) to embed in report.json.
+  # build_runner_image.sh does the git pull + vendors the plugin + builds and
+  # publishes the image. Registry path (default): --push to Harbor, and the Job's
+  # imagePullPolicy: Always pulls the fresh :latest. Local-k3s path: --import-k3s
+  # loads it into containerd instead. We capture the plugin's git state (commit +
+  # the diff of THIS run's plugin changes vs $PLUGIN_BASE_REF) for report.json.
   # .meta (not .json) so run_k8s_matrix.sh's `rm -f $out/*.json` doesn't wipe it.
   local plugin_change_file="$out/plugin_change.meta"
   if [[ "$REBUILD" == "1" ]]; then
-    log "delivery=$id: pulling plugin + rebuilding runner image $IMAGE ..."
-    if "$REPO_ROOT/scripts/build_runner_image.sh" -i "$IMAGE" --import-k3s \
+    local publish_flag="--push"
+    [[ "$REBUILD_IMPORT_K3S" == "1" ]] && publish_flag="--import-k3s"
+    log "delivery=$id: pulling plugin + rebuilding runner image $IMAGE ($publish_flag)..."
+    if "$REPO_ROOT/scripts/build_runner_image.sh" -i "$IMAGE" "$publish_flag" \
          -P "$PLUGIN_REPO" > "$out/rebuild.log" 2>&1; then
-      log "delivery=$id: runner image rebuilt + imported into k3s"
+      log "delivery=$id: runner image rebuilt + published ($publish_flag)"
     else
       log "delivery=$id: REBUILD FAILED (see $out/rebuild.log); using existing image"
     fi

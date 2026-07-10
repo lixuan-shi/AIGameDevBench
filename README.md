@@ -407,12 +407,14 @@ game repo push
 
 ### 前置准备（各做一次）
 
-1. **runner 镜像**（含 claude + 插件）：
+1. **runner 镜像**（含 claude + 插件）—— **走 registry**：
    ```bash
-   scripts/build_runner_image.sh -i harbor.omgwow.ai/<proj>/aigdbench-runner:latest --push
+   scripts/build_runner_image.sh -i harbor.omgwow.ai/beaver_hub-public/aigdbench-runner:latest --push
    ```
-   > 若目标集群是本机单节点 k3s、且无 registry 推送权限，可改为导入本地 containerd：
-   > `docker save <img> | sudo k3s ctr -n k8s.io images import -`（Job 用 `imagePullPolicy: IfNotPresent`）。
+   `beaver_hub-public` 是 public 项目，**pod 无需 imagePullSecret** 即可拉取；Job 用
+   `imagePullPolicy: Always`，所以每次重推 `:latest` 后 pod 都会拉到最新镜像（不会用到陈旧缓存）。
+   > 备选（无 registry push 权限、单节点 k3s）：`build_runner_image.sh ... --import-k3s`
+   > 直接导入本机 containerd，并把 Job 的 `imagePullPolicy` 改回 `IfNotPresent`。
 
 2. **harness 凭证 Secret**（default ns）：
    ```bash
@@ -431,7 +433,7 @@ game repo push
 
 ```bash
 scripts/bench-orchestrator.sh --mode http --port 8899 --token <shared-token> \
-  --image harbor.omgwow.ai/<proj>/aigdbench-runner:latest \
+  --image harbor.omgwow.ai/beaver_hub-public/aigdbench-runner:latest \
   --secret aigdbench-harness --jobs 16 \
   --testcases-dir /app/testcases_filtered \
   --plugin-repo ../agentic-game-development \

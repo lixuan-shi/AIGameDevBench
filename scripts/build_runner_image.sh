@@ -12,7 +12,8 @@
 # --plugin-dir /opt/agd-plugin` per testcase (see the k8s Secret / HARNESS_CMD).
 #
 # Usage:
-#   scripts/build_runner_image.sh -i harbor.omgwow.ai/<proj>/aigdbench-runner:latest [--push]
+#   scripts/build_runner_image.sh -i harbor.omgwow.ai/beaver_hub-public/aigdbench-runner:latest --push
+#   # local single-node k3s (no registry push): use --import-k3s instead of --push
 #
 # Options (env in parens):
 #   -i IMAGE      full registry ref                              (IMAGE, required)

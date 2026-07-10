@@ -54,7 +54,7 @@ BENCH_TRIGGER_URL=... BENCH_TRIGGER_TOKEN=...` 注入。
 ## orchestrator 端（已实现，供参考）
 
 `scripts/bench-orchestrator.sh --mode http --port 8899 --token <same-token> \
-   --image harbor.omgwow.ai/xiaojun_private/aigdbench-runner:latest`
+   --image harbor.omgwow.ai/beaver_hub-public/aigdbench-runner:latest`
 
 - `GET  /healthz` → 200 `{"ok":true}`（可用于连通性探活）
 - `POST /trigger` → 校验 `x-bench-token` → 校验 `delivery` 非空 → 立即回 202，
