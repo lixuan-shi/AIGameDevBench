@@ -235,6 +235,8 @@ collect_one() {
   if extract_report < "$raw" | python3 -c 'import sys,json;json.load(sys.stdin)' 2>/dev/null; then
     extract_report < "$raw" > "$rep"
   else
+    # No parseable report in the log — synthesize an error record so the
+    # aggregate has no silent hole.
     st="$(kubectl -n "$NAMESPACE" get "job/$jn" \
           -o jsonpath='{.status.conditions[0].type}' 2>/dev/null || echo Unknown)"
     python3 - "$tc" "$st" > "$rep" <<'PY'

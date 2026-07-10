@@ -14,6 +14,7 @@ harness 的改动由自动验证器打分。核心契约：**什么都不做必�
 - [快速开始](#快速开始)
 - [评测一个真实的 AI harness](#评测一个真实的-ai-harness)
 - [Dashboard 可视化](#dashboard-可视化aigdbench-serve)
+- [正交实验](#正交实验experiment-yaml)
 - [Testcase 数据集](#testcase-数据集)
 - [验证器类型](#验证器类型)
 - [命令速查](#命令速查)
@@ -124,7 +125,7 @@ aigdbench run --testcases-dir ./testcases_filtered \
 | harness | 自动模式参数 |
 |---|---|
 | Claude Code | `claude -p {task} --dangerously-skip-permissions`（或 `--permission-mode bypassPermissions`） |
-| Codex | `codex exec --full-auto {task}`（或 `-a never`） |
+| Codex | `codex exec --dangerously-bypass-approvals-and-sandbox --cd {workspace} {task}` |
 
 其它要点：
 
@@ -138,14 +139,14 @@ aigdbench run --testcases-dir ./testcases_filtered \
   (testcase × attempt) 会被展平进同一个线程池，最大化并行。dashboard 的均分柱会画出置信区间带，
   点开某 case 能看到 N 次分数的分布小图。（CI 用正态近似，N 小时仅作离散度参考，非严格区间。）
 - harness 输出**实时打印到屏幕**（带 testcase id 前缀），卡住的提示第一时间可见；`--no-stream` 关闭。
-  `--jobs > 1` 时自动改为「整块汇总」：每个 testcase 完成时一次性打印它的完整输出块，不逐行交错;
+  `--jobs > 1` 或 `--repeat > 1` 时自动改为「整块汇总」：每个 testcase/attempt 完成时一次性打印它的完整输出块，不逐行交错;
   完整日志仍逐个写 `--log-dir`。
 - **harness 内部活动记录**：`--harness-format {auto,stream-json,text}`（默认 `auto`）把 harness 的 stdout
   解析成结构化的**逐 turn 事件**（tool 调用、输出、token 用量），写进 report 的 `ai_agent_context`，
   dashboard 的 AI activity 面板会像展示 survey 行一样把它们逐 turn 展开。`auto` 先按行试 stream-json 再回退到
   文本启发式;若 harness 能吐 JSON 事件流（如 Claude Code `--output-format stream-json --verbose`），
   用 `stream-json` 最精确、还能拿到 token 数。
-- **超时保护**：`--timeout` 是总上限（大任务动辄几分钟，设宽松些）；另有审批提示检测器，
+- **超时保护**：`--timeout` 是单 testcase harness 上限，默认 1200 秒（20 分钟）；另有审批提示检测器，
   识别到 "waiting on your permission approval" 之类会立即中止并给出提示。
 - 任何失败（超时/审批阻塞/非零退出）都会把日志尾部打到屏幕，该 testcase 记 0 分，批次继续。
 - **`--stall-timeout` 默认关闭**：它在 N 秒无输出时中止，但 `claude -p` 等非流式 harness 完成前不打印任何东西，
@@ -184,6 +185,176 @@ stalled·blocked 标志 / 日志路径，以及总体均值）。完整输出也
 > CRLF/LF 与空白差异（`--ignore-whitespace`）、hunk 头 `@@ -a,b +c,d @@` 行数算错（`--recount`，
 > 以正文的 +/-/context 行为准）、以及 hunk 内空行丢了行首空格（自动补 `" "`）。这些在 harness/LLM
 > 产出的 diff 里很常见;基准只看语义改动，所以不因格式瑕疵拒绝一个正确的补丁。
+
+---
+
+## 正交实验（Experiment YAML）
+
+`aigdbench run --experiment` 用配置文件批量跑正交 cell。每个 cell 固定一组变量：
+
+```text
+model × agent_cli × orchestration × task_set × harness_components
+```
+
+`task_set` 指向 AIGameDevBench testcase 集合；集合列表集中维护在
+`experiments/testsets.yaml`，experiment YAML 通过 `test_set_file: testsets.yaml` 引用它。
+当前内置集合：
+
+- `filtered_30`：`testcases_filtered/` 的 30 个精选 strong-oracle case。
+- `smoke_2`：两个代表性 smoke case，用于快速验证 experiment wiring。
+- `all`：完整 `testcases/` 目录，不显式列 testcase，运行时扫描目录。
+
+`testsets.yaml` 支持为集合配置 `default_timeout`，并为单个 testcase 覆盖：
+
+```yaml
+test_sets:
+  smoke_2:
+    testcases_dir: ../testcases_filtered
+    default_timeout: 1200
+    testcases:
+      - id: wave-combat-score-system
+        timeout: 1200
+      - id: gdb-task_0281
+        timeout: 1200
+```
+
+experiment run 会把每条 testcase 的 `wall_time` 写进 report；如果 testcase 在
+`testsets.yaml` 里显式列出，run 结束后会按结果自动调整该条 `timeout`：超时/卡死时翻倍，
+正常完成时保留当前值或提升到 `ceil(wall_time × 1.5)`。
+
+`harness` 指向 harness 配置集合；集合列表集中维护在 `experiments/harnesses.yaml`，
+experiment YAML 通过 `harness_file: harnesses.yaml` 引用它。每个 harness 都声明
+`target_agent_cli`，用于区分 `generic`、`codex`、`claude-code` 等运行面，避免把
+Codex-only 配置误用到 Claude Code cell。当前内置配置：
+
+- `gd-baseline`：空 harness surface，适合作为非 Codex / patch smoke baseline。
+- `bare-codex`：只保留 Codex 运行所需最小配置，不带用户 `AGENTS.md`、skills、MCP、hooks、memory。
+- `skill-only`：只带 `agentic-game-development` skill。
+- `agents-md-skill-mcp`：带用户 `AGENTS.md` 和 game-dev skill。
+- `all-codex`：Codex-only 全量配置，带 repo-local
+  `agentic-game-development-superpowers` plugin、`fast-context` / `transcript-viewer`
+  skills、`node_repl` MCP、hooks、CLI config 和 memory summary。
+
+示例：
+
+```yaml
+id: filtered30-smoke
+test_set_file: testsets.yaml
+harness_file: harnesses.yaml
+
+cells:
+  - id: baseline_filtered_smoke
+    task_set: smoke_2
+    harness: gd-baseline
+```
+
+`harness` 会解析成七类 `harness_components`，并写入稳定的 `harness_fingerprint`，用于后续按 model / harness / orchestration 分组比较。
+当 `agent_cli: codex` 时，runner 会为每个 cell materialize 独立的 `CODEX_HOME`，让 `bare-codex`
+和 `all-codex` 不只是 metadata 不同，而是真正改变 Codex 能看到的 instruction / skill /
+MCP / hook / memory surface。
+
+```bash
+# 只展开 cell，不运行 testcase
+aigdbench run --experiment experiments/filtered30-smoke.yaml --dry-run
+
+# 用每个 testcase 自带 fix.diff 做 smoke；纯 Python verifier 不需要 Godot
+aigdbench run --experiment experiments/filtered30-smoke.yaml \
+  --driver patch --results-dir results
+```
+
+输出按 cell 隔离：
+
+```text
+results/<experiment_id>/<cell_id>/
+  manifest.json
+  report.json
+  final_results.json
+  final_results.csv
+  artifacts/
+  logs/
+```
+
+`manifest.json` 记录复现实验所需的配置真源：`model`、`agent_cli`、`orchestration`、
+`task_set`、`testcases_dir`、`testcase_ids`、`harness_preset`、`harness_components` 和
+`harness_fingerprint`，同时写入 `git_commit`、`runner_version`、`started_at`。Codex cell
+额外写 `codex_harness_runtime`，包含隔离 `CODEX_HOME` 路径和 `codex debug prompt-input`
+probe 摘要；probe 只保存 `stdout_sha256`、字节数和 visibility flags，不保存完整 prompt。
+
+`report.json` 保留旧 dashboard 兼容路径；`final_results.json` 是同内容的 cell 结果真源，
+`final_results.csv` 把每条 testcase result 展平成可直接 groupby 的表格，并复制
+`experiment_id`、`cell_id`、`model`、`agent_cli`、`orchestration_*`、`task_set`、
+`harness_preset`、`harness_fingerprint` 和七类 `harness_*` 列。第一版只执行
+`single-agent` / `builtin` orchestration；其他 orchestration 会写 explicit `unsupported`
+result，不会静默降级。
+
+### Harness surface 与权限探针
+
+Codex cell 的 `bare-codex` 会物化一个隔离 `CODEX_HOME`，只复制运行必要的 `auth.json`
+并重写最小 `config.toml`。runner 随后运行 `codex debug prompt-input`，把摘要写进
+`manifest.json` 的 `codex_harness_runtime.probe`：这里只保存 `stdout_sha256`、字节数、
+exit code 和 `visibility_flags`，用来确认用户 `AGENTS.md`、skills、MCP、hooks、memory
+是否真的没有进入 prompt surface。
+
+权限范围单独用 preflight probe 验证：
+
+```bash
+aigdbench probe-permissions \
+  --harness-cmd 'codex exec --cd {workspace} {task}' \
+  --probe-root ./permission-probe \
+  --timeout 120
+```
+
+probe 会创建 `probe-root/workspace/` 作为测试目录，并在它旁边创建 outside read/write
+canary。通过条件是：harness 能写 `workspace/` 内文件，但不能把 outside secret 泄漏回
+workspace，也不能改写 outside canary。结果写入 `permission_probe.json`，失败时命令
+exit 1，适合在正式 experiment 前做自动门禁。
+
+这个 probe 是观察式校验：它证明本次 harness 调用没有越过测试目录产生可见读写副作用。
+它不替代 OS-level sandbox，也不能证明任意未来命令都被内核强制隔离；强隔离仍由被测
+agent / CLI 的 sandbox、workspace、approval 配置负责。
+
+### 并行执行与 attempt 隔离
+
+`aigdbench run --experiment` 的并发度来自 `experiments/execution.yaml`，不通过 CLI 参数覆盖。
+当前默认配置：
+
+```yaml
+parallelism:
+  experiment_jobs: 2
+  testcase_jobs: 2
+  max_jobs: 4
+```
+
+- `experiment_jobs`：同时运行的 cell 数。
+- `testcase_jobs`：每个 cell 内同时运行的 testcase attempt 数。
+- `max_jobs`：所有 cell 合计的全局 attempt 上限。
+
+每个 testcase attempt 都落在独立目录：
+
+```text
+results/<experiment_id>/<cell_id>/attempts/<testcase_id>/
+  workspace/
+    TASK.md
+    ...
+  logs/
+    harness.log
+    events.jsonl
+  artifacts/
+  result.json
+```
+
+被测 agent 的 `cwd` 是 `workspace/`，`{task_file}` 指向 `workspace/TASK.md`。runner 不把
+testcase source dir、results root、repo root 或 logs dir 作为 placeholder 暴露给 agent。
+`harness.log` 会随着 agent stdout/stderr 实时追加，外层守护 agent 可以 tail 这个文件判断进度；
+`events.jsonl` 记录 `running`、`verifying`、`finished` / `error` 状态。
+
+如果 cell 使用 Codex harness，manifest 中的 `codex_harness_runtime.codex_home` 是 cell-level
+template；每个 attempt 会再复制出自己的 `attempts/<testcase_id>/codex_home/`，并用这个
+`CODEX_HOME` 启动被测 Codex，避免并发 testcase 共享 session/cache/history。
+
+注意：`cwd=workspace` 和最小 env 不是 OS-level sandbox。强隔离要靠被测 agent 自己的限制参数
+实现，例如 Codex / Claude Code 的 workspace、sandbox、approval 配置；runner 的责任是只暴露
+`workspace` 和 `TASK.md`。
 
 ---
 

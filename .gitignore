@@ -18,6 +18,7 @@ report_*.json
 # bench-orchestrator.sh runtime outputs (per-delivery results + dedupe state)
 results/
 .orchestrator/
+.claude/worktrees/
 
 # Mined private conversation history — never commit (personal data)
 mined_sessions/

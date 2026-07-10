@@ -128,9 +128,10 @@ def test_run_validation_calls_godot_import_before_l0(tmp_path, monkeypatch):
                         lambda root, binary="godot", changed_files=None:
                             (calls.append("import"), (None, False))[1])
     monkeypatch.setattr(validation, "run_l0",
-                        lambda root, scenes, binary="godot": (calls.append("l0"), (True, []))[1])
+                        lambda root, scenes, binary="godot", excluded_prefixes=validation.DEFAULT_EXCLUDED_PREFIXES:
+                            (calls.append("l0"), (True, []))[1])
     monkeypatch.setattr(validation, "run_l1",
-                        lambda root, changed: (True, []))
+                        lambda root, changed, excluded_prefixes=validation.DEFAULT_EXCLUDED_PREFIXES: (True, []))
     result = run_validation(tmp_path, ["scenes/x.tscn"], {})
     assert calls == ["import", "l0"]
     assert result.l0_pass and result.l1_pass
@@ -237,8 +238,12 @@ def test_run_validation_fails_gate_on_import_error(tmp_path, monkeypatch):
                         lambda root, binary="godot", changed_files=None:
                             ("godot --import exited 1: boom", False))
     monkeypatch.setattr(validation, "run_l0",
-                        lambda root, scenes, binary="godot": (True, []))
-    monkeypatch.setattr(validation, "run_l1", lambda root, changed: (True, []))
+                        lambda root, scenes, binary="godot", excluded_prefixes=validation.DEFAULT_EXCLUDED_PREFIXES: (True, []))
+    monkeypatch.setattr(
+        validation,
+        "run_l1",
+        lambda root, changed, excluded_prefixes=validation.DEFAULT_EXCLUDED_PREFIXES: (True, []),
+    )
     result = run_validation(tmp_path, ["scenes/x.tscn"], {})
     assert result.l0_pass is False
     assert any("import:" in d for d in result.l0_details)
@@ -332,7 +337,15 @@ def test_run_validation_records_import_skipped(tmp_path, monkeypatch):
     monkeypatch.setattr(validation.subprocess, "run",
                         lambda *a, **k: (_ for _ in ()).throw(
                             AssertionError("import should have been skipped")))
-    monkeypatch.setattr(validation, "run_l0", lambda root, scenes, binary="godot": (True, []))
-    monkeypatch.setattr(validation, "run_l1", lambda root, changed: (True, []))
+    monkeypatch.setattr(
+        validation,
+        "run_l0",
+        lambda root, scenes, binary="godot", excluded_prefixes=validation.DEFAULT_EXCLUDED_PREFIXES: (True, []),
+    )
+    monkeypatch.setattr(
+        validation,
+        "run_l1",
+        lambda root, changed, excluded_prefixes=validation.DEFAULT_EXCLUDED_PREFIXES: (True, []),
+    )
     result = run_validation(tmp_path, ["player.gd"], {})
     assert result.timings["import_skipped"] is True

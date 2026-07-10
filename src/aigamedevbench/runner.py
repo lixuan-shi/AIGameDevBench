@@ -4,6 +4,7 @@ import shutil
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Callable
 
 from aigamedevbench.driver import HarnessDriver
 from aigamedevbench.result import VerifierResult
@@ -83,7 +84,9 @@ class RunResult:
 
 @contextmanager
 def _workspace_for(repo_root: Path | None, testcase: Testcase,
-                   workspace_root: Path | str | None = None):
+                   workspace_root: Path | str | None = None,
+                   workspace_name: str | None = None,
+                   keep_workspace: bool = False):
     if testcase.source_kind == "folder":
         # A folder-type case normally carries its own baseline/ dir. When it names
         # a shared `snapshot`, the baseline instead comes from
@@ -102,33 +105,56 @@ def _workspace_for(repo_root: Path | None, testcase: Testcase,
                     f"--testcases-dir {testcase.dir.parent}")
         else:
             baseline_dir = testcase.dir / "baseline"
-        with folder_workspace(baseline_dir, workspace_root) as ws:
+        with folder_workspace(
+            baseline_dir,
+            workspace_root,
+            workspace_name=workspace_name,
+            keep_workspace=keep_workspace,
+        ) as ws:
             yield ws
     else:
         source_repo = Path(testcase.source_repo) if testcase.source_repo else repo_root
         if source_repo is None:
             raise ValueError(f"git-type testcase '{testcase.id}' requires a repo root")
-        with isolated_workspace(source_repo, testcase.baseline_ref, workspace_root) as ws:
+        with isolated_workspace(
+            source_repo,
+            testcase.baseline_ref,
+            workspace_root,
+            workspace_name=workspace_name,
+            keep_workspace=keep_workspace,
+        ) as ws:
             yield ws
 
 
 def run_testcase(repo_root: Path | None, testcase: Testcase, driver: HarnessDriver,
                  harness_id: str, config: dict | None = None,
                  workspace_root: Path | str | None = None,
-                 artifacts_dir: Path | str | None = None) -> RunResult:
+                 artifacts_dir: Path | str | None = None,
+                 workspace_name: str | None = None,
+                 keep_workspace: bool = False,
+                 on_state: Callable[[str], None] | None = None) -> RunResult:
     config = config or {}
     run_start = time.perf_counter()
-    with _workspace_for(repo_root, testcase, workspace_root) as workspace:
+    with _workspace_for(
+        repo_root,
+        testcase,
+        workspace_root,
+        workspace_name=workspace_name,
+        keep_workspace=keep_workspace,
+    ) as workspace:
         driver.run(testcase.task, workspace)
+        if on_state is not None:
+            on_state("verifying")
         # Capture the driver's outcome immediately (before validation) so it
         # travels on the result — safe under parallelism, unlike reading
         # driver.last_outcome from the CLI after the fact. noop/patch have none.
         harness_outcome = dict(getattr(driver, "last_outcome", None) or {})
-        # A command harness that timed out / stalled / blocked / exited non-zero
-        # is a harness_error regardless of what the (empty) diff implies.
+        # A command harness that timed out / stalled / blocked / hung / exited
+        # non-zero is a harness_error regardless of what the (empty) diff implies.
         harness_failed = bool(
             harness_outcome.get("timed_out") or harness_outcome.get("stalled")
             or harness_outcome.get("blocked_on_approval")
+            or harness_outcome.get("completed_but_hung")
             or (harness_outcome.get("exit_code", 0) not in (0, None)))
 
         changed_files = _list_changed(workspace)

@@ -1,0 +1,23 @@
+id: filtered30-smoke
+description: Smoke experiment for factorial runs over the AIGameDevBench filtered testcase set.
+test_set_file: testsets.yaml
+harness_file: harnesses.yaml
+
+cells:
+  - id: baseline_filtered_smoke
+    model: smoke-model
+    agent_cli: patch
+    orchestration:
+      id: single-agent
+      source_type: builtin
+    task_set: smoke_2
+    harness: gd-baseline
+
+  - id: skill_filtered_smoke
+    model: smoke-model
+    agent_cli: patch
+    orchestration:
+      id: single-agent
+      source_type: builtin
+    task_set: smoke_2
+    harness: skill-only
