@@ -1,0 +1,669 @@
+diff --git a/Assets/Sprites/Blocks/ConveyorBelt.json b/Assets/Sprites/Blocks/ConveyorBelt.json
+index f0a52d4..25ba13d 100644
+--- a/Assets/Sprites/Blocks/ConveyorBelt.json
++++ b/Assets/Sprites/Blocks/ConveyorBelt.json
+@@ -1,116 +1,4 @@
+ {
+-	"animations": {
+-		"default": {
+-			"Tile:0": {
+-				"frames": [
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					}
+-				],
+-				"mode": 0.0,
+-				"speed": 20.0
+-			},
+-			"Tile:1": {
+-				"frames": [
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					}
+-				],
+-				"mode": 0.0,
+-				"speed": 20.0
+-			},
+-			"Tile:2": {
+-				"frames": [
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					}
+-				],
+-				"mode": 0.0,
+-				"speed": 20.0
+-			},
+-			"Tile:3": {
+-				"frames": [
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					}
+-				],
+-				"mode": 0.0,
+-				"speed": 20.0
+-			},
+-			"Tile:4": {
+-				"frames": [
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					}
+-				],
+-				"mode": 0.0,
+-				"speed": 20.0
+-			},
+-			"Tile:5": {
+-				"frames": [
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					}
+-				],
+-				"mode": 0.0,
+-				"speed": 20.0
+-			}
+-		}
+-	},
+ 	"variations": {
+ 		"SMB1": {
+ 			"source": "ConveyorBelt.png"
+diff --git a/Assets/Sprites/Blocks/OnOffConveyor.json b/Assets/Sprites/Blocks/OnOffConveyor.json
+index c5706e0..f99e8f5 100644
+--- a/Assets/Sprites/Blocks/OnOffConveyor.json
++++ b/Assets/Sprites/Blocks/OnOffConveyor.json
+@@ -1,116 +1,4 @@
+ {
+-	"animations": {
+-		"default": {
+-			"Tile:0": {
+-				"frames": [
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					}
+-				],
+-				"mode": 0.0,
+-				"speed": 30.0
+-			},
+-			"Tile:1": {
+-				"frames": [
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					}
+-				],
+-				"mode": 0.0,
+-				"speed": 30.0
+-			},
+-			"Tile:2": {
+-				"frames": [
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					}
+-				],
+-				"mode": 0.0,
+-				"speed": 30.0
+-			},
+-			"Tile:3": {
+-				"frames": [
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					}
+-				],
+-				"mode": 0.0,
+-				"speed": 30.0
+-			},
+-			"Tile:4": {
+-				"frames": [
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					}
+-				],
+-				"mode": 0.0,
+-				"speed": 30.0
+-			},
+-			"Tile:5": {
+-				"frames": [
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					},
+-					{
+-						"duration": 1.0
+-					}
+-				],
+-				"mode": 0.0,
+-				"speed": 30.0
+-			}
+-		}
+-	},
+ 	"variations": {
+ 		"SMB1": {
+ 			"source": "OnOffConveyorBelt.png"
+diff --git a/Assets/Sprites/Tilesets/Liquid.json b/Assets/Sprites/Tilesets/Liquid.json
+index 0f6843d..e268e2d 100644
+--- a/Assets/Sprites/Tilesets/Liquid.json
++++ b/Assets/Sprites/Tilesets/Liquid.json
+@@ -1,68 +1,4 @@
+ {
+-	"animations": {
+-		"default": {
+-			"Tile:0": {
+-				"frames": [
+-					{"duration": 1.0},
+-					{"duration": 1.0},
+-					{"duration": 1.0},
+-					{"duration": 1.0}
+-				],
+-				"mode": 0,
+-				"speed": 8.0
+-			},
+-			"Tile:1": {
+-				"frames": [{"duration": 1.0}],
+-				"mode": 0,
+-				"speed": 1.0
+-			},
+-			"Tile:2": {
+-				"frames": [
+-					{"duration": 1.0},
+-					{"duration": 1.0},
+-					{"duration": 1.0},
+-					{"duration": 1.0}
+-				],
+-				"mode": 0,
+-				"speed": 8.0
+-			},
+-			"Tile:3": {
+-				"frames": [{"duration": 1.0}],
+-				"mode": 0,
+-				"speed": 1.0
+-			},
+-			"Tile:4": {
+-				"frames": [
+-					{"duration": 1.0},
+-					{"duration": 1.0},
+-					{"duration": 1.0},
+-					{"duration": 1.0}
+-				],
+-				"mode": 0,
+-				"speed": 8.0
+-			},
+-			"Tile:5": {
+-				"frames": [{"duration": 1.0}],
+-				"mode": 0,
+-				"speed": 1.0
+-			},
+-			"Tile:6": {
+-				"frames": [
+-					{"duration": 1.0},
+-					{"duration": 1.0},
+-					{"duration": 1.0},
+-					{"duration": 1.0}
+-				],
+-				"mode": 0,
+-				"speed": 8.0
+-			},
+-			"Tile:7": {
+-				"frames": [{"duration": 1.0}],
+-				"mode": 0,
+-				"speed": 1.0
+-			}
+-		}
+-	},
+ 	"variations": {
+ 		"default": {
+ 			"Day": {
+diff --git a/Scenes/Levels/SMBS/World8/8-2b.tscn b/Scenes/Levels/SMBS/World8/8-2b.tscn
+index a602e2b..16c85fa 100644
+--- a/Scenes/Levels/SMBS/World8/8-2b.tscn
++++ b/Scenes/Levels/SMBS/World8/8-2b.tscn
+@@ -1178,10 +1178,9 @@ show_behind_parent = true
+ tile_map_data = PackedByteArray("AABoAPz/AAAHABQAAABoAP3/AAAHABQAAABoAP7/AAAHABQAAABoAP//AAAHABQAAABpAPz/AAAHABQAAABpAP3/AAAHABQAAABpAP7/AAAHABQAAABpAP//AAAHABQAAABsAPz/AAAHABQAAABsAP3/AAAHABQAAABsAP7/AAAHABQAAABsAP//AAAHABQAAABtAPz/AAAHABQAAABtAP3/AAAHABQAAABtAP7/AAAHABQAAABtAP//AAAHABQAAABwAPz/AAAHABQAAABwAP3/AAAHABQAAABwAP7/AAAHABQAAABwAP//AAAHABQAAABxAPz/AAAHABQAAABxAP3/AAAHABQAAABxAP7/AAAHABQAAABxAP//AAAHABQAAABsAPL/AAAHABQAAABsAPP/AAAHABQAAABsAPT/AAAHABQAAABsAPX/AAAHABQAAABtAPL/AAAHABQAAABtAPP/AAAHABQAAABtAPT/AAAHABQAAABtAPX/AAAHABQAAAA=")
+ tile_set = SubResource("TileSet_grnkn")
+ 
+-[node name="TilesetTextureSetter" type="Node" parent="Tiles2/BG" node_paths=PackedStringArray("tile_map", "resource_setter")]
++[node name="TilesetTextureSetter" type="Node" parent="Tiles2/BG" node_paths=PackedStringArray("tile_map")]
+ script = ExtResource("42_pagxn")
+ tile_map = NodePath("..")
+-resource_setter = NodePath("ResourceSetterNew")
+ metadata/_custom_type_script = "uid://73oviwf6bbys"
+ 
+ [node name="ResourceSetterNew" type="Node" parent="Tiles2/BG/TilesetTextureSetter" node_paths=PackedStringArray("node_to_affect")]
+@@ -1193,25 +1192,22 @@ resource_json = ExtResource("44_i1bin")
+ metadata/_custom_type_script = "uid://cbal8ms2oe1ik"
+ 
+ [connection signal="collected" from="Tiles/Coin" to="Tiles/Coin/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@24600" to="Tiles/@Node2D@24600/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@97589" to="Tiles/@Node2D@97589/LevelPersistance" method="set_as_active"]
+ [connection signal="block_destroyed" from="Tiles/BrickBlock" to="Tiles/BrickBlock/LevelPersistance" method="set_as_active_2"]
+ [connection signal="block_emptied" from="Tiles/BrickBlock" to="Tiles/BrickBlock/LevelPersistance" method="set_as_active"]
+-[connection signal="item_changed" from="Tiles/BrickBlock" to="Tiles/BrickBlock" method="check_brick_empty"]
+ [connection signal="player_block_hit" from="Tiles/BrickBlock" to="Tiles/BrickBlock" method="on_block_hit"]
+ [connection signal="player_block_hit" from="Tiles/BrickBlock" to="Tiles/BrickBlock/BlockAnimations" method="bounce_block" unbinds=1]
+ [connection signal="shell_block_hit" from="Tiles/BrickBlock" to="Tiles/BrickBlock" method="on_shell_block_hit"]
+ [connection signal="shell_block_hit" from="Tiles/BrickBlock" to="Tiles/BrickBlock/BlockAnimations" method="bounce_block" unbinds=1]
+-[connection signal="block_destroyed" from="Tiles/@AnimatableBody2D@24601" to="Tiles/@AnimatableBody2D@24601/LevelPersistance" method="set_as_active_2"]
+-[connection signal="block_emptied" from="Tiles/@AnimatableBody2D@24601" to="Tiles/@AnimatableBody2D@24601/LevelPersistance" method="set_as_active"]
+-[connection signal="item_changed" from="Tiles/@AnimatableBody2D@24601" to="Tiles/@AnimatableBody2D@24601" method="check_brick_empty"]
+-[connection signal="player_block_hit" from="Tiles/@AnimatableBody2D@24601" to="Tiles/@AnimatableBody2D@24601" method="on_block_hit"]
+-[connection signal="player_block_hit" from="Tiles/@AnimatableBody2D@24601" to="Tiles/@AnimatableBody2D@24601/BlockAnimations" method="bounce_block" unbinds=1]
+-[connection signal="shell_block_hit" from="Tiles/@AnimatableBody2D@24601" to="Tiles/@AnimatableBody2D@24601" method="on_shell_block_hit"]
+-[connection signal="shell_block_hit" from="Tiles/@AnimatableBody2D@24601" to="Tiles/@AnimatableBody2D@24601/BlockAnimations" method="bounce_block" unbinds=1]
+-[connection signal="block_destroyed" from="Tiles/@AnimatableBody2D@24602" to="Tiles/@AnimatableBody2D@24602/LevelPersistance" method="set_as_active_2"]
+-[connection signal="block_emptied" from="Tiles/@AnimatableBody2D@24602" to="Tiles/@AnimatableBody2D@24602/LevelPersistance" method="set_as_active"]
+-[connection signal="item_changed" from="Tiles/@AnimatableBody2D@24602" to="Tiles/@AnimatableBody2D@24602" method="check_brick_empty"]
+-[connection signal="player_block_hit" from="Tiles/@AnimatableBody2D@24602" to="Tiles/@AnimatableBody2D@24602" method="on_block_hit"]
+-[connection signal="player_block_hit" from="Tiles/@AnimatableBody2D@24602" to="Tiles/@AnimatableBody2D@24602/BlockAnimations" method="bounce_block" unbinds=1]
+-[connection signal="shell_block_hit" from="Tiles/@AnimatableBody2D@24602" to="Tiles/@AnimatableBody2D@24602" method="on_shell_block_hit"]
+-[connection signal="shell_block_hit" from="Tiles/@AnimatableBody2D@24602" to="Tiles/@AnimatableBody2D@24602/BlockAnimations" method="bounce_block" unbinds=1]
++[connection signal="block_destroyed" from="Tiles/@AnimatableBody2D@97590" to="Tiles/@AnimatableBody2D@97590/LevelPersistance" method="set_as_active_2"]
++[connection signal="block_emptied" from="Tiles/@AnimatableBody2D@97590" to="Tiles/@AnimatableBody2D@97590/LevelPersistance" method="set_as_active"]
++[connection signal="player_block_hit" from="Tiles/@AnimatableBody2D@97590" to="Tiles/@AnimatableBody2D@97590" method="on_block_hit"]
++[connection signal="player_block_hit" from="Tiles/@AnimatableBody2D@97590" to="Tiles/@AnimatableBody2D@97590/BlockAnimations" method="bounce_block" unbinds=1]
++[connection signal="shell_block_hit" from="Tiles/@AnimatableBody2D@97590" to="Tiles/@AnimatableBody2D@97590" method="on_shell_block_hit"]
++[connection signal="shell_block_hit" from="Tiles/@AnimatableBody2D@97590" to="Tiles/@AnimatableBody2D@97590/BlockAnimations" method="bounce_block" unbinds=1]
++[connection signal="block_destroyed" from="Tiles/@AnimatableBody2D@97591" to="Tiles/@AnimatableBody2D@97591/LevelPersistance" method="set_as_active_2"]
++[connection signal="block_emptied" from="Tiles/@AnimatableBody2D@97591" to="Tiles/@AnimatableBody2D@97591/LevelPersistance" method="set_as_active"]
++[connection signal="player_block_hit" from="Tiles/@AnimatableBody2D@97591" to="Tiles/@AnimatableBody2D@97591" method="on_block_hit"]
++[connection signal="player_block_hit" from="Tiles/@AnimatableBody2D@97591" to="Tiles/@AnimatableBody2D@97591/BlockAnimations" method="bounce_block" unbinds=1]
++[connection signal="shell_block_hit" from="Tiles/@AnimatableBody2D@97591" to="Tiles/@AnimatableBody2D@97591" method="on_shell_block_hit"]
++[connection signal="shell_block_hit" from="Tiles/@AnimatableBody2D@97591" to="Tiles/@AnimatableBody2D@97591/BlockAnimations" method="bounce_block" unbinds=1]
+diff --git a/Scenes/Parts/DecoTiles.tscn b/Scenes/Parts/DecoTiles.tscn
+index 015a131..010de20 100644
+--- a/Scenes/Parts/DecoTiles.tscn
++++ b/Scenes/Parts/DecoTiles.tscn
+@@ -26,10 +26,9 @@ visibility_layer = 2
+ z_index = -10
+ tile_set = SubResource("TileSet_b50pv")
+ 
+-[node name="TilesetTextureSetter" type="Node" parent="." node_paths=PackedStringArray("tile_map", "resource_setter")]
++[node name="TilesetTextureSetter" type="Node" parent="." node_paths=PackedStringArray("tile_map")]
+ script = ExtResource("3_mv6fy")
+ tile_map = NodePath("..")
+-resource_setter = NodePath("../ResourceSetterNew")
+ metadata/_custom_type_script = "uid://73oviwf6bbys"
+ 
+ [node name="ResourceSetterNew" type="Node" parent="." node_paths=PackedStringArray("node_to_affect")]
+diff --git a/Scenes/Parts/SmallCastleVisual.tscn b/Scenes/Parts/SmallCastleVisual.tscn
+index 1fca45a..d175c95 100644
+--- a/Scenes/Parts/SmallCastleVisual.tscn
++++ b/Scenes/Parts/SmallCastleVisual.tscn
+@@ -45,10 +45,9 @@ position = Vector2(-8, 8)
+ tile_map_data = PackedByteArray("AAD+////AAAGAAcAAAD+/wAAAAAHAAcAAAD+/wEAAAAHAAcAAAD///7/AAADAAoAAAD/////AAAFAAoAAAD//wAAAAAHAAcAAAD//wEAAAAHAAcAAAAAAP7/AAAHAAcAAAAAAP//AAAFAAoAAAAAAAAAAAAGAAoAAAABAP7/AAAEAAoAAAABAP//AAAFAAoAAAABAAAAAAAHAAcAAAABAAEAAAAHAAcAAAACAP//AAAGAAcAAAACAAAAAAAHAAcAAAACAAEAAAAHAAcAAAD///3/AAAGAAcAAAAAAP3/AAAGAAcAAAABAP3/AAAGAAcAAAA=")
+ tile_set = SubResource("TileSet_0n6c4")
+ 
+-[node name="TilesetTextureSetter" type="Node" parent="Tiles" node_paths=PackedStringArray("tile_map", "resource_setter")]
++[node name="TilesetTextureSetter" type="Node" parent="Tiles" node_paths=PackedStringArray("tile_map")]
+ script = ExtResource("2_ulvy5")
+ tile_map = NodePath("..")
+-resource_setter = NodePath("ResourceSetterNew")
+ metadata/_custom_type_script = "uid://73oviwf6bbys"
+ 
+ [node name="ResourceSetterNew" type="Node" parent="Tiles/TilesetTextureSetter" node_paths=PackedStringArray("node_to_affect")]
+@@ -64,10 +63,9 @@ show_behind_parent = true
+ tile_map_data = PackedByteArray("AAAAAAAAAAAHABQAAAAAAAEAAAAHABQAAAAAAAIAAAAHABQAAAAAAAMAAAAHABQAAAABAAAAAAAHABQAAAABAAEAAAAHABQAAAABAAIAAAAHABQAAAABAAMAAAAHABQAAAA=")
+ tile_set = SubResource("TileSet_vjwyw")
+ 
+-[node name="TilesetTextureSetter" type="Node" parent="Tiles/BG" node_paths=PackedStringArray("tile_map", "resource_setter")]
++[node name="TilesetTextureSetter" type="Node" parent="Tiles/BG" node_paths=PackedStringArray("tile_map")]
+ script = ExtResource("2_ulvy5")
+ tile_map = NodePath("..")
+-resource_setter = NodePath("ResourceSetterNew")
+ metadata/_custom_type_script = "uid://73oviwf6bbys"
+ 
+ [node name="ResourceSetterNew" type="Node" parent="Tiles/BG/TilesetTextureSetter" node_paths=PackedStringArray("node_to_affect")]
+diff --git a/Scenes/Parts/Tiles.tscn b/Scenes/Parts/Tiles.tscn
+index e62afec..5630cfb 100644
+--- a/Scenes/Parts/Tiles.tscn
++++ b/Scenes/Parts/Tiles.tscn
+@@ -1791,11 +1791,10 @@ z_index = -1
+ tile_set = SubResource("TileSet_g81ue")
+ physics_quadrant_size = 2
+ 
+-[node name="MainTilesetTextureSetter" type="Node" parent="." node_paths=PackedStringArray("tile_map", "resource_setter")]
++[node name="MainTilesetTextureSetter" type="Node" parent="." node_paths=PackedStringArray("tile_map")]
+ script = ExtResource("24_5xtcs")
+ tile_map = NodePath("..")
+ texture = ExtResource("30_vdakf")
+-resource_setter = NodePath("ResourceSetterNew")
+ 
+ [node name="ResourceSetterNew" type="Node" parent="MainTilesetTextureSetter" node_paths=PackedStringArray("node_to_affect")]
+ script = ExtResource("22_ls3wh")
+@@ -1805,11 +1804,10 @@ mode = 1
+ resource_json = ExtResource("23_vt0hv")
+ metadata/_custom_type_script = "uid://cbal8ms2oe1ik"
+ 
+-[node name="LiquidTextureSetter" type="Node" parent="." node_paths=PackedStringArray("tile_map", "resource_setter")]
++[node name="LiquidTextureSetter" type="Node" parent="." node_paths=PackedStringArray("tile_map")]
+ script = ExtResource("24_5xtcs")
+ tile_map = NodePath("..")
+ atlas_id = 2
+-resource_setter = NodePath("ResourceSetterNew")
+ 
+ [node name="ResourceSetterNew" type="Node" parent="LiquidTextureSetter" node_paths=PackedStringArray("node_to_affect")]
+ script = ExtResource("22_ls3wh")
+@@ -1819,11 +1817,10 @@ mode = 1
+ resource_json = ExtResource("28_ls3wh")
+ metadata/_custom_type_script = "uid://cbal8ms2oe1ik"
+ 
+-[node name="DecoTileTextureSetter" type="Node" parent="." node_paths=PackedStringArray("tile_map", "resource_setter")]
++[node name="DecoTileTextureSetter" type="Node" parent="." node_paths=PackedStringArray("tile_map")]
+ script = ExtResource("24_5xtcs")
+ tile_map = NodePath("..")
+ atlas_id = 3
+-resource_setter = NodePath("ResourceSetterNew")
+ 
+ [node name="ResourceSetterNew" type="Node" parent="DecoTileTextureSetter" node_paths=PackedStringArray("node_to_affect")]
+ script = ExtResource("22_ls3wh")
+@@ -1833,12 +1830,11 @@ mode = 1
+ resource_json = ExtResource("27_b6qiv")
+ metadata/_custom_type_script = "uid://cbal8ms2oe1ik"
+ 
+-[node name="ConveyorTextureSetter" type="Node" parent="." node_paths=PackedStringArray("tile_map", "resource_setter")]
++[node name="ConveyorTextureSetter" type="Node" parent="." node_paths=PackedStringArray("tile_map")]
+ script = ExtResource("24_5xtcs")
+ tile_map = NodePath("..")
+ texture = ExtResource("24_vt0hv")
+ atlas_id = 4
+-resource_setter = NodePath("ResourceSetterNew")
+ 
+ [node name="ResourceSetterNew" type="Node" parent="ConveyorTextureSetter" node_paths=PackedStringArray("node_to_affect")]
+ script = ExtResource("22_ls3wh")
+@@ -1848,12 +1844,11 @@ mode = 1
+ resource_json = ExtResource("33_ra18v")
+ metadata/_custom_type_script = "uid://cbal8ms2oe1ik"
+ 
+-[node name="OnOffConveyorTextureSetter" type="Node" parent="." node_paths=PackedStringArray("tile_map", "resource_setter")]
++[node name="OnOffConveyorTextureSetter" type="Node" parent="." node_paths=PackedStringArray("tile_map")]
+ script = ExtResource("24_5xtcs")
+ tile_map = NodePath("..")
+ texture = ExtResource("25_vt0hv")
+ atlas_id = 5
+-resource_setter = NodePath("ResourceSetterNew")
+ 
+ [node name="ResourceSetterNew" type="Node" parent="OnOffConveyorTextureSetter" node_paths=PackedStringArray("node_to_affect")]
+ script = ExtResource("22_ls3wh")
+diff --git a/Scenes/Prefabs/DecoTiles/Deco1.tscn b/Scenes/Prefabs/DecoTiles/Deco1.tscn
+index 0024175..3ca0757 100644
+--- a/Scenes/Prefabs/DecoTiles/Deco1.tscn
++++ b/Scenes/Prefabs/DecoTiles/Deco1.tscn
+@@ -28,10 +28,9 @@ tile_map_data = PackedByteArray("AAD7////AAAAAAAAAAD8////AAABAAAAAAD9////AAABAAA
+ tile_set = SubResource("TileSet_b50pv")
+ script = ExtResource("2_j65d4")
+ 
+-[node name="TilesetTextureSetter" type="Node" parent="." node_paths=PackedStringArray("tile_map", "resource_setter")]
++[node name="TilesetTextureSetter" type="Node" parent="." node_paths=PackedStringArray("tile_map")]
+ script = ExtResource("3_qfs4k")
+ tile_map = NodePath("..")
+-resource_setter = NodePath("../ResourceSetter")
+ metadata/_custom_type_script = "uid://73oviwf6bbys"
+ 
+ [node name="ResourceSetter" type="Node" parent="." node_paths=PackedStringArray("node_to_affect", "property_node")]
+diff --git a/Scenes/Prefabs/DecoTiles/Deco2.tscn b/Scenes/Prefabs/DecoTiles/Deco2.tscn
+index bc22ad1..7db579c 100644
+--- a/Scenes/Prefabs/DecoTiles/Deco2.tscn
++++ b/Scenes/Prefabs/DecoTiles/Deco2.tscn
+@@ -26,10 +26,9 @@ z_index = -10
+ tile_map_data = PackedByteArray("AAD+////AAABAAEAAAD/////AAABAAEAAAAAAP//AAABAAEAAAABAP//AAABAAEAAAAZAP//AAABAAEAAAAuAP//AAABAAEAAAAvAP//AAABAAEAAAAwAP//AAABAAEAAAAxAP//AAABAAEAAABeAP//AAABAAEAAABfAP//AAABAAEAAABgAP//AAABAAEAAABhAP//AAABAAEAAAB2AP//AAABAAEAAAB3AP//AAABAAEAAACOAP//AAABAAEAAACPAP//AAABAAEAAACQAP//AAABAAEAAACRAP//AAABAAEAAACmAP//AAABAAEAAADBAP//AAABAAEAAAD7//7/AAADAAAAAAD7////AAADAAEAAAAHAP7/AAADAAAAAAAHAP//AAADAAEAAAAIAP7/AAADAAAAAAAIAP//AAADAAEAAAAYAP7/AAADAAAAAAAYAP//AAADAAEAAAArAP7/AAADAAAAAAArAP//AAADAAEAAAA3AP7/AAADAAAAAAA3AP//AAADAAEAAAA4AP7/AAADAAAAAAA4AP//AAADAAEAAABbAP7/AAADAAAAAABbAP//AAADAAEAAABnAP7/AAADAAAAAABnAP//AAADAAEAAABoAP7/AAADAAAAAABoAP//AAADAAEAAAB4AP7/AAADAAAAAACLAP7/AAADAAAAAACLAP//AAADAAEAAACXAP7/AAADAAAAAACXAP//AAADAAEAAACYAP7/AAADAAAAAACYAP//AAADAAEAAAC7AP7/AAADAAAAAAC7AP//AAADAAEAAACVAP//AAAAAAEAAACVAP3/AAAEAAAAAACVAP7/AAAEAAEAAACNAP3/AAAEAAAAAACNAP7/AAAEAAEAAACNAP//AAAAAAEAAABlAP3/AAAEAAAAAABlAP7/AAAEAAEAAABlAP//AAAAAAEAAABdAP3/AAAEAAAAAABdAP7/AAAEAAEAAABdAP//AAAAAAEAAABLAP3/AAAEAAAAAABLAP7/AAAEAAEAAABLAP//AAAAAAEAAAA1AP3/AAAEAAAAAAA1AP7/AAAEAAEAAAA1AP//AAAAAAEAAAAtAP3/AAAEAAAAAAAtAP7/AAAEAAEAAAAtAP//AAAAAAEAAAAbAP3/AAAEAAAAAAAbAP7/AAAEAAEAAAAbAP//AAAAAAEAAAAFAP3/AAAEAAAAAAAFAP7/AAAEAAEAAAAFAP//AAAAAAEAAAD9//3/AAAEAAAAAAD9//7/AAAEAAEAAAD9////AAAAAAEAAAB4AP//AAADAAEAAAA=")
+ tile_set = SubResource("TileSet_b50pv")
+ 
+-[node name="TilesetTextureSetter" type="Node" parent="." node_paths=PackedStringArray("tile_map", "resource_setter")]
++[node name="TilesetTextureSetter" type="Node" parent="." node_paths=PackedStringArray("tile_map")]
+ script = ExtResource("2_fb4vb")
+ tile_map = NodePath("..")
+-resource_setter = NodePath("../ResourceSetter")
+ metadata/_custom_type_script = "uid://73oviwf6bbys"
+ 
+ [node name="ResourceSetter" type="Node" parent="." node_paths=PackedStringArray("node_to_affect")]
+diff --git a/Scenes/Prefabs/LevelObjects/EndFinalCastle.tscn b/Scenes/Prefabs/LevelObjects/EndFinalCastle.tscn
+index 830aa15..9dafc8c 100644
+--- a/Scenes/Prefabs/LevelObjects/EndFinalCastle.tscn
++++ b/Scenes/Prefabs/LevelObjects/EndFinalCastle.tscn
+@@ -153,10 +153,9 @@ position = Vector2(-8, -32)
+ tile_map_data = PackedByteArray("AAABAAAAAAANABQAAAAFAAAAAAANABQAAAAJAAAAAAANABQAAAACAAAAAAAOAA4AAAACAAEAAAAOAA8AAAADAAAAAAAPAA4AAAADAAEAAAAPAA8AAAACAAIAAAAOAA4AAAACAAMAAAAOAA8AAAADAAIAAAAPAA4AAAADAAMAAAAPAA8AAAAGAAAAAAAOAA4AAAAGAAEAAAAOAA8AAAAHAAAAAAAPAA4AAAAHAAEAAAAPAA8AAAAGAAIAAAAOAA4AAAAGAAMAAAAOAA8AAAAHAAIAAAAPAA4AAAAHAAMAAAAPAA8AAAAEAAAAAAAMABQAAAAIAAAAAAAMABQAAAABAP7/AAAPAA4AAAABAP//AAAPAA8AAAACAP7/AAAOAA4AAAACAP//AAAOAA8AAAADAP7/AAAPAA4AAAADAP//AAAPAA8AAAAEAP7/AAAOAA4AAAAEAP//AAAOAA8AAAAFAP7/AAAPAA4AAAAFAP//AAAPAA8AAAAGAP7/AAAOAA4AAAAGAP//AAAOAA8AAAAHAP7/AAAPAA4AAAAHAP//AAAPAA8AAAAIAP7/AAAOAA4AAAAIAP//AAAOAA8AAAAJAP7/AAAPAA4AAAAJAP//AAAPAA8AAAA=")
+ tile_set = SubResource("TileSet_kd4m5")
+ 
+-[node name="TilesetTextureSetter" type="Node" parent="Overlay" node_paths=PackedStringArray("tile_map", "resource_setter")]
++[node name="TilesetTextureSetter" type="Node" parent="Overlay" node_paths=PackedStringArray("tile_map")]
+ script = ExtResource("8_akqko")
+ tile_map = NodePath("..")
+-resource_setter = NodePath("ResourceSetter")
+ metadata/_custom_type_script = "uid://73oviwf6bbys"
+ 
+ [node name="ResourceSetter" type="Node" parent="Overlay/TilesetTextureSetter" node_paths=PackedStringArray("node_to_affect")]
+@@ -181,10 +180,9 @@ show_behind_parent = true
+ tile_map_data = PackedByteArray("AAAEAAAAAAAHABQAAAAEAAEAAAAHABQAAAAEAAIAAAAHABQAAAAEAAMAAAAHABQAAAAFAAAAAAAHABQAAAAFAAEAAAAHABQAAAAFAAIAAAAHABQAAAAFAAMAAAAHABQAAAAIAAAAAAAHABQAAAAIAAEAAAAHABQAAAAIAAIAAAAHABQAAAAIAAMAAAAHABQAAAAJAAAAAAAHABQAAAAJAAEAAAAHABQAAAAJAAIAAAAHABQAAAAJAAMAAAAHABQAAAA=")
+ tile_set = SubResource("TileSet_kd4m5")
+ 
+-[node name="TilesetTextureSetter" type="Node" parent="Overlay/Overlay2" node_paths=PackedStringArray("tile_map", "resource_setter")]
++[node name="TilesetTextureSetter" type="Node" parent="Overlay/Overlay2" node_paths=PackedStringArray("tile_map")]
+ script = ExtResource("8_akqko")
+ tile_map = NodePath("..")
+-resource_setter = NodePath("ResourceSetter")
+ metadata/_custom_type_script = "uid://73oviwf6bbys"
+ 
+ [node name="ResourceSetter" type="Node" parent="Overlay/Overlay2/TilesetTextureSetter" node_paths=PackedStringArray("node_to_affect")]
+diff --git a/Scenes/Prefabs/LevelObjects/EndSmallCastle.tscn b/Scenes/Prefabs/LevelObjects/EndSmallCastle.tscn
+index dc72da4..1e3c089 100644
+--- a/Scenes/Prefabs/LevelObjects/EndSmallCastle.tscn
++++ b/Scenes/Prefabs/LevelObjects/EndSmallCastle.tscn
+@@ -133,10 +133,9 @@ position = Vector2(-8, -32)
+ tile_map_data = PackedByteArray("AAABAAAAAAANABQAAAACAAAAAAAOAA4AAAACAAEAAAAOAA8AAAADAAAAAAAPAA4AAAADAAEAAAAPAA8AAAACAAIAAAAOAA4AAAACAAMAAAAOAA8AAAADAAIAAAAPAA4AAAADAAMAAAAPAA8AAAAEAAAAAAAOAA4AAAAEAAEAAAAOAA8AAAAFAAAAAAAPAA4AAAAFAAEAAAAPAA8AAAAEAAIAAAAOAA4AAAAEAAMAAAAOAA8AAAAFAAIAAAAPAA4AAAAFAAMAAAAPAA8AAAAAAP7/AAAKABQAAAAAAP//AAAKABUAAAABAP7/AAALABQAAAABAP//AAALABUAAAACAP7/AAAKABQAAAACAP//AAAKABUAAAADAP7/AAALABQAAAADAP//AAALABUAAAAEAP7/AAAMAA4AAAAEAP//AAAMAA8AAAAFAP7/AAANAA4AAAAFAP//AAANAA8AAAA=")
+ tile_set = SubResource("TileSet_xg4af")
+ 
+-[node name="TilesetTextureSetter" type="Node" parent="Overlay" node_paths=PackedStringArray("tile_map", "resource_setter")]
++[node name="TilesetTextureSetter" type="Node" parent="Overlay" node_paths=PackedStringArray("tile_map")]
+ script = ExtResource("8_l3xjf")
+ tile_map = NodePath("..")
+-resource_setter = NodePath("ResourceSetter")
+ metadata/_custom_type_script = "uid://73oviwf6bbys"
+ 
+ [node name="ResourceSetter" type="Node" parent="Overlay/TilesetTextureSetter" node_paths=PackedStringArray("node_to_affect")]
+diff --git a/Scripts/Classes/Blocks/BlockClass.gd b/Scripts/Classes/Blocks/BlockClass.gd
+index 2cca3bb..b35dadf 100644
+--- a/Scripts/Classes/Blocks/BlockClass.gd
++++ b/Scripts/Classes/Blocks/BlockClass.gd
+@@ -85,8 +85,6 @@ func spawn_empty_block() -> void:
+ 	add_sibling(block)
+ 	if get_parent().get_parent() is TrackRider:
+ 		get_parent().get_parent().attached_entity = block
+-	if get_parent() is TileMapLayer:
+-		get_parent().erase_cell(get_parent().local_to_map(position))
+ 	block_emptied.emit()
+ 	queue_free()
+ 
+@@ -97,6 +95,4 @@ func destroy() -> void:
+ 	var particles = destruction_particle_scene.instantiate()
+ 	particles.global_position = global_position
+ 	add_sibling(particles)
+-	if get_parent() is TileMapLayer:
+-		get_parent().erase_cell(get_parent().local_to_map(position))
+ 	queue_free()
+diff --git a/Scripts/Classes/Components/ResourceGetter.gd b/Scripts/Classes/Components/ResourceGetter.gd
+index 5678777..4063a62 100644
+--- a/Scripts/Classes/Components/ResourceGetter.gd
++++ b/Scripts/Classes/Components/ResourceGetter.gd
+@@ -54,12 +54,6 @@ func get_resource(resource: Resource) -> Resource:
+ 		send_to_cache(original_resource.resource_path, new_font)
+ 		return new_font
+ 	
+-	elif original_resource is JSON:
+-		var new_json = JSON.new()
+-		new_json.parse(FileAccess.get_file_as_string(path))
+-		send_to_cache(original_resource.resource_path, new_json)
+-		return new_json
+-	
+ 	send_to_cache(original_resource.resource_path, original_resource)
+ 
+ 	return original_resource
+diff --git a/Scripts/Classes/Components/TilesetTextureSetter.gd b/Scripts/Classes/Components/TilesetTextureSetter.gd
+index 9c574f9..4b82ef3 100644
+--- a/Scripts/Classes/Components/TilesetTextureSetter.gd
++++ b/Scripts/Classes/Components/TilesetTextureSetter.gd
+@@ -4,32 +4,14 @@ extends Node
+ @export var tile_map: TileMapLayer
+ @export var texture: Texture = null:
+ 	set(value):
+-		texture = AtlasTexture.new()
+-		texture.atlas = value
++		texture = value
+ 		texture_changed.emit()
+ 
+ signal texture_changed
+ 
+ @export var atlas_id := 0
+-@export var resource_setter: ResourceSetterNew
+-
+-@onready var resource_getter = ResourceGetter.new()
+-@onready var animation_timer = Timer.new()
+-
+-var animation_atlas: AtlasTexture
+-var animation_json: Dictionary
+-var animation_frame: int = -1
+-var animation_loop: bool
+ 
+ func _ready() -> void:
+-	animation_timer.one_shot = true
+-	animation_timer.timeout.connect(run_frame)
+-	add_child(animation_timer)
+-	# Reset Tilemaps and Tilesets
+-	if Global.level_editor == null and Global.current_game_mode != Global.GameMode.CUSTOM_LEVEL and atlas_id > 0:
+-		tile_map.tile_set = tile_map.tile_set.duplicate(true)
+-		tile_map = tile_map.duplicate()
+-	# Update Textures
+ 	update()
+ 	texture_changed.connect(update)
+ 
+@@ -38,32 +20,3 @@ func update() -> void:
+ 	var source = tile_map.tile_set.get_source(atlas_id)
+ 	if source != null:
+ 		source.texture = texture
+-		if resource_setter != null: # Handles custom animations
+-			animation_json = resource_setter.get_variation_json(resource_getter.get_resource(resource_setter.resource_json).data.get("animations", {}))
+-			if animation_json.is_empty():
+-				animation_loop = false
+-				animation_timer.stop()
+-				return
+-			elif animation_json.has("loop"): # CREATE animations and frames based on the usual SMB1R format
+-				animation_loop = animation_json.loop
+-				animation_timer.start(1.0 / animation_json.speed)
+-			else: # CREATE animations and frames based on GODOT's system
+-				for id in animation_json:
+-					if not id.begins_with("Tile:"): continue
+-					var tile_id = int(id)
+-					var coords = source.get_tile_id(tile_id)
+-					var data = animation_json[id]
+-					source.set_tile_animation_mode(coords, data.get("mode", TileSetAtlasSource.TILE_ANIMATION_MODE_DEFAULT))
+-					source.set_tile_animation_speed(coords, data.get("speed", 1.0))
+-					if not data.get("frames", []).is_empty():
+-						source.set_tile_animation_frames_count(coords, data.frames.size())
+-						for i in data.frames.size():
+-							source.set_tile_animation_frame_duration(coords, i, data.frames[i].duration)
+-
+-func run_frame() -> void:
+-	var frames = animation_json.get("frames", [])
+-	if frames.is_empty(): return
+-	animation_frame = wrapi(animation_frame + 1, 0, frames.size())
+-	var rect = Rect2(frames[animation_frame][0], frames[animation_frame][1], frames[animation_frame][2], frames[animation_frame][3])
+-	texture.region = rect
+-	if animation_loop: animation_timer.start(1.0 / animation_json.speed)

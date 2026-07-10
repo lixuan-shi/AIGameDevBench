@@ -1,0 +1,22 @@
+diff --git a/scripts/components/statssynchronizercomponent/StatsSynchronizerComponent.gd b/scripts/components/statssynchronizercomponent/StatsSynchronizerComponent.gd
+index e537eba..544672a 100644
+--- a/scripts/components/statssynchronizercomponent/StatsSynchronizerComponent.gd
++++ b/scripts/components/statssynchronizercomponent/StatsSynchronizerComponent.gd
+@@ -251,6 +251,8 @@ func calculate_experience_needed(current_level: int):
+ func add_level(amount: int):
+ 	level += amount
+ 
++	_sync_int_change(TYPE.LEVEL, level)
++
+ 
+ func add_experience(amount: int):
+ 	experience += amount
+@@ -259,6 +261,8 @@ func add_experience(amount: int):
+ 		experience -= experience_needed
+ 		add_level(1)
+ 
++	_sync_int_change(TYPE.EXPERIENCE, experience)
++
+ 
+ func apply_boost(boost: Boost):
+ 	hp_max += boost.hp_max

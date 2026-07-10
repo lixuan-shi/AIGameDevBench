@@ -1,0 +1,12 @@
+diff --git a/scripts/components/player/skillcomponent/skillcomponent.gd b/scripts/components/player/skillcomponent/skillcomponent.gd
+index d0a04be..4e8b833 100644
+--- a/scripts/components/player/skillcomponent/skillcomponent.gd
++++ b/scripts/components/player/skillcomponent/skillcomponent.gd
+@@ -130,7 +130,6 @@ func _ready() -> void:
+ 		set_process(false)
+ 
+ 		skills_changed.connect(sync_skills.bind(_target_node.peer_id))
+-		sync_skills(_target_node.peer_id)
+ 
+ 	# Client-side logic
+ 	else:

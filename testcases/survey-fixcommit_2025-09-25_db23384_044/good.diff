@@ -1,0 +1,12 @@
+diff --git a/Scripts/Parts/EndCastle.gd b/Scripts/Parts/EndCastle.gd
+index d923f21..3ece9a0 100644
+--- a/Scripts/Parts/EndCastle.gd
++++ b/Scripts/Parts/EndCastle.gd
+@@ -44,6 +44,7 @@ func _physics_process(_delta: float) -> void:
+ 		if not i.sprite.sprite_frames.has_animation("PoseDoor"): i.can_pose = false; continue
+ 		if i.can_pose and i.global_position >= global_position and i.sprite.sprite_frames.has_animation("PoseDoor"):
+ 			i.is_posing = true; i.can_pose = false
++			i.global_position = global_position
+ 			i.play_animation("PoseDoor")
+ 			i.sprite.animation_finished.connect(on_pose_finished.bind(i))
+ 			i.sprite.animation_looped.connect(on_pose_finished.bind(i))

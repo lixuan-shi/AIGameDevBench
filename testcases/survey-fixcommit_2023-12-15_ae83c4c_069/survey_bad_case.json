@@ -1,0 +1,133 @@
+{
+  "schema": "survey.bad_case.testcase.v1",
+  "testcase_id": "survey-fixcommit_2023-12-15_ae83c4c_069",
+  "source_repo": "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon",
+  "baseline_ref": "4286c062015b1f257f617cfe97923dcfa1379dcf",
+  "repro_ref": "4286c062015b1f257f617cfe97923dcfa1379dcf",
+  "bad_ref": "4286c062015b1f257f617cfe97923dcfa1379dcf",
+  "good_ref": "ae83c4cc1b41b929fd97519d9da060eab7c34355",
+  "baseline_resolution_error": null,
+  "expected": {
+    "bad_case_type": "B3",
+    "notes": "fix commit ae83c4c: Disable dialogue until issue 175 is fixed",
+    "original_l0_pass": null,
+    "original_l1_pass": null,
+    "original_l0_details": [],
+    "original_l1_details": [],
+    "original_human_intervention_ratio": 0.0,
+    "original_rounds_to_resolution": 2,
+    "must_change_one_of": [
+      "scenes/npcs/milklady/Milklady.gd"
+    ],
+    "minimum_changed_files": 1
+  },
+  "hidden_oracle": {
+    "good_ref": "ae83c4cc1b41b929fd97519d9da060eab7c34355",
+    "good_diff_file": "good.diff",
+    "good_changed_files": [
+      "scenes/npcs/milklady/Milklady.gd"
+    ],
+    "history_mining_strategy": "fix_commit_parent"
+  },
+  "bench_record": {
+    "testcase_id": "fixcommit_2023-12-15_ae83c4c_069",
+    "harness": "git-history",
+    "category": "survey:A1",
+    "l0_l1_pass": true,
+    "score": 0.0,
+    "verifier_result": {
+      "score": 0.0,
+      "status": "fail",
+      "category": "survey:A1",
+      "error": "fix commit ae83c4c: Disable dialogue until issue 175 is fixed",
+      "checks": [
+        {
+          "name": "bad_case_detected",
+          "passed": false,
+          "detail": "fix commit ae83c4c: Disable dialogue until issue 175 is fixed",
+          "expected": "none",
+          "actual": "A1"
+        },
+        {
+          "name": "human_intervention_ratio",
+          "passed": true,
+          "detail": "",
+          "expected": "<= 0.40",
+          "actual": 0.0
+        },
+        {
+          "name": "rounds_to_resolution",
+          "passed": true,
+          "detail": "",
+          "expected": "<= 4",
+          "actual": 2
+        }
+      ]
+    },
+    "diff": "",
+    "artifacts_path": null,
+    "ai_agent_context": {
+      "harness": "git-history",
+      "transcript_session_id": null,
+      "transcript_match_confidence": null,
+      "transcript_path": null,
+      "codex_session_id": null,
+      "total_tokens": null,
+      "filtered_to_commits": [
+        "ae83c4c"
+      ],
+      "filtered_turns": null,
+      "turns": []
+    },
+    "survey_session": {
+      "session_id": "fixcommit_2023-12-15_ae83c4c_069",
+      "harness": "git-history",
+      "config": {},
+      "bad_case_type": "A1",
+      "auto_detected": true,
+      "confidence": "low",
+      "notes": "fix commit ae83c4c: Disable dialogue until issue 175 is fixed",
+      "prompts": [],
+      "system_context": {
+        "source": "git-history-fix",
+        "baseline_ref": "4286c062015b1f257f617cfe97923dcfa1379dcf",
+        "bad_ref": "4286c062015b1f257f617cfe97923dcfa1379dcf",
+        "good_ref": "ae83c4cc1b41b929fd97519d9da060eab7c34355",
+        "good_commit_timestamp": "2023-12-15T08:43:47+01:00",
+        "good_changed_files": [
+          "scenes/npcs/milklady/Milklady.gd"
+        ],
+        "fix_commit_subject": "Disable dialogue until issue 175 is fixed",
+        "oracle_level": "diff_only",
+        "history_mining_strategy": "fix_commit_parent",
+        "failure_mode": "feature disabled workaround"
+      },
+      "changed_files": [
+        "scenes/npcs/milklady/Milklady.gd"
+      ],
+      "commits": [
+        "ae83c4c"
+      ],
+      "timestamps": {
+        "started": "2023-12-15T08:43:47+01:00",
+        "ended": "2023-12-15T08:43:47+01:00"
+      },
+      "verification": null,
+      "outcome": {
+        "first_pass_success": false,
+        "rounds_to_resolution": 2,
+        "ai_lines_changed": 0,
+        "human_lines_changed": 0,
+        "human_intervention_ratio": 0.0,
+        "token_cost": 0,
+        "session_duration_minutes": 0.0
+      },
+      "tag": {
+        "bad_case_type": "B3",
+        "suggested_type": "B3",
+        "confidence": "medium",
+        "root_cause": "The dialogue interaction is disabled and reverted to direct shop opening as a workaround until a separate export-breaking bug is fixed."
+      }
+    }
+  }
+}

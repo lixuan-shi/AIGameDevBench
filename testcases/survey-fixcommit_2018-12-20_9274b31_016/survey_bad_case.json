@@ -1,0 +1,137 @@
+{
+  "schema": "survey.bad_case.testcase.v1",
+  "testcase_id": "survey-fixcommit_2018-12-20_9274b31_016",
+  "source_repo": "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg",
+  "baseline_ref": "ae090fe257e962751a3b36209268b063040d0583",
+  "repro_ref": "ae090fe257e962751a3b36209268b063040d0583",
+  "bad_ref": "ae090fe257e962751a3b36209268b063040d0583",
+  "good_ref": "9274b31aadbb61421938e8e50cbb6ff742371ef6",
+  "baseline_resolution_error": null,
+  "expected": {
+    "bad_case_type": "A1",
+    "notes": "fix commit 9274b31: Fix a bug that causes skills to be learned at the wrong level.",
+    "original_l0_pass": null,
+    "original_l1_pass": null,
+    "original_l0_details": [],
+    "original_l1_details": [],
+    "original_human_intervention_ratio": 0.0,
+    "original_rounds_to_resolution": 2,
+    "must_change_one_of": [
+      "godot/combat/Rewards.gd",
+      "godot/combat/battlers/skills/Skills.tscn"
+    ],
+    "minimum_changed_files": 1
+  },
+  "hidden_oracle": {
+    "good_ref": "9274b31aadbb61421938e8e50cbb6ff742371ef6",
+    "good_diff_file": "good.diff",
+    "good_changed_files": [
+      "godot/combat/Rewards.gd",
+      "godot/combat/battlers/skills/Skills.tscn"
+    ],
+    "history_mining_strategy": "fix_commit_parent"
+  },
+  "bench_record": {
+    "testcase_id": "fixcommit_2018-12-20_9274b31_016",
+    "harness": "git-history",
+    "category": "survey:A1",
+    "l0_l1_pass": true,
+    "score": 0.0,
+    "verifier_result": {
+      "score": 0.0,
+      "status": "fail",
+      "category": "survey:A1",
+      "error": "fix commit 9274b31: Fix a bug that causes skills to be learned at the wrong level.",
+      "checks": [
+        {
+          "name": "bad_case_detected",
+          "passed": false,
+          "detail": "fix commit 9274b31: Fix a bug that causes skills to be learned at the wrong level.",
+          "expected": "none",
+          "actual": "A1"
+        },
+        {
+          "name": "human_intervention_ratio",
+          "passed": true,
+          "detail": "",
+          "expected": "<= 0.40",
+          "actual": 0.0
+        },
+        {
+          "name": "rounds_to_resolution",
+          "passed": true,
+          "detail": "",
+          "expected": "<= 4",
+          "actual": 2
+        }
+      ]
+    },
+    "diff": "",
+    "artifacts_path": null,
+    "ai_agent_context": {
+      "harness": "git-history",
+      "transcript_session_id": null,
+      "transcript_match_confidence": null,
+      "transcript_path": null,
+      "codex_session_id": null,
+      "total_tokens": null,
+      "filtered_to_commits": [
+        "9274b31"
+      ],
+      "filtered_turns": null,
+      "turns": []
+    },
+    "survey_session": {
+      "session_id": "fixcommit_2018-12-20_9274b31_016",
+      "harness": "git-history",
+      "config": {},
+      "bad_case_type": "A1",
+      "auto_detected": true,
+      "confidence": "low",
+      "notes": "fix commit 9274b31: Fix a bug that causes skills to be learned at the wrong level.",
+      "prompts": [],
+      "system_context": {
+        "source": "git-history-fix",
+        "baseline_ref": "ae090fe257e962751a3b36209268b063040d0583",
+        "bad_ref": "ae090fe257e962751a3b36209268b063040d0583",
+        "good_ref": "9274b31aadbb61421938e8e50cbb6ff742371ef6",
+        "good_commit_timestamp": "2018-12-20T22:53:08+01:00",
+        "good_changed_files": [
+          "godot/combat/Rewards.gd",
+          "godot/combat/battlers/skills/Skills.tscn"
+        ],
+        "fix_commit_subject": "Fix a bug that causes skills to be learned at the wrong level.",
+        "oracle_level": "diff_only",
+        "history_mining_strategy": "fix_commit_parent",
+        "failure_mode": "off-by-one comparison"
+      },
+      "changed_files": [
+        "godot/combat/Rewards.gd",
+        "godot/combat/battlers/skills/Skills.tscn"
+      ],
+      "commits": [
+        "9274b31"
+      ],
+      "timestamps": {
+        "started": "2018-12-20T22:53:08+01:00",
+        "ended": "2018-12-20T22:53:08+01:00"
+      },
+      "verification": null,
+      "outcome": {
+        "first_pass_success": false,
+        "rounds_to_resolution": 2,
+        "ai_lines_changed": 0,
+        "human_lines_changed": 0,
+        "human_intervention_ratio": 0.0,
+        "token_cost": 0,
+        "session_duration_minutes": 0.0
+      },
+      "tag": {
+        "bad_case_type": "A1",
+        "suggested_type": "A1",
+        "confidence": "high",
+        "root_cause": "Off-by-one comparisons: displayed level used level+1 and learned-skill check used '<' instead of '<=', causing skills learned at the wrong level."
+      }
+    }
+  }
+}

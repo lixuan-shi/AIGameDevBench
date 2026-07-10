@@ -1,0 +1,264 @@
+diff --git a/scenes/enemies/Sheep/Sheep.tscn b/scenes/enemies/Sheep/Sheep.tscn
+index ef63131..fb94cb9 100644
+--- a/scenes/enemies/Sheep/Sheep.tscn
++++ b/scenes/enemies/Sheep/Sheep.tscn
+@@ -217,7 +217,8 @@ offset_bottom = 25.0
+ [node name="AvoidanceRays" parent="." instance=ExtResource("11_nla65")]
+ 
+ [node name="StuckTimer" type="Timer" parent="."]
+-wait_time = 1.25
++process_callback = 0
++wait_time = 0.5
+ one_shot = true
+ 
+ [node name="Blackboard" type="Node" parent="."]
+diff --git a/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn b/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn
+index c2103ae..1011e18 100644
+--- a/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn
++++ b/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn
+@@ -879,7 +879,8 @@ offset_bottom = -88.0
+ [node name="AvoidanceRays" parent="." instance=ExtResource("10_2fx0n")]
+ 
+ [node name="StuckTimer" type="Timer" parent="."]
+-wait_time = 1.25
++process_callback = 0
++wait_time = 0.5
+ one_shot = true
+ 
+ [node name="AggroRadius" type="Area2D" parent="."]
+diff --git a/scenes/enemies/common/ai/conditionals/is_in_combat/IsInCombat.gd b/scenes/enemies/common/ai/conditionals/is_in_combat/IsInCombat.gd
+index 0eb0fd9..905fea5 100644
+--- a/scenes/enemies/common/ai/conditionals/is_in_combat/IsInCombat.gd
++++ b/scenes/enemies/common/ai/conditionals/is_in_combat/IsInCombat.gd
+@@ -7,10 +7,14 @@ extends ConditionLeaf
+ var start_combat := false
+ var in_combat := false
+ var target: JBody2D = null
++var _blackboard: Blackboard
+ 
+ 
+ func tick(actor: Node, blackboard: Blackboard):
++	if not _blackboard:
++		_blackboard = blackboard
+ 	if blackboard.get_value("is_resetting"):
++		_reset(actor)
+ 		return FAILURE
+ 	if not reset_timer.timeout.is_connected(_on_reset_timer_timeout):
+ 		reset_timer.timeout.connect(_on_reset_timer_timeout)
+@@ -19,21 +23,27 @@ func tick(actor: Node, blackboard: Blackboard):
+ 			aggro_radius.body_entered.connect(_on_body_entered)
+ 	if not actor.synchronizer.got_hurt.is_connected(_on_got_hurt):
+ 		actor.synchronizer.got_hurt.connect(_on_got_hurt)
+-	if not actor.synchronizer.died.is_connected(_on_died):
+-		actor.synchronizer.died.connect(_on_died)
++	if not actor.synchronizer.died.is_connected(_on_actor_died):
++		actor.synchronizer.died.connect(_on_actor_died)
+ 	if start_combat:
+ 		in_combat = true
+ 		start_combat = false
+ 		reset_timer.start()
++		if not target.synchronizer.died.is_connected(_on_target_died):
++			target.synchronizer.died.connect(_on_target_died)
+ 		blackboard.set_value("reset_timer", reset_timer)
+ 		blackboard.set_value("aggro_target", target)
+ 		blackboard.set_value("leash_position", actor.global_position)
+ 		if aggro_radius != null:
+ 			aggro_radius.body_entered.disconnect(_on_body_entered)
+ 	if in_combat:
+-		var leash_position: Vector2 = blackboard.get_value("leash_position")
+-		if should_leash and (leash_position.distance_to(actor.global_position) >= leash_distance):
+-			in_combat = false
++		var leash_position = blackboard.get_value("leash_position")
++		if (
++			leash_position != null
++			and should_leash
++			and leash_position.distance_to(actor.global_position) >= leash_distance
++		):
++			_reset(actor)
+ 			return FAILURE
+ 		return SUCCESS
+ 	return FAILURE
+@@ -45,10 +55,12 @@ func _on_body_entered(body: Node2D):
+ 		target = body
+ 
+ 
+-func _on_died():
+-	in_combat = false
+-	start_combat = false
+-	target = null
++func _on_actor_died():
++	_blackboard.set_value("is_resetting", true)
++
++
++func _on_target_died():
++	_blackboard.set_value("is_resetting", true)
+ 
+ 
+ func _on_got_hurt(from: String, _hp: int, _max_hp: int, _damage: int):
+@@ -59,6 +71,20 @@ func _on_got_hurt(from: String, _hp: int, _max_hp: int, _damage: int):
+ 		target = get_node("/root/Root/World/JEntities/JPlayers/" + from)
+ 
+ 
+-func _on_reset_timer_timeout():
++func _reset(actor: Node):
++	if reset_timer.timeout.is_connected(_on_reset_timer_timeout):
++		reset_timer.timeout.disconnect(_on_reset_timer_timeout)
++	if aggro_radius != null:
++		if aggro_radius.body_entered.is_connected(_on_body_entered):
++			aggro_radius.body_entered.disconnect(_on_body_entered)
++	if actor.synchronizer.got_hurt.is_connected(_on_got_hurt):
++		actor.synchronizer.got_hurt.disconnect(_on_got_hurt)
++	if actor.synchronizer.died.is_connected(_on_target_died):
++		actor.synchronizer.died.disconnect(_on_target_died)
+ 	in_combat = false
++	start_combat = false
+ 	target = null
++
++
++func _on_reset_timer_timeout():
++	_blackboard.set_value("is_resetting", true)
+diff --git a/scenes/enemies/common/ai/conditionals/is_in_combat/IsInCombat.tscn b/scenes/enemies/common/ai/conditionals/is_in_combat/IsInCombat.tscn
+index 93b2070..d697703 100644
+--- a/scenes/enemies/common/ai/conditionals/is_in_combat/IsInCombat.tscn
++++ b/scenes/enemies/common/ai/conditionals/is_in_combat/IsInCombat.tscn
+@@ -6,5 +6,6 @@
+ script = ExtResource("1_qltg7")
+ 
+ [node name="ResetTimer" type="Timer" parent="."]
+-wait_time = 3.0
++process_callback = 0
++wait_time = 3.5
+ one_shot = true
+diff --git a/scenes/enemies/common/ai/sequences/attack_sequence/Attack.gd b/scenes/enemies/common/ai/sequences/attack_sequence/Attack.gd
+index 089982f..0bea523 100644
+--- a/scenes/enemies/common/ai/sequences/attack_sequence/Attack.gd
++++ b/scenes/enemies/common/ai/sequences/attack_sequence/Attack.gd
+@@ -16,8 +16,7 @@ func tick(actor: Node, blackboard: Blackboard):
+ 		var reset_timer: Timer = blackboard.get_value("reset_timer")
+ 		reset_timer.start()
+ 		actor.attack(target)
+-		return SUCCESS
+-	return FAILURE
++	return SUCCESS
+ 
+ 
+ func _on_swing_timer_timeout():
+diff --git a/scenes/enemies/common/ai/sequences/attack_sequence/AttackSequence.tscn b/scenes/enemies/common/ai/sequences/attack_sequence/AttackSequence.tscn
+index c7f98a5..e56cf5d 100644
+--- a/scenes/enemies/common/ai/sequences/attack_sequence/AttackSequence.tscn
++++ b/scenes/enemies/common/ai/sequences/attack_sequence/AttackSequence.tscn
+@@ -14,4 +14,5 @@ script = ExtResource("2_r4t7x")
+ script = ExtResource("3_67ykl")
+ 
+ [node name="AttackCooldown" type="Timer" parent="Attack"]
++process_callback = 0
+ one_shot = true
+diff --git a/scenes/enemies/common/ai/sequences/attack_sequence/ShouldAttack.gd b/scenes/enemies/common/ai/sequences/attack_sequence/ShouldAttack.gd
+index 6492f2b..e08ba3e 100644
+--- a/scenes/enemies/common/ai/sequences/attack_sequence/ShouldAttack.gd
++++ b/scenes/enemies/common/ai/sequences/attack_sequence/ShouldAttack.gd
+@@ -3,6 +3,7 @@ extends ConditionLeaf
+ 
+ func tick(actor: Node, blackboard: Blackboard):
+ 	var target: JBody2D = blackboard.get_value("aggro_target")
+-	if actor.global_position.distance_to(target.global_position) >= actor.stats.attack_range:
++	if actor.global_position.distance_to(target.global_position) <= actor.stats.attack_range:
++		actor.destination = actor.global_position
+ 		return SUCCESS
+ 	return FAILURE
+diff --git a/scenes/enemies/common/ai/sequences/leash_sequence/ShouldLeash.gd b/scenes/enemies/common/ai/sequences/leash_sequence/ShouldLeash.gd
+index 7ebf04a..fc737d4 100644
+--- a/scenes/enemies/common/ai/sequences/leash_sequence/ShouldLeash.gd
++++ b/scenes/enemies/common/ai/sequences/leash_sequence/ShouldLeash.gd
+@@ -7,7 +7,6 @@ func tick(actor: Node, blackboard: Blackboard):
+ 	if blackboard.has_value("leash_position"):
+ 		if not actor.destination_reached.is_connected(_destination_reached):
+ 			actor.destination_reached.connect(_destination_reached)
+-		J.logger.info("Should leash, erasing leash_position")
+ 		var leash_position: Vector2 = blackboard.get_value("leash_position")
+ 		blackboard.set_value("destination_global_position", leash_position)
+ 		blackboard.erase_value("leash_position")
+diff --git a/scenes/enemies/common/ai/sequences/pursuit_sequence/PursuitSequence.tscn b/scenes/enemies/common/ai/sequences/pursuit_sequence/PursuitSequence.tscn
+index 9b82dea..c125fca 100644
+--- a/scenes/enemies/common/ai/sequences/pursuit_sequence/PursuitSequence.tscn
++++ b/scenes/enemies/common/ai/sequences/pursuit_sequence/PursuitSequence.tscn
+@@ -1,11 +1,11 @@
+ [gd_scene load_steps=4 format=3 uid="uid://c32syir0x72av"]
+ 
+-[ext_resource type="Script" path="res://addons/beehave/nodes/composites/sequence.gd" id="1_g8y03"]
++[ext_resource type="Script" path="res://addons/beehave/nodes/composites/sequence_reactive.gd" id="1_dl6c3"]
+ [ext_resource type="Script" path="res://scenes/enemies/common/ai/sequences/pursuit_sequence/ShouldPursue.gd" id="2_7a5e8"]
+ [ext_resource type="PackedScene" uid="uid://dtoop6xo6ukwe" path="res://scenes/enemies/common/ai/actions/move_to/MoveTo.tscn" id="3_b3pvy"]
+ 
+ [node name="PursuitSequence" type="Node"]
+-script = ExtResource("1_g8y03")
++script = ExtResource("1_dl6c3")
+ 
+ [node name="ShouldPursue" type="Node" parent="."]
+ script = ExtResource("2_7a5e8")
+diff --git a/scenes/player/Player.gd b/scenes/player/Player.gd
+index 31fdd4a..fafae67 100644
+--- a/scenes/player/Player.gd
++++ b/scenes/player/Player.gd
+@@ -26,10 +26,11 @@ extends JPlayerBody2D
+ 
+ 
+ func _ready():
+-	stats.max_hp = 100
++	stats.max_hp = 50
+ 	synchronizer.loop_animation_changed.connect(_on_loop_animation_changed)
+ 	synchronizer.attacked.connect(_on_attacked)
+ 	synchronizer.healed.connect(_on_healed)
++	synchronizer.got_hurt.connect(_on_got_hurt)
+ 
+ 	equipment.item_added.connect(_on_item_equiped)
+ 	equipment.item_removed.connect(_on_item_unequiped)
+@@ -94,6 +95,14 @@ func _on_attacked(target: String, _damage: int):
+ 	update_face_direction(position.direction_to(enemy.position).x)
+ 
+ 
++func _on_got_hurt(_from: String, hp: int, max_hp: int, damage: int):
++	$JInterface.update_hp_bar(hp, max_hp)
++	var text = floating_text_scene.instantiate()
++	text.amount = damage
++	text.type = text.TYPES.DAMAGE
++	add_child(text)
++
++
+ func _on_healed(_from: String, _hp: int, _max_hp: int, healing: int):
+ 	print("Healed %d" % healing)
+ 
+diff --git a/scenes/world/World.tscn b/scenes/world/World.tscn
+index 691fb60..ebcf5df 100644
+--- a/scenes/world/World.tscn
++++ b/scenes/world/World.tscn
+@@ -35,7 +35,7 @@ respawn_time = null
+ 
+ [node name="TreeTrunkGuy2" parent="Entities/Enemies" instance=ExtResource("3_fddk3")]
+ position = Vector2(-2590, 276)
+-respawn = null
++respawn = true
+ respawn_time = null
+ 
+ [node name="TreeTrunkGuy3" parent="Entities/Enemies" instance=ExtResource("3_fddk3")]
+@@ -95,17 +95,17 @@ respawn_time = null
+ 
+ [node name="TreeTrunkGuy4" parent="Entities/Enemies" instance=ExtResource("3_fddk3")]
+ position = Vector2(-2216, -599)
+-respawn = null
++respawn = true
+ respawn_time = null
+ 
+ [node name="TreeTrunkGuy6" parent="Entities/Enemies" instance=ExtResource("3_fddk3")]
+ position = Vector2(-1807, -1317)
+-respawn = null
++respawn = true
+ respawn_time = null
+ 
+ [node name="TreeTrunkGuy7" parent="Entities/Enemies" instance=ExtResource("3_fddk3")]
+ position = Vector2(-2022, -995)
+-respawn = null
++respawn = true
+ respawn_time = null
+ 
+ [node name="Sheep6" parent="Entities/Enemies" instance=ExtResource("4_uubdx")]

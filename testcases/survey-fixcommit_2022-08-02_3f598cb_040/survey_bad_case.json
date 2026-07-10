@@ -1,0 +1,133 @@
+{
+  "schema": "survey.bad_case.testcase.v1",
+  "testcase_id": "survey-fixcommit_2022-08-02_3f598cb_040",
+  "source_repo": "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\a-little-game-called-mario",
+  "baseline_ref": "d4a665ecc979e0973c890ca2077c673e91ce25bc",
+  "repro_ref": "d4a665ecc979e0973c890ca2077c673e91ce25bc",
+  "bad_ref": "d4a665ecc979e0973c890ca2077c673e91ce25bc",
+  "good_ref": "3f598cba23501f92bf5a185c326535228503cdde",
+  "baseline_resolution_error": null,
+  "expected": {
+    "bad_case_type": "A2",
+    "notes": "fix commit 3f598cb: TitleScreen fix mouse focus (#591)",
+    "original_l0_pass": null,
+    "original_l1_pass": null,
+    "original_l0_details": [],
+    "original_l1_details": [],
+    "original_human_intervention_ratio": 0.0,
+    "original_rounds_to_resolution": 2,
+    "must_change_one_of": [
+      "scenes/title/TitleMenuButton.gd"
+    ],
+    "minimum_changed_files": 1
+  },
+  "hidden_oracle": {
+    "good_ref": "3f598cba23501f92bf5a185c326535228503cdde",
+    "good_diff_file": "good.diff",
+    "good_changed_files": [
+      "scenes/title/TitleMenuButton.gd"
+    ],
+    "history_mining_strategy": "fix_commit_parent"
+  },
+  "bench_record": {
+    "testcase_id": "fixcommit_2022-08-02_3f598cb_040",
+    "harness": "git-history",
+    "category": "survey:A1",
+    "l0_l1_pass": true,
+    "score": 0.0,
+    "verifier_result": {
+      "score": 0.0,
+      "status": "fail",
+      "category": "survey:A1",
+      "error": "fix commit 3f598cb: TitleScreen fix mouse focus (#591)",
+      "checks": [
+        {
+          "name": "bad_case_detected",
+          "passed": false,
+          "detail": "fix commit 3f598cb: TitleScreen fix mouse focus (#591)",
+          "expected": "none",
+          "actual": "A1"
+        },
+        {
+          "name": "human_intervention_ratio",
+          "passed": true,
+          "detail": "",
+          "expected": "<= 0.40",
+          "actual": 0.0
+        },
+        {
+          "name": "rounds_to_resolution",
+          "passed": true,
+          "detail": "",
+          "expected": "<= 4",
+          "actual": 2
+        }
+      ]
+    },
+    "diff": "",
+    "artifacts_path": null,
+    "ai_agent_context": {
+      "harness": "git-history",
+      "transcript_session_id": null,
+      "transcript_match_confidence": null,
+      "transcript_path": null,
+      "codex_session_id": null,
+      "total_tokens": null,
+      "filtered_to_commits": [
+        "3f598cb"
+      ],
+      "filtered_turns": null,
+      "turns": []
+    },
+    "survey_session": {
+      "session_id": "fixcommit_2022-08-02_3f598cb_040",
+      "harness": "git-history",
+      "config": {},
+      "bad_case_type": "A1",
+      "auto_detected": true,
+      "confidence": "low",
+      "notes": "fix commit 3f598cb: TitleScreen fix mouse focus (#591)",
+      "prompts": [],
+      "system_context": {
+        "source": "git-history-fix",
+        "baseline_ref": "d4a665ecc979e0973c890ca2077c673e91ce25bc",
+        "bad_ref": "d4a665ecc979e0973c890ca2077c673e91ce25bc",
+        "good_ref": "3f598cba23501f92bf5a185c326535228503cdde",
+        "good_commit_timestamp": "2022-08-02T16:28:57+02:00",
+        "good_changed_files": [
+          "scenes/title/TitleMenuButton.gd"
+        ],
+        "fix_commit_subject": "TitleScreen fix mouse focus (#591)",
+        "oracle_level": "diff_only",
+        "history_mining_strategy": "fix_commit_parent",
+        "failure_mode": "wrong signal connection"
+      },
+      "changed_files": [
+        "scenes/title/TitleMenuButton.gd"
+      ],
+      "commits": [
+        "3f598cb"
+      ],
+      "timestamps": {
+        "started": "2022-08-02T16:28:57+02:00",
+        "ended": "2022-08-02T16:28:57+02:00"
+      },
+      "verification": null,
+      "outcome": {
+        "first_pass_success": false,
+        "rounds_to_resolution": 2,
+        "ai_lines_changed": 0,
+        "human_lines_changed": 0,
+        "human_intervention_ratio": 0.0,
+        "token_cost": 0,
+        "session_duration_minutes": 0.0
+      },
+      "tag": {
+        "bad_case_type": "A2",
+        "suggested_type": "A2",
+        "confidence": "high",
+        "root_cause": "A mouse_exited->release_focus signal connection incorrectly dropped focus; the erroneous connection was removed."
+      }
+    }
+  }
+}

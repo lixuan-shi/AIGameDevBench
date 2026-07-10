@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-11-22_5a0a72d_139"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "0e09331e1af5a7de0775fdfcbcc087430d36d45e"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scripts/Classes/Singletons/Global.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-11-22_5a0a72d_139"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

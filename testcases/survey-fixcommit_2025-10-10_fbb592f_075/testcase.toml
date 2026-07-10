@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-10_fbb592f_075"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "07cb5015cf6d62b451434a4177074b398262615e"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scripts/Classes/UI/GameHUD.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-10_fbb592f_075"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

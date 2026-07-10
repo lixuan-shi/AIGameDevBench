@@ -1,0 +1,28 @@
+diff --git a/scenes/title/Contributors.gd b/scenes/title/Contributors.gd
+index c499e13..b9d45e0 100644
+--- a/scenes/title/Contributors.gd
++++ b/scenes/title/Contributors.gd
+@@ -3,6 +3,11 @@ extends RichTextLabel
+ var lines = []
+ 
+ func _ready():
++	# todo credits in editor check exists in two places - should be simiplied to one utility function
++	# Credits file is generated at build time - use placeholder string if in editor
++	if OS.has_feature("editor"):
++		return
++
+ 	randomize()
+ 
+ 	var file = File.new()
+diff --git a/scripts/Credits.gd b/scripts/Credits.gd
+index ab58b12..6fa4001 100644
+--- a/scripts/Credits.gd
++++ b/scripts/Credits.gd
+@@ -10,6 +10,7 @@ onready var vscroll = scroll_container.get_v_scrollbar()
+ func _ready():
+ 	var label: Label = $ScrollContainer/VBoxContainer/Names
+ 
++	# todo credits in editor check exists in two places - should be simiplied to one utility function
+ 	# Credits file is generated at build time - use placeholder string if in editor
+ 	if OS.has_feature("editor"):
+ 		var sample_names: Array = ["Mario Mario", "Luigi Mario", "Baby Mario"]

@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2018-12-23_62912a4_017"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "93425c748bf07d9ccea057c6ddac87ff349e9ae1"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: godot/local_map/pawns/PawnLeader.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2018-12-23_62912a4_017"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

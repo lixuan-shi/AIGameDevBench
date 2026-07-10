@@ -1,0 +1,87 @@
+diff --git a/godot/local_map/pawns/TestQuestReceiver.tscn b/godot/local_map/pawns/TestQuestReceiver.tscn
+index eaae330..598fd20 100644
+--- a/godot/local_map/pawns/TestQuestReceiver.tscn
++++ b/godot/local_map/pawns/TestQuestReceiver.tscn
+@@ -4,7 +4,7 @@
+ [ext_resource path="res://local_map/pawns/actions/CompleteQuestAction.tscn" type="PackedScene" id=2]
+ [ext_resource path="res://quest_system/quests/TestQuest.tscn" type="PackedScene" id=3]
+ 
+-[node name="TestQuestGiver" instance=ExtResource( 1 )]
++[node name="TestQuestGiver" index="0" instance=ExtResource( 1 )]
+ 
+ [node name="CompleteQuestAction" parent="Actions" index="0" instance=ExtResource( 2 )]
+ quest_reference = ExtResource( 3 )
+diff --git a/godot/local_map/pawns/actions/CompleteQuestAction.gd b/godot/local_map/pawns/actions/CompleteQuestAction.gd
+index e46b749..3e6eb28 100644
+--- a/godot/local_map/pawns/actions/CompleteQuestAction.gd
++++ b/godot/local_map/pawns/actions/CompleteQuestAction.gd
+@@ -5,17 +5,22 @@ with the Pawn that owns this node
+ extends MapAction
+ class_name CompleteQuestAction
+ 
+-signal quest_delivered()
+-
+ export var quest_reference : PackedScene
+ var quest : Quest = null
+ 
+ func _ready() -> void:
+ 	assert quest_reference
+ 	quest = QuestSystem.find_available(quest_reference.instance())
++	active = false
++	quest.connect("completed", self, "_on_Quest_completed")
++
++func _on_Quest_completed() -> void:
++	active = true
+ 
+ func interact() -> void:
+ 	get_tree().paused = false
++	if not active:
++		emit_signal("finished")
++		return
+ 	QuestSystem.deliver(quest)
+-	emit_signal("quest_delivered")
+ 	emit_signal("finished")
+diff --git a/godot/local_map/pawns/actions/GiveQuestAction.gd b/godot/local_map/pawns/actions/GiveQuestAction.gd
+index c9a947b..3c034ab 100644
+--- a/godot/local_map/pawns/actions/GiveQuestAction.gd
++++ b/godot/local_map/pawns/actions/GiveQuestAction.gd
+@@ -4,20 +4,24 @@ Starts a quest upon interacting with the InteractivePawn
+ extends MapAction
+ class_name GiveQuestAction
+ 
+-signal quest_given()
+-
+ export var quest_reference : PackedScene
+ var quest : Quest = null
+ 
+ func _ready() -> void:
+ 	assert quest_reference
+ 	quest = QuestSystem.find_available(quest_reference.instance())
++	quest.connect("started", self, "_on_Quest_started")
++
++func _on_Quest_started():
++	active = false
+ 
+ func interact() -> void:
+ 	get_tree().paused = false
++	if not active:
++		emit_signal("finished")
++		return
+ 	var quest : Quest = quest_reference.instance()
+ 	if not QuestSystem.is_available(quest):
+ 		return
+ 	QuestSystem.start(quest)
+-	emit_signal("quest_given")
+ 	emit_signal("finished")
+diff --git a/godot/local_map/pawns/actions/MapAction.gd b/godot/local_map/pawns/actions/MapAction.gd
+index 3df3906..47f4038 100644
+--- a/godot/local_map/pawns/actions/MapAction.gd
++++ b/godot/local_map/pawns/actions/MapAction.gd
+@@ -10,6 +10,7 @@ class_name MapAction
+ 
+ signal finished()
+ var local_map
++var active : bool = true
+ 
+ func _ready() -> void:
+ 	# using a group so LocalMap can initialize all MapActions

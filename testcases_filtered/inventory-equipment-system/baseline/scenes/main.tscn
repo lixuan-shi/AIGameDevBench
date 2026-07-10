@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://41vw61iv32ln"]
+
+[ext_resource type="Script" uid="uid://bs8cu0t2y0gx3" path="res://scripts/inventory.gd" id="1_inv"]
+[ext_resource type="Script" uid="uid://csjyhy53w8il5" path="res://scripts/equipment.gd" id="2_eq"]
+
+[node name="Main" type="Node2D" unique_id=664914571]
+
+[node name="Inventory" type="Node" parent="." unique_id=847224819]
+script = ExtResource("1_inv")
+
+[node name="Equipment" type="Node" parent="." unique_id=44087905]
+script = ExtResource("2_eq")

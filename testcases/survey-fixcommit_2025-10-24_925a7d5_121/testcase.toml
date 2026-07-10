@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-24_925a7d5_121"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "3bfd80b68ff1e190969e236e47655ab53cfb3a0c"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scripts/Classes/Entities/Enemies/MontyMole.gd, Scripts/Classes/Singletons/Global.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-24_925a7d5_121"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

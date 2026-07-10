@@ -1,0 +1,45 @@
+diff --git a/game/Scenes/Game/UI/GameUI.tscn b/game/Scenes/Game/UI/GameUI.tscn
+index f1cb221..704cf8f 100644
+--- a/game/Scenes/Game/UI/GameUI.tscn
++++ b/game/Scenes/Game/UI/GameUI.tscn
+@@ -102,10 +102,12 @@ anchor_right = 1.0
+ margin_left = -200.0
+ margin_bottom = 76.0
+ grow_horizontal = 0
++mouse_filter = 2
+ 
+ [node name="RoomCodeLabel" type="RichTextLabel" parent="HideableUI/MultiplayerContainer"]
+ margin_right = 200.0
+ margin_bottom = 16.0
++mouse_filter = 2
+ custom_fonts/bold_font = ExtResource( 6 )
+ custom_fonts/normal_font = ExtResource( 8 )
+ bbcode_enabled = true
+@@ -116,6 +118,7 @@ scroll_active = false
+ margin_top = 20.0
+ margin_right = 200.0
+ margin_bottom = 46.0
++mouse_filter = 2
+ alignment = 2
+ 
+ [node name="RoomCodeToggleButton" type="Button" parent="HideableUI/MultiplayerContainer/RoomCodeVisibleContainer"]
+@@ -127,6 +130,7 @@ margin_bottom = 26.0
+ margin_top = 50.0
+ margin_right = 200.0
+ margin_bottom = 50.0
++mouse_filter = 2
+ 
+ [node name="ObjectsDialog" parent="." instance=ExtResource( 2 )]
+ window_title = "Objects"
+diff --git a/game/Scripts/Game/UI/GameUI.gd b/game/Scripts/Game/UI/GameUI.gd
+index e7c961a..4547c89 100644
+--- a/game/Scripts/Game/UI/GameUI.gd
++++ b/game/Scripts/Game/UI/GameUI.gd
+@@ -191,6 +191,7 @@ func _update_player_list() -> void:
+ 			label = RichTextLabel.new()
+ 			label.name = player_id_str
+ 			label.rect_min_size.y = 20
++			label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ 			label.bbcode_enabled = true
+ 			label.scroll_active = false
+ 			_player_list_container.add_child(label)

@@ -1,0 +1,247 @@
+diff --git a/Scenes/Levels/CustomLevelMenu.tscn b/Scenes/Levels/CustomLevelMenu.tscn
+index fba29a4..193ae72 100644
+--- a/Scenes/Levels/CustomLevelMenu.tscn
++++ b/Scenes/Levels/CustomLevelMenu.tscn
+@@ -362,11 +362,11 @@ layout_mode = 2
+ focus_mode = 0
+ 
+ [node name="ScrollContainer" parent="BG/Border/Levels/VBoxContainer/LevelInfo/SelectedLevel/MarginContainer/HBoxContainer/HSplitContainer/LeftHalf/LevelInfo" index="0"]
+-scroll_horizontal = 166
++scroll_horizontal = 270
+ is_active = true
+ 
+ [node name="ScrollContainer2" parent="BG/Border/Levels/VBoxContainer/LevelInfo/SelectedLevel/MarginContainer/HBoxContainer/HSplitContainer/LeftHalf/LevelInfo" index="1"]
+-scroll_horizontal = 32
++scroll_horizontal = 49
+ is_active = true
+ 
+ [node name="Panel" type="PanelContainer" parent="BG/Border/Levels/VBoxContainer/LevelInfo"]
+@@ -377,7 +377,6 @@ theme_override_styles/panel = ExtResource("8_psbt7")
+ [node name="AutoScrollContainer" type="ScrollContainer" parent="BG/Border/Levels/VBoxContainer/LevelInfo/Panel"]
+ layout_mode = 2
+ mouse_filter = 2
+-scroll_vertical = 59
+ horizontal_scroll_mode = 3
+ vertical_scroll_mode = 3
+ script = ExtResource("24_wf6nb")
+@@ -565,12 +564,10 @@ layout_mode = 2
+ focus_mode = 0
+ 
+ [node name="ScrollContainer" parent="BG/Border/Levels/VBoxContainer/LSSLevelInfo/SelectedOnlineLevel/MarginContainer/HBoxContainer/HSplitContainer/LeftHalf/LevelInfo" index="0"]
+-scroll_horizontal = 24
+ is_active = true
+ auto_connect_focus = false
+ 
+ [node name="ScrollContainer2" parent="BG/Border/Levels/VBoxContainer/LSSLevelInfo/SelectedOnlineLevel/MarginContainer/HBoxContainer/HSplitContainer/LeftHalf/LevelInfo" index="1"]
+-scroll_horizontal = 32
+ is_active = true
+ auto_connect_focus = false
+ 
+@@ -583,7 +580,6 @@ theme_override_styles/panel = ExtResource("8_psbt7")
+ [node name="AutoScrollContainer" type="ScrollContainer" parent="BG/Border/Levels/VBoxContainer/LSSLevelInfo/Panel"]
+ layout_mode = 2
+ mouse_filter = 0
+-scroll_vertical = 59
+ horizontal_scroll_mode = 3
+ script = ExtResource("24_wf6nb")
+ direction = 1
+@@ -662,6 +658,12 @@ offset_left = -76.0
+ offset_right = 76.0
+ focus_mode = 2
+ 
++[node name="LSSCharacterSelect" parent="." instance=ExtResource("28_u8fen")]
++visible = false
++offset_left = -76.0
++offset_right = 76.0
++focus_mode = 2
++
+ [connection signal="closed" from="BG/Border/Levels/VBoxContainer/LevelList" to="." method="back_to_title_screen"]
+ [connection signal="level_selected" from="BG/Border/Levels/VBoxContainer/LevelList" to="BG/Border/Levels/VBoxContainer/LevelInfo" method="open"]
+ [connection signal="level_selected" from="BG/Border/Levels/VBoxContainer/LevelList" to="BG/Border/Levels/VBoxContainer/LevelList" method="close" unbinds=1]
+@@ -694,8 +696,7 @@ focus_mode = 2
+ [connection signal="tree_exiting" from="BG/Border/Levels/VBoxContainer/LSSBrowser/HTTPRequest" to="BG/Border/Levels/VBoxContainer/LSSBrowser/HTTPRequest" method="cancel_request"]
+ [connection signal="closed" from="BG/Border/Levels/VBoxContainer/LSSLevelInfo" to="." method="clear_saved_stuff"]
+ [connection signal="closed" from="BG/Border/Levels/VBoxContainer/LSSLevelInfo" to="BG/Border/Levels/VBoxContainer/LSSBrowser" method="open" binds= [false]]
+-[connection signal="level_play" from="BG/Border/Levels/VBoxContainer/LSSLevelInfo" to="." method="play_level"]
+-[connection signal="level_play" from="BG/Border/Levels/VBoxContainer/LSSLevelInfo" to="." method="lss_level_played"]
++[connection signal="level_play" from="BG/Border/Levels/VBoxContainer/LSSLevelInfo" to="." method="online_play"]
+ [connection signal="pressed" from="BG/Border/Levels/VBoxContainer/LSSLevelInfo/HBoxContainer/Download" to="BG/Border/Levels/VBoxContainer/LSSLevelInfo" method="download_level"]
+ [connection signal="pressed" from="BG/Border/Levels/VBoxContainer/LSSLevelInfo/HBoxContainer/OnlinePlay" to="BG/Border/Levels/VBoxContainer/LSSLevelInfo" method="play_level"]
+ [connection signal="pressed" from="BG/Border/Levels/VBoxContainer/LSSLevelInfo/HBoxContainer/ViewOnLSS" to="BG/Border/Levels/VBoxContainer/LSSLevelInfo" method="open_lss"]
+@@ -703,6 +704,8 @@ focus_mode = 2
+ [connection signal="request_completed" from="BG/Border/Levels/VBoxContainer/LSSLevelInfo/DownloadLevel" to="BG/Border/Levels/VBoxContainer/LSSLevelInfo" method="level_downloaded"]
+ [connection signal="updated" from="BGM/ResourceSetterNew" to="BGM" method="play"]
+ [connection signal="cancelled" from="CharacterSelect" to="BG/Border/Levels/VBoxContainer/LevelInfo" method="reopen"]
++[connection signal="cancelled" from="LSSCharacterSelect" to="BG/Border/Levels/VBoxContainer/LSSLevelInfo" method="reset_process"]
++[connection signal="cancelled" from="LSSCharacterSelect" to="BG/Border/Levels/VBoxContainer/LSSLevelInfo/HBoxContainer/OnlinePlay" method="grab_focus"]
+ 
+ [editable path="BG/Border/Levels/VBoxContainer/LevelInfo/SelectedLevel"]
+ [editable path="BG/Border/Levels/VBoxContainer/LevelInfo/HBoxContainer/Play"]
+diff --git a/Scenes/Prefabs/LevelObjects/PipeGenerator.tscn b/Scenes/Prefabs/LevelObjects/PipeGenerator.tscn
+index 7a3a062..9a130f9 100644
+--- a/Scenes/Prefabs/LevelObjects/PipeGenerator.tscn
++++ b/Scenes/Prefabs/LevelObjects/PipeGenerator.tscn
+@@ -24,7 +24,6 @@ tracks/0/keys = {
+ 
+ [sub_resource type="Animation" id="Animation_a0wqs"]
+ resource_name = "Left"
+-length = 0.5
+ tracks/0/type = "value"
+ tracks/0/imported = false
+ tracks/0/enabled = true
+@@ -32,10 +31,10 @@ tracks/0/path = NodePath("Joint:position")
+ tracks/0/interp = 1
+ tracks/0/loop_wrap = true
+ tracks/0/keys = {
+-"times": PackedFloat32Array(0, 0.5),
++"times": PackedFloat32Array(0, 1),
+ "transitions": PackedFloat32Array(1, 1),
+ "update": 0,
+-"values": [Vector2(-16, 0), Vector2(0, 0)]
++"values": [Vector2(-16, 8), Vector2(8, 8)]
+ }
+ 
+ [sub_resource type="Animation" id="Animation_f1jdk"]
+@@ -55,7 +54,6 @@ tracks/0/keys = {
+ 
+ [sub_resource type="Animation" id="Animation_6pkd4"]
+ resource_name = "Right"
+-length = 0.5
+ tracks/0/type = "value"
+ tracks/0/imported = false
+ tracks/0/enabled = true
+@@ -63,10 +61,10 @@ tracks/0/path = NodePath("Joint:position")
+ tracks/0/interp = 1
+ tracks/0/loop_wrap = true
+ tracks/0/keys = {
+-"times": PackedFloat32Array(0, 0.5),
++"times": PackedFloat32Array(0, 1),
+ "transitions": PackedFloat32Array(1, 1),
+ "update": 0,
+-"values": [Vector2(16, 0), Vector2(0, 0)]
++"values": [Vector2(16, 8), Vector2(-8, 8)]
+ }
+ 
+ [sub_resource type="Animation" id="Animation_amwyv"]
+@@ -124,7 +122,7 @@ wait_time = 3.0
+ script = ExtResource("4_f1jdk")
+ properties = Array[String](["item", "direction"])
+ filters = Dictionary[String, String]({
+-"item": "can_be_stored"
++"item": "can_be_dispensed"
+ })
+ 
+ [node name="Check" type="RayCast2D" parent="."]
+@@ -132,4 +130,6 @@ target_position = Vector2(0, 16)
+ collision_mask = 6
+ hit_from_inside = true
+ 
++[node name="VisibleOnScreenEnabler2D" type="VisibleOnScreenEnabler2D" parent="."]
++
+ [connection signal="timeout" from="Timer" to="." method="on_timeout"]
+diff --git a/Scripts/Parts/PipeGenerator.gd b/Scripts/Parts/PipeGenerator.gd
+index c49bd62..8dfa7c1 100644
+--- a/Scripts/Parts/PipeGenerator.gd
++++ b/Scripts/Parts/PipeGenerator.gd
+@@ -17,6 +17,7 @@ func on_timeout() -> void:
+ 	$AnimationPlayer.stop()
+ 	var node = item.instantiate()
+ 	node.global_position = $Joint.global_position
++	node.hide()
+ 	add_sibling(node)
+ 	$Joint.remote_path = node.get_path()
+ 	item_amount += 1
+@@ -27,10 +28,12 @@ func on_timeout() -> void:
+ 	node.z_index = -10
+ 	$AnimationPlayer.play(get_direction_string([Vector2.DOWN, Vector2.UP, Vector2.RIGHT, Vector2.LEFT][direction]))
+ 	await get_tree().process_frame
++	node.show()
+ 	node.reset_physics_interpolation()
+ 	await $AnimationPlayer.animation_finished
+ 	$Joint.remote_path = ""
+ 	if is_instance_valid(node):
++		node.velocity = Vector2.ZERO
+ 		node.set_process(true)
+ 		node.z_index = z_old
+ 		node.set_physics_process(true)
+diff --git a/Scripts/UI/CustomLevelMenu.gd b/Scripts/UI/CustomLevelMenu.gd
+index a907ed8..379e3a1 100644
+--- a/Scripts/UI/CustomLevelMenu.gd
++++ b/Scripts/UI/CustomLevelMenu.gd
+@@ -12,6 +12,7 @@ static var page_number_save := -1
+ static var last_played_container = null
+ 
+ static var saved_search_values := [-1, -1, -1]
++static var level_id := ""
+ 
+ func _ready() -> void:
+ 	has_entered = true
+@@ -84,8 +85,20 @@ func play_level() -> void:
+ 	LevelTransition.level_to_transition_to = ("res://Scenes/Levels/LevelEditor.tscn")
+ 	Global.transition_to_scene("res://Scenes/Levels/LevelTransition.tscn")
+ 
++func online_play() -> void:
++	lss_level_played()
++	Global.current_game_mode = Global.GameMode.CUSTOM_LEVEL
++	Settings.file.difficulty.inf_lives = 1
++	LevelEditor.load_play = true
++	$LSSCharacterSelect.open()
++	await $LSSCharacterSelect.selected
++	LevelTransition.level_to_transition_to = ("res://Scenes/Levels/LevelEditor.tscn")
++	Global.transition_to_scene("res://Scenes/Levels/LevelTransition.tscn")
++
+ func lss_level_played() -> void:
+ 	last_played_container = %LSSLevelInfo.container_to_play.duplicate()
++	level_id = %LSSLevelInfo.container_to_play.level_id
++	print(level_id)
+ 	page_number_save = %LSSBrowser.page_number
+ 	saved_search_values[0] = %LSSBrowser.page_number
+ 	saved_search_values[1] = %LSSBrowser.filter
+diff --git a/Scripts/UI/LssLevelInfo.gd b/Scripts/UI/LssLevelInfo.gd
+index bf41580..f32a345 100644
+--- a/Scripts/UI/LssLevelInfo.gd
++++ b/Scripts/UI/LssLevelInfo.gd
+@@ -4,7 +4,7 @@ signal closed
+ 
+ const LEVEL_INFO_URL := "https://levelsharesquare.com/api/levels/"
+ 
+-var level_id := ""
++static var level_id := ""
+ 
+ var has_downloaded := false
+ 
+@@ -30,7 +30,9 @@ func open(container: OnlineLevelContainer) -> void:
+ 	else:
+ 		%Download.grab_focus()
+ 	setup_visuals(container)
+-	level_id = container.level_id
++	reset_process()
++
++func reset_process() -> void:
+ 	await get_tree().physics_frame
+ 	set_process(true)
+ 
+@@ -49,6 +51,7 @@ func setup_visuals(container: OnlineLevelContainer) -> void:
+ 		else: value = container.get(i)
+ 		%SelectedOnlineLevel.set(i, value)
+ 		saved_stuff[i] = value
++	level_id = saved_stuff.level_id
+ 	%SelectedOnlineLevel.setup_visuals()
+ 	%Download.visible = not has_downloaded
+ 	%OnlinePlay.visible = has_downloaded
+@@ -70,6 +73,7 @@ func download_level() -> void:
+ 	%Download.text = "DOWNLOADING..."
+ 
+ func open_lss() -> void:
++	print(level_id)
+ 	OS.shell_open("https://levelsharesquare.com/levels/" + str(level_id))
+ 
+ func on_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray) -> void:
+@@ -104,6 +108,7 @@ func play_level() -> void:
+ 	var file_path := "user://custom_levels/downloaded/" + level_id + ".lvl"
+ 	var file = JSON.parse_string(FileAccess.open(file_path, FileAccess.READ).get_as_text())
+ 	LevelEditor.level_file = file
++	set_process(false)
+ 	var info = file["Info"]
+ 	LevelEditor.level_author = info["Author"]
+ 	LevelEditor.level_name = info["Name"]

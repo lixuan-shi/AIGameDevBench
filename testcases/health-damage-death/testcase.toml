@@ -1,0 +1,23 @@
+[testcase]
+id = "health-damage-death"
+category = "behavior_logic"
+source_kind = "folder"
+source_repo = "authored:representative-set"
+task = """
+Implement the damage/death logic in res://scripts/health.gd.
+- take_damage(amount) reduces health by amount but health must clamp at 0 (never go negative).
+- When health reaches 0, set is_dead = true and emit the `died` signal.
+- `died` must fire EXACTLY ONCE: further damage after death must not re-emit it and must not push health below 0.
+"""
+
+[verifier]
+type = "godot_scene_assert"
+entry = "verifier_scene.tscn"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+author = "Claude"
+created = "2026-06-29"
+notes = "behavior_logic/med. Trap: (a) no clamp -> health goes negative; (b) emit died on every lethal hit instead of once. Baseline has neither clamp nor signal -> noop=0. bad.diff clamps + emits but re-emits died each hit -> fails died_emitted_exactly_once -> 3/5 = 0.6. Golden guards with is_dead -> 1.0."

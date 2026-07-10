@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2018-12-10_5004a1b_009"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "091620660f41ba297d42b49d8f5954b41d516b2c"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: godot/combat/interface/SelectArrow.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2018-12-10_5004a1b_009"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

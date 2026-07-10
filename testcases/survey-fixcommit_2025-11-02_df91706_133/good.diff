@@ -1,0 +1,12 @@
+diff --git a/Scripts/Classes/Singletons/SpeedrunHandler.gd b/Scripts/Classes/Singletons/SpeedrunHandler.gd
+index 1ab51c3..b8863a9 100644
+--- a/Scripts/Classes/Singletons/SpeedrunHandler.gd
++++ b/Scripts/Classes/Singletons/SpeedrunHandler.gd
+@@ -123,7 +123,6 @@ const SMBLL_LEVEL_GOLD_ANY_TIMES := {
+ }
+ 
+ const SMBS_LEVEL_GOLD_ANY_TIMES := {
+-	"1-2": 25,
+ 	"4-2": 30
+ }
+ 

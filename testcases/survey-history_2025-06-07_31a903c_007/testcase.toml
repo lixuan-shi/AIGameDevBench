@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-history_2025-06-07_31a903c_007"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "901bfffb34581b86c657cc8ac494a4401cf94c76"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: overworld/maps/gbprops.tres, overworld/maps/town/fan_interaction.gd, src/field/cutscenes/popups/moving_interaction_popup.gd, src/field/cutscenes/templates/area_transitions/area_transition.gd, src/field/gameboard/gameboard.gd, src/field/gameboard/gameboard_layer.gd, src/field/gamepieces/controllers/gamepiece_controller.gd, src/field/gamepieces/controllers/path_loop_ai_controller.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "history_2025-06-07_31a903c_007"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

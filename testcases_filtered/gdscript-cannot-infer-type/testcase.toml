@@ -1,0 +1,19 @@
+[testcase]
+id = "gdscript-cannot-infer-type"
+category = "behavior_logic"
+source_kind = "folder"
+task = """
+Fix the compile error in res://scripts/score_tracker.gd. The script fails to load because of a GDScript type-inference error. After the fix the script must load and ScoreTracker.total_score() must return the summed score.
+"""
+
+[verifier]
+type = "godot_scene_assert"
+entry = "verifier_scene.tscn"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+author = "Claude"
+created = "2026-06-29"
+notes = "behavior_logic/easy. Mined from a real Godot session (Documents/test) where 'SCRIPT ERROR: Parse Error: Cannot infer the type of \"<var>\" variable because the value doesn't have a set type' recurred dozens of times. Baseline does `var value := _scores[i]` on an untyped Array -> element is Variant -> script fails to parse -> Main/ScoreTracker never instances -> first checkpoint fails -> noop=0. Golden gives the variable an explicit `: int` type so the script loads and total_score() returns 42 -> 1.0."

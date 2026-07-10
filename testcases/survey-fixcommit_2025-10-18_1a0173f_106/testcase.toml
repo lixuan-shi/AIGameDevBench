@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-18_1a0173f_106"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "0fd33d6893b8ba2f7b9134d53f49f71a549a760b"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Levels/SMB1/World-1/-1-1.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-18_1a0173f_106"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

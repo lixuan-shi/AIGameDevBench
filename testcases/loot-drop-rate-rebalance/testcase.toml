@@ -1,0 +1,21 @@
+[testcase]
+id = "loot-drop-rate-rebalance"
+category = "intent_translation"
+source_kind = "folder"
+source_repo = "authored:representative-set"
+task = """
+res://data/loot_table.json holds drop_weights for common (0.80), rare (0.18) and legendary (0.02). They are probabilities and MUST keep summing to exactly 1.0.
+Design wants legendary drops to be three times as likely. Triple the legendary weight, keep rare unchanged, and take the difference out of common so the three weights still sum to 1.0.
+"""
+
+[verifier]
+type = "py_config"
+entry = "expected.json"
+
+[scoring]
+mode = "fields"
+
+[provenance]
+author = "Claude"
+created = "2026-06-29"
+notes = "intent_translation/med. legendary 0.02->0.06 (x3), common 0.80->0.76 to keep sum=1.0, rare unchanged. Trap: AI triples legendary but forgets to reduce common -> weights sum to 1.04 -> common still 0.80 -> 1/2 = 0.5. noop=0."

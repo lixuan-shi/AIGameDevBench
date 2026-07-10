@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-09-25_db23384_044"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "a7eeab14a3f9f4c3139f00bfebe91e6508b027e4"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scripts/Parts/EndCastle.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-09-25_db23384_044"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

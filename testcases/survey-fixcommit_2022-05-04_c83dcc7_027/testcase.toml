@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-05-04_c83dcc7_027"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "c180350bac2489d5e72d6369bdc421c39d9f60c5"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\a-little-game-called-mario"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/Coin/Coin.gd, scenes/Coin/Coin.tscn, scenes/bosses/MegaBoss.tscn, scenes/decorations/Warning.tscn, scenes/enemies/BadCoin.tscn, scenes/enemies/Luigi.tscn, scenes/levels/Default/Level00.tscn, scenes/levels/Hub.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-05-04_c83dcc7_027"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

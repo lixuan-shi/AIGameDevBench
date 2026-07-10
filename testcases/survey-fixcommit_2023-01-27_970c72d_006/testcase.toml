@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-01-27_970c72d_006"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "9f4eaa4d9983a67b3d3d411c76087ef395a5c32b"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rts"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: source/match/hud/ProductionQueue.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-01-27_970c72d_006"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

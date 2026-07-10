@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-12_36ea85e_067"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "9f221775539c31846f414125a6eeb58680ac891a"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\tabletop-club"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: game/LICENSES.tres."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-12_36ea85e_067"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

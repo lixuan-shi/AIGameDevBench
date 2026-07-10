@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-18_0fd33d6_105"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "e45e7bfce3fe14391d64fd9ffe1a238629dfffa3"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Levels/SMBANN/World7/7-2.tscn, Scenes/Levels/SMBLL/World3/3-2.tscn, Scenes/Levels/SMBLL/World6/6-2.tscn, Scenes/Prefabs/LevelObjects/CheepCheepSideGenerator.tscn, Scenes/Prefabs/LevelObjects/TextLabel.tscn, Scripts/Classes/Components/ResourceSetterNew.gd, Scripts/Parts/EntityGenerator.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-18_0fd33d6_105"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

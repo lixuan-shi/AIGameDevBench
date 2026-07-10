@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-09-17_e7e068e_054"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "081ee25e1af0fea6d01470a8e420e49c8f143797"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\a-little-game-called-mario"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/friends/Blug.tscn, scenes/ui/TextRandomTrigger.tscn, scenes/ui/TextTrigger.tscn, scenes/ui/scripts/TextRandomTrigger.gd, scenes/ui/scripts/TextTrigger.gd, scripts/friends/Blug.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-09-17_e7e068e_054"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

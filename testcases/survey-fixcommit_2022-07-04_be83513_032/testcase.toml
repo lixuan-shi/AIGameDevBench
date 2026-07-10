@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-07-04_be83513_032"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "b0b481bb8f69bde39da8850163bf2ac7b78853f5"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\a-little-game-called-mario"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/platformer/characters/Bus.gd, scenes/platformer/characters/Trail.gd, scenes/title/TitleScreen.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-07-04_be83513_032"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

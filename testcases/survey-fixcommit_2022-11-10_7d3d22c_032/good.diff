@@ -1,0 +1,39 @@
+diff --git a/game/Scenes/Game/CameraController.tscn b/game/Scenes/Game/CameraController.tscn
+index 347fb9d..0dc8aba 100644
+--- a/game/Scenes/Game/CameraController.tscn
++++ b/game/Scenes/Game/CameraController.tscn
+@@ -44,6 +44,10 @@ __meta__ = {
+ "_editor_description_": "This control will be the parent of all of the cursors that are displayed in multiplayer games (showing the positions and rotations of every other player's cursor on the table)."
+ }
+ 
++[node name="HandPreviewRect" type="TextureRect" parent="."]
++mouse_filter = 2
++expand = true
++
+ [node name="CanvasLayer" type="CanvasLayer" parent="."]
+ __meta__ = {
+ "_editor_description_": "This nodes makes sure that all of it's children are rendered above the GameUI."
+@@ -59,10 +63,6 @@ __meta__ = {
+ }
+ outline_color = Color( 0, 1, 1, 0.588235 )
+ 
+-[node name="HandPreviewRect" type="TextureRect" parent="CanvasLayer"]
+-mouse_filter = 2
+-expand = true
+-
+ [node name="PieceContextMenu" type="PopupMenu" parent="CanvasLayer"]
+ margin_right = 20.0
+ margin_bottom = 20.0
+diff --git a/game/Scripts/Game/CameraController.gd b/game/Scripts/Game/CameraController.gd
+index 4d62a23..29d93c2 100644
+--- a/game/Scripts/Game/CameraController.gd
++++ b/game/Scripts/Game/CameraController.gd
+@@ -110,7 +110,7 @@ onready var _flick_line = $CanvasLayer/FlickLine
+ onready var _flick_strength_value_label = $CanvasLayer/FlickToolMenu/MarginContainer/VBoxContainer/HBoxContainer/FlickStrengthValueLabel
+ onready var _flick_strength_value_slider = $CanvasLayer/FlickToolMenu/MarginContainer/VBoxContainer/HBoxContainer/FlickStrengthValueSlider
+ onready var _flick_tool_menu = $CanvasLayer/FlickToolMenu
+-onready var _hand_preview_rect = $CanvasLayer/HandPreviewRect
++onready var _hand_preview_rect = $HandPreviewRect
+ onready var _mouse_grab = $MouseGrab
+ onready var _paint_tool_menu = $CanvasLayer/PaintToolMenu
+ onready var _piece_context_menu = $CanvasLayer/PieceContextMenu

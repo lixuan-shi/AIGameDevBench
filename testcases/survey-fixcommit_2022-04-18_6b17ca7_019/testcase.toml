@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-04-18_6b17ca7_019"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "2934d172d87bba50c573c27383e3b3bca36b67ae"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\a-little-game-called-mario"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/Star/Star.gd, scenes/ui/StarNotification.gd, scripts/autoload/EventBus.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-04-18_6b17ca7_019"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

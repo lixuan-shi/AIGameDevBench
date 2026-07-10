@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-09-05_a199783_053"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "d6730d6c41e000614a8931f529a07927cc51a284"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\a-little-game-called-mario"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/levels/marwing/1-0.tscn, scenes/levels/marwing/objects/DialogueBox.tscn, scenes/ui/PauseMenu.gd, scripts/marwing/DialogueBox.gd, scripts/marwing/Marwing.gd, scripts/marwing/levels/1-0.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-09-05_a199783_053"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

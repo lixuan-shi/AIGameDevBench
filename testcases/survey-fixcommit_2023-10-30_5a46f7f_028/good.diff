@@ -1,0 +1,25 @@
+diff --git a/scenes/ui/options_menu/fullscren_check.gd b/scenes/ui/options_menu/fullscren_check.gd
+index 8d12725..5f2e2d7 100644
+--- a/scenes/ui/options_menu/fullscren_check.gd
++++ b/scenes/ui/options_menu/fullscren_check.gd
+@@ -2,6 +2,7 @@ extends CheckBox
+ 
+ func _ready() -> void:
+ 	button_pressed = LocalSaveSystem.get_data(LocalSaveSystem.Sections.SETTINGS, "graphics_fullscreen", false)
++	toggled.connect(fullscreen_update)
+ 	fullscreen_update(button_pressed)
+ 	
+ 
+diff --git a/scenes/ui/options_menu/options_menu.tscn b/scenes/ui/options_menu/options_menu.tscn
+index fe718d0..5db8466 100644
+--- a/scenes/ui/options_menu/options_menu.tscn
++++ b/scenes/ui/options_menu/options_menu.tscn
+@@ -127,7 +127,7 @@ layout_mode = 2
+ size_flags_horizontal = 3
+ size_flags_vertical = 1
+ min_value = 20.0
+-max_value = 240.0
++max_value = 245.0
+ step = 5.0
+ value = 20.0
+ rounded = true

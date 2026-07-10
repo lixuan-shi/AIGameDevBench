@@ -1,0 +1,72 @@
+diff --git a/BUGS_TO_REPORT.org b/BUGS_TO_REPORT.org
+index 7c58089..24525f8 100644
+--- a/BUGS_TO_REPORT.org
++++ b/BUGS_TO_REPORT.org
+@@ -32,3 +32,4 @@ Downloading 0.00 MB source file /usr/src/debug/glibc/nptl/pthread_kill.c
+ * DONE radio buttons are visually broken (logic works fine tho)
+ * TODO inherited scenes not working
+ * TODO Resouce.get_rid().get_id() is always 0
++* TODO add_child() called from tree_exited signal handler via signal makes node visible in 0,0,0 for 1 frame
+diff --git a/source/match/Match.gd b/source/match/Match.gd
+index ae946c2..270c03e 100644
+--- a/source/match/Match.gd
++++ b/source/match/Match.gd
+@@ -26,6 +26,8 @@ var visible_players = null:
+ 	get = _get_visible_players
+ var map = HardcodedMap.new()  # TODO: use actual map
+ 
++var _setup_and_spawn_unit_requests_queue = []  # used to workaround Godot bug
++
+ @onready var navigation = find_child("Navigation")
+ 
+ @onready var _camera = find_child("IsometricCamera3D")
+@@ -34,7 +36,7 @@ var map = HardcodedMap.new()  # TODO: use actual map
+ 
+ 
+ func _ready():
+-	MatchSignals.setup_and_spawn_unit.connect(_setup_and_spawn_unit)
++	MatchSignals.setup_and_spawn_unit.connect(_enqueue_setup_and_spawn_unit_request)
+ 	_create_players()
+ 	_choose_controlled_player()
+ 	visible_player = players[settings.visible_player]
+@@ -50,6 +52,12 @@ func _unhandled_input(event):
+ 		MatchSignals.deselect_all_units.emit()
+ 
+ 
++func _process(_delta):
++	for request in _setup_and_spawn_unit_requests_queue:
++		request.call()
++	_setup_and_spawn_unit_requests_queue.clear()
++
++
+ func _ignore(_value):
+ 	pass
+ 
+@@ -168,6 +176,14 @@ func _spawn_player_units(player, spawn_transform):
+ 	)
+ 
+ 
++func _enqueue_setup_and_spawn_unit_request(
++	unit, a_transform, player, mark_structure_under_construction
++):
++	_setup_and_spawn_unit_requests_queue.append(
++		_setup_and_spawn_unit.bind(unit, a_transform, player, mark_structure_under_construction)
++	)
++
++
+ func _setup_and_spawn_unit(unit, a_transform, player, mark_structure_under_construction = true):
+ 	unit.global_transform = a_transform
+ 	_setup_unit(unit, player)
+diff --git a/source/match/MatchSignals.gd b/source/match/MatchSignals.gd
+index 51f2339..4789e4d 100644
+--- a/source/match/MatchSignals.gd
++++ b/source/match/MatchSignals.gd
+@@ -2,7 +2,7 @@ extends Node
+ 
+ # requests
+ signal deselect_all_units
+-signal setup_and_spawn_unit(unit, transform, player)
++signal setup_and_spawn_unit(unit, transform, player)  # TODO: make immediate once Godot bug is fixed
+ signal place_building(building_prototype)
+ 
+ # notifications

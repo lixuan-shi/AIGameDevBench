@@ -10,7 +10,8 @@ _REGISTRY: dict[str, "Verifier"] = {}
 
 
 class Verifier(Protocol):
-    def verify(self, testcase: Testcase, workspace: Path) -> VerifierResult: ...
+    def verify(self, testcase: Testcase, workspace: Path,
+               godot_binary: str = "godot") -> VerifierResult: ...
 
 
 def register(verifier_type: str):

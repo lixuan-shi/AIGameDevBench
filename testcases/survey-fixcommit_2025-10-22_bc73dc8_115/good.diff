@@ -1,0 +1,52 @@
+diff --git a/Scripts/Classes/Entities/Player.gd b/Scripts/Classes/Entities/Player.gd
+index 24524a7..66d0ff0 100644
+--- a/Scripts/Classes/Entities/Player.gd
++++ b/Scripts/Classes/Entities/Player.gd
+@@ -161,6 +161,8 @@ const ANIMATION_FALLBACKS := {
+ 	"CrouchJump": "Crouch", 
+ 	"CrouchBump": "Bump",
+ 	"CrouchMove": "Crouch", 
++	"WaterCrouchMove": "CrouchMove",
++	"WingCrouchMove": "WaterCrouchMove",
+ 	"IdleAttack": "MoveAttack", 
+ 	"CrouchAttack": "IdleAttack", 
+ 	"MoveAttack": "Attack", 
+@@ -247,7 +249,7 @@ func apply_character_physics(apply: bool) -> void:
+ 	
+ 	for i in get_tree().get_nodes_in_group("SmallCollisions"):
+ 		var hitbox_scale = json.get("small_hitbox_scale", [1, 1]) if apply else [1, 1]
+-		i.hitbox = Vector3(hitbox_scale[0], hitbox_scale[1] if i.get_meta("scalable", true) else 1, json.get("small_crouch_scale", 0.75) if apply else 0.5)
++		i.hitbox = Vector3(hitbox_scale[0], hitbox_scale[1] if i.get_meta("scalable", true) else 1, json.get("small_crouch_scale", 0.75) if apply else 0.75)
+ 		i._physics_process(0)
+ 	for i in get_tree().get_nodes_in_group("BigCollisions"):
+ 		var hitbox_scale = json.get("big_hitbox_scale", [1, 1]) if apply else [1, 1]
+diff --git a/Scripts/Classes/States/Player/Normal.gd b/Scripts/Classes/States/Player/Normal.gd
+index 5bba4ce..12dac5f 100644
+--- a/Scripts/Classes/States/Player/Normal.gd
++++ b/Scripts/Classes/States/Player/Normal.gd
+@@ -221,13 +221,19 @@ func get_animation_name() -> String:
+ 				return "CrouchJump"
+ 		elif player.is_actually_on_floor():
+ 			if abs(player.velocity.x) >= 5 and not player.is_actually_on_wall():
+-				return "CrouchMove"
+-			elif player.in_water:
+-				return "WaterCrouch"
+-			elif player.flight_meter > 0:
+-				return "WingCrouch"
++				if player.in_water:
++					return "WaterCrouchMove"
++				elif player.flight_meter > 0:
++					return "WingCrouchMove"
++				else:
++					return "CrouchMove"
+ 			else:
+-				return "Crouch"
++				if player.in_water:
++					return "WaterCrouch"
++				elif player.flight_meter > 0:
++					return "WingCrouch"
++				else:
++					return "Crouch"
+ 	if player.is_actually_on_floor():
+ 		if player.skidding:
+ 			return "Skid"

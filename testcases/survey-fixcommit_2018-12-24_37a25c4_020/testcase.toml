@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2018-12-24_37a25c4_020"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "ac2c4482fcb6d6829b0dc7f0e4837e2b7f435420"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: godot/local_map/LocalMap.tscn, godot/local_map/pawns/InteractivePawn.gd, godot/local_map/pawns/InteractivePawn.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2018-12-24_37a25c4_020"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

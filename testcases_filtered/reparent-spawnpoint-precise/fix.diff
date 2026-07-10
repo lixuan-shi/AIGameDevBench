@@ -1,0 +1,17 @@
+diff --git a/scenes/main.tscn b/scenes/main.tscn
+index 6f18506..a1a5462 100644
+--- a/scenes/main.tscn
++++ b/scenes/main.tscn
+@@ -4,9 +4,9 @@
+ 
+ [node name="Level" type="Node2D" parent="."]
+ 
+-[node name="SpawnPoint" type="Marker2D" parent="Level"]
+-position = Vector2(100, 200)
+-
+ [node name="Enemies" type="Node2D" parent="."]
+ 
++[node name="SpawnPoint" type="Marker2D" parent="Enemies"]
++position = Vector2(100, 200)
++
+ [node name="HUD" type="CanvasLayer" parent="."]

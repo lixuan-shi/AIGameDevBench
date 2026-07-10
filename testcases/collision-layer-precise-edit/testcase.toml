@@ -1,0 +1,21 @@
+[testcase]
+id = "collision-layer-precise-edit"
+category = "precise_edit"
+source_kind = "folder"
+source_repo = "authored:representative-set"
+task = """
+In res://scenes/main.tscn the Player (CharacterBody2D) is currently on collision_layer 1.
+Move the Player onto collision layer 2 (set Player.collision_layer = 2). Change nothing else: do not touch the Player's collision_mask, the Enemy node, or any other property.
+"""
+
+[verifier]
+type = "py_tscn_diff"
+entry = "expected_delta.json"
+
+[scoring]
+mode = "tristate"
+
+[provenance]
+author = "Claude"
+created = "2026-06-29"
+notes = "precise_edit/easy. Trap: AI sets Player.collision_layer but also disturbs ANOTHER node (e.g. the Enemy's layer). py_tscn_diff detects side effects at node-path granularity, so a cross-node disturbance -> no_side_effects fails -> 0.5; a clean single-node edit -> 1.0; missing the intended change -> 0. noop=0. (Same-node extra prop edits are not flagged by this verifier — the discriminating trap is cross-node.)"

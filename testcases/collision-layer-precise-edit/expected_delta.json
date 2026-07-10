@@ -1,0 +1,11 @@
+{
+  "baseline_scene": "baseline/scenes/main.tscn",
+  "scene": "scenes/main.tscn",
+  "expected": {
+    "added_nodes": [],
+    "removed_nodes": [],
+    "changed_props": {
+      "Player": ["collision_layer"]
+    }
+  }
+}

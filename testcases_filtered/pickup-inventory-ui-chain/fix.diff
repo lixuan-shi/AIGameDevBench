@@ -1,0 +1,22 @@
+diff --git a/scripts/hud_label.gd b/scripts/hud_label.gd
+--- a/scripts/hud_label.gd
++++ b/scripts/hud_label.gd
+@@ -6,4 +6,4 @@
+ func bind(inventory: Inventory) -> void:
+-	pass
++	inventory.inventory_changed.connect(_on_inventory_changed)
+
+ func _on_inventory_changed(new_count: int) -> void:
+diff --git a/scripts/inventory.gd b/scripts/inventory.gd
+--- a/scripts/inventory.gd
++++ b/scripts/inventory.gd
+@@ -10,5 +10,8 @@
+ func add_item() -> void:
+ 	count += 1
++	inventory_changed.emit(count)
+
+ func collect_pickup(id: int) -> void:
++	if _seen_ids.has(id):
++		return
++	_seen_ids.append(id)
+ 	add_item()

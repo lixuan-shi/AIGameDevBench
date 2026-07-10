@@ -1,0 +1,67 @@
+diff --git a/Scenes/Levels/SMB1/World2/2-1.tscn b/Scenes/Levels/SMB1/World2/2-1.tscn
+index 964aaea..f617948 100644
+--- a/Scenes/Levels/SMB1/World2/2-1.tscn
++++ b/Scenes/Levels/SMB1/World2/2-1.tscn
+@@ -238,7 +238,7 @@ metadata/_custom_type_script = "uid://pfwgmuchergf"
+ 
+ [node name="ChallengeNodes" type="Node" parent="." node_paths=PackedStringArray("nodes_to_delete")]
+ script = ExtResource("27_nvjju")
+-nodes_to_delete = [NodePath("../Blocks/QuestionBlock2"), null, NodePath("../Blocks/BrickBlock7")]
++nodes_to_delete = [NodePath("../Blocks/QuestionBlock2"), NodePath("../Blocks/BrickBlock7")]
+ metadata/_custom_type_script = "uid://cgm3opb5qudc1"
+ 
+ [node name="RedCoin" parent="ChallengeNodes" instance=ExtResource("28_t63mw")]
+diff --git a/Scenes/Levels/SMB1/World3/3-2.tscn b/Scenes/Levels/SMB1/World3/3-2.tscn
+index 9609a66..dce9f77 100644
+--- a/Scenes/Levels/SMB1/World3/3-2.tscn
++++ b/Scenes/Levels/SMB1/World3/3-2.tscn
+@@ -164,9 +164,8 @@ position = Vector2(3192, 0)
+ [node name="Checkpoint" parent="." instance=ExtResource("20_xv2tb")]
+ position = Vector2(1328, 0)
+ 
+-[node name="ChallengeNodes" type="Node" parent="." node_paths=PackedStringArray("nodes_to_delete")]
++[node name="ChallengeNodes" type="Node" parent="."]
+ script = ExtResource("21_8rqg6")
+-nodes_to_delete = [null]
+ metadata/_custom_type_script = "uid://cgm3opb5qudc1"
+ 
+ [node name="RedCoin" parent="ChallengeNodes" instance=ExtResource("22_cxldk")]
+diff --git a/Scenes/Levels/SMB1/World4/4-1.tscn b/Scenes/Levels/SMB1/World4/4-1.tscn
+index 29bfc19..ce13541 100644
+--- a/Scenes/Levels/SMB1/World4/4-1.tscn
++++ b/Scenes/Levels/SMB1/World4/4-1.tscn
+@@ -112,7 +112,7 @@ tile_map_data = PackedByteArray("AAD7////AAAAAAAAAAD8////AAABAAAAAAD+////AAABAAA
+ 
+ [node name="ChallengeNodes" type="Node" parent="." node_paths=PackedStringArray("nodes_to_delete")]
+ script = ExtResource("21_f001g")
+-nodes_to_delete = [NodePath("../Blocks/QuestionBlock3"), NodePath("../Coin"), null, NodePath("../Blocks/QuestionBlock4")]
++nodes_to_delete = [NodePath("../Blocks/QuestionBlock3"), NodePath("../Coin"), NodePath("../Blocks/QuestionBlock4")]
+ metadata/_custom_type_script = "uid://cgm3opb5qudc1"
+ 
+ [node name="QuestionBlock" parent="ChallengeNodes" instance=ExtResource("9_vtupl")]
+diff --git a/Scenes/Levels/SMB1/World7/7-3.tscn b/Scenes/Levels/SMB1/World7/7-3.tscn
+index d729705..cb3fde4 100644
+--- a/Scenes/Levels/SMB1/World7/7-3.tscn
++++ b/Scenes/Levels/SMB1/World7/7-3.tscn
+@@ -1054,7 +1054,7 @@ position = Vector2(2976, -96)
+ [node name="InvisibleQuestionBlock" parent="ChallengeNodes" index="5"]
+ position = Vector2(504, -104)
+ 
+-[node name="InvisibleQuestionBlock2" parent="ChallengeNodes" index="6" instance=ExtResource("3_dfskb")]
++[node name="InvisibleQuestionBlock3" parent="ChallengeNodes" index="6" instance=ExtResource("3_dfskb")]
+ position = Vector2(1176, -104)
+ 
+ [node name="Enemies" type="Node" parent="." index="13"]
+diff --git a/Scenes/Levels/SMB1/World8/8-2.tscn b/Scenes/Levels/SMB1/World8/8-2.tscn
+index b4531c9..04f1185 100644
+--- a/Scenes/Levels/SMB1/World8/8-2.tscn
++++ b/Scenes/Levels/SMB1/World8/8-2.tscn
+@@ -185,7 +185,7 @@ optional = true
+ 
+ [node name="ChallengeNodes" type="Node" parent="." node_paths=PackedStringArray("nodes_to_delete")]
+ script = ExtResource("20_8cbri")
+-nodes_to_delete = [NodePath("../Enemies/Lakitu"), NodePath("../DecoTiles"), NodePath("../Blocks")]
++nodes_to_delete = [NodePath("../Blocks")]
+ force_on = true
+ metadata/_custom_type_script = "uid://cgm3opb5qudc1"
+ 

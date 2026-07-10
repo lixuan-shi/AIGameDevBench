@@ -1,0 +1,13 @@
+diff --git a/Scenes/Prefabs/Entities/Enemies/PiranhaPlant.tscn b/Scenes/Prefabs/Entities/Enemies/PiranhaPlant.tscn
+index 9990ded..fd374f7 100644
+--- a/Scenes/Prefabs/Entities/Enemies/PiranhaPlant.tscn
++++ b/Scenes/Prefabs/Entities/Enemies/PiranhaPlant.tscn
+@@ -187,7 +187,7 @@ script/source = "extends Node
+ @onready var starting_position: Vector2 = owner.global_position
+ 
+ func _process(_delta: float) -> void:
+-	const OFFSETS = [Vector2.ZERO, Vector2.ZERO, Vector2(-16, 0), Vector2(16, 0)]
++	const OFFSETS = [Vector2.ZERO, Vector2(0, -16), Vector2(-16, 0), Vector2.ZERO]
+ 	if Global.level_editor != null:
+ 		owner.global_rotation_degrees = [0, 180, 90, -90][owner.plant_direction]
+ 		var offset = OFFSETS[owner.plant_direction]

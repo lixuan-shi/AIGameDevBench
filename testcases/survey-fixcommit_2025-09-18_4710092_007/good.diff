@@ -1,0 +1,39 @@
+diff --git a/Assets/Audio/BGM/TitleBGM.json b/Assets/Audio/BGM/TitleBGM.json
+index 9a211b1..9b58c0f 100644
+--- a/Assets/Audio/BGM/TitleBGM.json
++++ b/Assets/Audio/BGM/TitleBGM.json
+@@ -1,7 +1,7 @@
+ {
+ 	"variations": {
+ 		"SMB1": {"source": "TitleSMB.mp3"},
+-		"SMBLL": {"source": "TitleSMBLL.mp3"},
++		"SMBLL": {"source": "TitleSMBLL.bgm"},
+ 		"SMBS": {"source": "TitleSMBS.mp3"},
+ 		"SMBANN": {"source": "TitleANN.mp3"}
+ 	}
+diff --git a/Assets/Audio/BGM/TitleSMBLL.bgm b/Assets/Audio/BGM/TitleSMBLL.bgm
+new file mode 100644
+index 0000000..3e274a5
+--- /dev/null
++++ b/Assets/Audio/BGM/TitleSMBLL.bgm
+@@ -0,0 +1,4 @@
++{
++    "Normal": {"source": "TitleSMBLL.mp3", "loop": 11.735},
++    "Hurry": {"source": "TitleSMBLL.mp3", "loop": 11.735}
++}
+\ No newline at end of file
+diff --git a/Scripts/Classes/Components/ResourceSetterNew.gd b/Scripts/Classes/Components/ResourceSetterNew.gd
+index 8f84e50..b5e1a57 100644
+--- a/Scripts/Classes/Components/ResourceSetterNew.gd
++++ b/Scripts/Classes/Components/ResourceSetterNew.gd
+@@ -304,7 +304,9 @@ func load_image_from_path(path := "") -> ImageTexture:
+ 
+ func load_audio_from_path(path := "") -> AudioStream:
+ 	var stream = null
+-	if path.contains("res://"):
++	if path.contains(".bgm"):
++		stream = AudioManager.generate_interactive_stream(JSON.parse_string(FileAccess.get_file_as_string(path)))
++	elif path.contains("res://"):
+ 		return load(path)
+ 	if path.contains(".wav"):
+ 		stream = AudioStreamWAV.load_from_file(path)

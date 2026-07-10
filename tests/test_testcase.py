@@ -62,6 +62,84 @@ fix_commit = "fixc"
     assert tc.provenance["fix_commit"] == "fixc"
 
 
+def test_source_kind_defaults_to_git(tmp_path):
+    _write(tmp_path / "bench-git", """
+[testcase]
+id = "bench-git"
+category = "behavior_logic"
+baseline_ref = "abc123"
+task = "t"
+
+[verifier]
+type = "godot_scenetree"
+entry = "v.gd"
+
+[scoring]
+mode = "checkpoints"
+""")
+    tc = load_testcase(tmp_path / "bench-git")
+    assert tc.source_kind == "git"
+
+
+def test_folder_source_kind_without_baseline_ref(tmp_path):
+    _write(tmp_path / "gdb-task_0002", """
+[testcase]
+id = "gdb-task_0002"
+category = "behavior_logic"
+source_kind = "folder"
+task = "Make the projectile advance the quest"
+
+[verifier]
+type = "godot_scene_assert"
+entry = "verifier_scene.tscn"
+
+[scoring]
+mode = "checkpoints"
+""")
+    tc = load_testcase(tmp_path / "gdb-task_0002")
+    assert tc.source_kind == "folder"
+    assert tc.baseline_ref == ""
+    assert tc.verifier_type == "godot_scene_assert"
+
+
+def test_load_survey_bad_case_verifier(tmp_path):
+    _write(tmp_path / "survey-bad", """
+[testcase]
+id = "survey-bad"
+category = "precise_edit"
+baseline_ref = "abc123"
+task = "Fix the original bad case"
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+""")
+    tc = load_testcase(tmp_path / "survey-bad")
+    assert tc.verifier_type == "survey_bad_case"
+
+
+def test_invalid_source_kind_rejected(tmp_path):
+    _write(tmp_path / "bad-src", """
+[testcase]
+id = "bad-src"
+category = "behavior_logic"
+source_kind = "svn"
+task = "t"
+
+[verifier]
+type = "godot_scene_assert"
+entry = "v.tscn"
+
+[scoring]
+mode = "checkpoints"
+""")
+    with pytest.raises(ValueError, match="source_kind"):
+        load_testcase(tmp_path / "bad-src")
+
+
 def test_invalid_category_rejected(tmp_path):
     _write(tmp_path / "bad", """
 [testcase]
@@ -100,3 +178,37 @@ mode = "checkpoints"
     (tmp_path / "not-a-testcase").mkdir()
     found = discover_testcases(tmp_path)
     assert {t.id for t in found} == {"bench-0001", "bench-0002"}
+
+
+
+def test_discover_ignores_templates_dir_even_with_manifest(tmp_path):
+    _write(tmp_path / "real-case", """
+[testcase]
+id = "real-case"
+category = "behavior_logic"
+baseline_ref = "r"
+task = "t"
+
+[verifier]
+type = "godot_scenetree"
+entry = "v.gd"
+
+[scoring]
+mode = "checkpoints"
+""")
+    _write(tmp_path / "_templates" / "template-case", """
+[testcase]
+id = "template-case"
+category = "behavior_logic"
+baseline_ref = "REPLACE_ME"
+task = "template"
+
+[verifier]
+type = "godot_scenetree"
+entry = "v.gd"
+
+[scoring]
+mode = "checkpoints"
+""")
+    found = discover_testcases(tmp_path)
+    assert {t.id for t in found} == {"real-case"}

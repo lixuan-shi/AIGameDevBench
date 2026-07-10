@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-01-29_8e6ded5_009"
+category = "precise_edit"
+source_kind = "git"
+baseline_ref = "bd3688d1eabecf0b9006c168e888b3af43e31f5e"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rts"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: source/Globals.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-01-29_8e6ded5_009"
+bad_case_type = "C3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

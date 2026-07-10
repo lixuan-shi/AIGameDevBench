@@ -1,0 +1,25 @@
+[testcase]
+id = "damage-formula-refactor"
+category = "behavior_logic"
+source_kind = "folder"
+source_repo = "authored:representative-set"
+task = """
+Implement compute_damage(attack, defense, is_crit) -> int in res://scripts/combat.gd following the documented formula exactly (the rules interact, so order matters):
+1. raw = attack - defense
+2. if is_crit, double the POST-defense raw (crit multiplies what gets through armor, not the base attack)
+3. floor the result to a MINIMUM of 1 (an attack always deals at least 1, even when defense >= attack)
+4. return an int
+Worked examples: (10,3,false)=7; (10,3,true)=14; (5,9,false)=1; (5,9,true)=1; (8,8,false)=1.
+"""
+
+[verifier]
+type = "godot_scene_assert"
+entry = "verifier_scene.tscn"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+author = "Claude"
+created = "2026-06-30"
+notes = "behavior_logic/hard (interacting-rules trap). Naive impls miss one of: crit-after-defense (not before), min-1 floor, crit-on-blocked-hit still min 1. Each rule is a separate checkpoint. Baseline stub returns 0 -> noop=0. Golden satisfies all -> 1.0; common mistakes (crit before defense, or max(0,...) instead of max(1,...)) score partial."

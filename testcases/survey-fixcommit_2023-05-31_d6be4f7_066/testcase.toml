@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-05-31_d6be4f7_066"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "29e49d71ac282f1bfe76bfdd523a07699cff53af"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\tabletop-club"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: game/Scripts/AssetDB.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-05-31_d6be4f7_066"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

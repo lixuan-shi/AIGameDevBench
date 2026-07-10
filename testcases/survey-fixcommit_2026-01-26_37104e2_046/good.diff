@@ -1,0 +1,493 @@
+diff --git a/src/combat/battlers/battler.gd b/src/combat/battlers/battler.gd
+index 194d1e2..be04252 100644
+--- a/src/combat/battlers/battler.gd
++++ b/src/combat/battlers/battler.gd
+@@ -138,7 +138,6 @@ var cached_action: BattlerAction = null:
+ 	set(value):
+ 		cached_action = value
+ 		action_cached.emit()
+-		print("Cache action")
+ 
+ 
+ static func sort(a: Battler, b: Battler) -> bool:
+@@ -175,16 +174,6 @@ func _ready() -> void:
+ 		actions = duplicate_actions
+ 
+ 
+-#func select_action() -> void:
+-	#print(name, " looks for an action!")
+-	#if ai != null:
+-		#ai.select_action()
+-	#
+-	#elif is_player:
+-		#pass
+-
+-
+-#func act(targets: Array[Battler] = []) -> void:
+ ## [method BattlerAction.execute] the Battler's [member cached_action].
+ func act() -> void:
+ 	if cached_action:
+@@ -207,17 +196,6 @@ func take_hit(hit: BattlerHit) -> void:
+ 		hit_missed.emit()
+ 
+ 
+-#func get_actions() -> Array[BattlerAction]:
+-	#var duplicate_actions: Array[BattlerAction] = []
+-	#for action in _actions:
+-		#var duplicate_action: BattlerAction = action.duplicate()
+-		#duplicate_action.source = self
+-		#duplicate_actions.append(duplicate_action)
+-		#print("Add action %s " % duplicate_action.name, duplicate_action)
+-	#print("Returning ", duplicate_actions)
+-	#return duplicate_actions
+-
+-
+ # Iteratively search this node's parents for the BattlerRoster. Battler's must be descendants of the
+ # BattlerRoster. Used to setup this Battler's BattlerActions.
+ func _get_roster() -> BattlerRoster:
+diff --git a/src/combat/battlers/battler_roster.gd b/src/combat/battlers/battler_roster.gd
+index 4f235be..f642a48 100644
+--- a/src/combat/battlers/battler_roster.gd
++++ b/src/combat/battlers/battler_roster.gd
+@@ -4,109 +4,6 @@
+ class_name BattlerRoster extends Node
+ 
+ 
+-## Emitted whenever the combat logic has finished, including all animation details.
+-#signal finished(has_player_won: bool)
+-
+-## A list of the combat participants, in [BattlerRoster] form. This object is created by the turn
+-## queue from children [Battler]s and then made available to other combat systems.
+-#var battler_roster: BattlerRoster
+-#
+-### Tracks which combat round is currently being played. Every round, all active Actors will get a
+-### turn to act.
+-#var round_count = 1:
+-	#set(value):
+-		#round_count = value
+-		#print("\nBegin turn %d" % round_count)
+-#
+-#
+-##func _ready() -> void:
+-	##battler_roster = BattlerRoster.new(self)
+-#
+-#
+-## Combat occurs in two phases: Battlers choose their actions and then act them out. The first phase
+-## sees all AI Battlers choose their action, followed by the player. Player actions are chosen by
+-## repeatedly calling _select_next_player_action.
+-#func next_round() -> void:
+-	#round_count += 1
+-	#
+-	## First of all, let enemy (necessarily AI) battlers pick their actions.
+-	#for battler in battler_roster.find_live_battlers(battler_roster.get_enemy_battlers()):
+-		#if battler.ai != null:
+-			#battler.ai.select_action(battler, battler_roster)
+-		#print("%s picked: " % battler.name, battler.cached_action)
+-	#
+-	## Secondly, allow player Battlers to pick their action.
+-	## This will be iterative as the player selects and cancels their choices. The turn queue will
+-	## move to the action phase once all player Battlers have an action selected.
+-	#_select_next_player_action()
+-#
+-#
+-## Player Battlers select their actions by repeatedly calling _select_next_player_action. The method
+-## looks for player Battlers who have no cached action and prioritizes those further up in the scene
+-## tree. This allows the player to go "backwards" and "forwards" between Battlers, choosing actions
+-## and cancelling them as needed.
+-## At this point, all AI Battlers should have a cached actoin.
+-## Once all Battlers have an action cached (see Battler.cached_action), _select_next_player_action
+-## calls _next_turn to move into the second phase.
+-#func _select_next_player_action() -> void:
+-	## Find any remaining player Battlers that need an action selected.
+-	#var player_battlers: = battler_roster.get_player_battlers()
+-	#var remaining_battlers: = battler_roster.find_battlers_needing_actions(player_battlers)
+-	#
+-	## If there are no player Battlers needing actions, move on to the second phase of a round:
+-	## taking action!
+-	#if remaining_battlers.is_empty():
+-		#print("No remaining actions, move to execution.")
+-		#_play_next_action.call_deferred()
+-		#return
+-	#
+-	## If there are player Battlers needing cached actions, pick the first one and allow it to search
+-	## for an action using either its AI controller (if present) or player input.
+-	#var next_player_battler: Battler = remaining_battlers.front()
+-	#print("%s looking for actions!" % next_player_battler.name)
+-	#next_player_battler.action_cached.connect(_select_next_player_action, 
+-		#CONNECT_DEFERRED | CONNECT_ONE_SHOT)
+-	#CombatEvents.player_battler_selected.emit(next_player_battler)
+-#
+-#
+-## The second phase of combat has each Battler act in order of speed. This is done by repeatedly
+-## calling _next_turn until no active Battlers have a cached action waiting to be executed.
+-#func _play_next_action() -> void:
+-	## Check for battle end conditions, that one side has been downed.
+-	#if battler_roster.are_battlers_defeated(battler_roster.get_player_battlers()):
+-		#finished.emit.call_deferred(false)
+-		#print("Player defeated")
+-		#return
+-	#elif battler_roster.are_battlers_defeated(battler_roster.get_enemy_battlers()):
+-		#finished.emit.call_deferred(true)
+-		#print("Enemies defeated")
+-		#return
+-#
+-	## Check for an active Battler. If neither side has lost yet there are no active actors, it's
+-	## time to start the next round.
+-	#var next_actor: = _get_next_actor()
+-	#if next_actor == null:
+-		#next_round()
+-		#return
+-	#
+-	## Connect to the actor's turn_finished signal. The actor is guaranteed to emit the signal,
+-	## even if it will be freed at the end of this frame.
+-	## However, we'll call_defer the next turn, since the current actor may have been downed on its
+-	## turn and we need a frame to process the change.
+-	#next_actor.turn_finished.connect(_play_next_action, CONNECT_DEFERRED | CONNECT_ONE_SHOT)
+-	#next_actor.act()
+-#
+-#
+-#func _get_next_actor() -> Battler:
+-	#var battlers: = battler_roster.get_battlers()
+-	#var ready_to_act_battlers: = battler_roster.find_ready_to_act_battlers(battlers)
+-	#if ready_to_act_battlers.is_empty():
+-		#return null
+-	#
+-	#ready_to_act_battlers.sort_custom(Battler.sort)
+-	#return ready_to_act_battlers.front()
+-
+-
+ ## Returns all Battlers existing in the current combat.
+ func get_battlers() -> Array[Battler]:
+ 	var battler_list: Array[Battler] = []
+diff --git a/src/combat/combat.gd b/src/combat/combat.gd
+index 6c305fb..7b0ad7f 100644
+--- a/src/combat/combat.gd
++++ b/src/combat/combat.gd
+@@ -35,7 +35,7 @@ var _previous_music_track: AudioStream = null
+ # A reference to 
+ @onready var _battler_roster: BattlerRoster
+ @onready var _combat_container: = $CenterContainer as CenterContainer
+-@onready var _transition_delay_timer: = $CenterContainer/TransitionDelay as Timer
++@onready var _transition_delay_timer: = $UI/TransitionDelay as Timer
+ @onready var _ui: = $UI as UICombat
+ 
+ 
+@@ -61,10 +61,8 @@ func setup(arena: PackedScene) -> void:
+ 	_combat_container.add_child(combat_arena)
+ 	_battler_roster = combat_arena.get_battler_roster()
+ 	
+-	print("Wait")
+ 	# Wait a frame for the arena and its children (VFX, Battlers, etc.) to be ready.
+ 	await get_tree().process_frame
+-	print("Battlers: ", _battler_roster.get_battlers())
+ 	
+ 	_ui.setup(_battler_roster)
+ 
+@@ -103,7 +101,6 @@ func next_round() -> void:
+ 	for battler in _battler_roster.find_live_battlers(_battler_roster.get_enemy_battlers()):
+ 		if battler.ai != null:
+ 			battler.ai.select_action(battler)
+-		print("%s picked: " % battler.name, battler.cached_action)
+ 	
+ 	# Secondly, allow player Battlers to pick their action.
+ 	# This will be iterative as the player selects and cancels their choices. The turn queue will
+@@ -126,7 +123,6 @@ func _select_next_player_action() -> void:
+ 	# If there are no player Battlers needing actions, move on to the second phase of a round:
+ 	# taking action!
+ 	if remaining_battlers.is_empty():
+-		print("No remaining actions, move to execution.")
+ 		# De-select the last Battler that was receiving orders.
+ 		CombatEvents.player_battler_selected.emit(null)
+ 		_play_next_action.call_deferred()
+@@ -135,7 +131,6 @@ func _select_next_player_action() -> void:
+ 	# If there are player Battlers needing cached actions, pick the first one and allow it to search
+ 	# for an action using either its AI controller (if present) or player input.
+ 	var next_player_battler: Battler = remaining_battlers.front()
+-	print("%s looking for actions!" % next_player_battler.name)
+ 	
+ 	# When the player selects an action (or presses 'back'), the current Battler needs to move back
+ 	# to its rest position before moving on to the next battler, hence the await call below.
+@@ -145,7 +140,6 @@ func _select_next_player_action() -> void:
+ 			# UIActionMenu). If so, the player wishes to reissue orders for the previous Battler.
+ 			# If there IS a previous Battler, remove its cached action.
+ 			if battler.cached_action == null:
+-				print("Go to previous Battler")
+ 				var battlers: = _battler_roster.get_player_battlers()
+ 				var index: = battlers.find(battler)
+ 				if index > 0:
+@@ -169,11 +163,9 @@ func _play_next_action() -> void:
+ 	# Check for battle end conditions, that one side has been downed.
+ 	if _battler_roster.are_battlers_defeated(_battler_roster.get_player_battlers()):
+ 		_on_combat_finished.call_deferred(false)
+-		print("Player defeated")
+ 		return
+ 	elif _battler_roster.are_battlers_defeated(_battler_roster.get_enemy_battlers()):
+ 		_on_combat_finished.call_deferred(true)
+-		print("Enemies defeated")
+ 		return
+ 
+ 	# Check for an active Battler. If neither side has lost yet there are no active actors, it's
+@@ -202,16 +194,13 @@ func _get_next_actor() -> Battler:
+ 
+ 
+ func _on_combat_finished(is_player_victory: bool) -> void:
+-	print("Combat over")
+-	
+-	_battler_roster = null
+-	
+ 	# Fade out the combat UI elements.
+ 	_ui.animation.play("fade_out")
+ 	await _ui.animation.animation_finished
+-	
+ 	await _display_combat_results_dialog(is_player_victory)
+ 	
++	_battler_roster = null
++	
+ 	# Wait a short period of time and then fade the screen to black.
+ 	_transition_delay_timer.start()
+ 	await _transition_delay_timer.timeout
+@@ -221,9 +210,6 @@ func _on_combat_finished(is_player_victory: bool) -> void:
+ 	# Clean up the combat arena.
+ 	for child in _combat_container.get_children():
+ 		child.free()
+-	#assert(_active_arena != null, "Combat finished but no active arena to clean up!")
+-	#_active_arena.queue_free()
+-	#_active_arena = null
+ 
+ 	Music.play(_previous_music_track)
+ 	_previous_music_track = null
+diff --git a/src/combat/combat_ai_random.gd b/src/combat/combat_ai_random.gd
+index 91dcb6d..3101524 100644
+--- a/src/combat/combat_ai_random.gd
++++ b/src/combat/combat_ai_random.gd
+@@ -55,8 +55,6 @@ var _has_selected_action: = false
+ ## This controller randomly chooses an action from the Battler's [member Battler.actions] and then
+ ## randomly chooses a target.
+ func select_action(source: Battler) -> void:
+-	print("%s looking for actions!" % source.name)
+-	
+ 	# Keep track of how many times the controller has tried to find a valid action. In the event
+ 	# that the controller fails ITERATION_MAX times, it will cease searching for an action.
+ 	# We do this because it is possible that the designer may create a scenario where there are
+diff --git a/src/combat/ui/action_menu/ui_action_button.gd b/src/combat/ui/action_menu/ui_action_button.gd
+index 25241cb..5083997 100644
+--- a/src/combat/ui/action_menu/ui_action_button.gd
++++ b/src/combat/ui/action_menu/ui_action_button.gd
+@@ -20,7 +20,4 @@ var action: BattlerAction:
+ 
+ 
+ func _ready() -> void:
+-	pressed.connect(func _on_pressed() -> void:
+-		print("Pressed %s" % name)
+-		release_focus()
+-	)
++	pressed.connect(release_focus)
+diff --git a/src/combat/ui/action_menu/ui_action_menu.gd b/src/combat/ui/action_menu/ui_action_menu.gd
+index 52f37fe..b073361 100644
+--- a/src/combat/ui/action_menu/ui_action_menu.gd
++++ b/src/combat/ui/action_menu/ui_action_menu.gd
+@@ -14,9 +14,7 @@ signal action_focused(action: BattlerAction)
+ ## Determines whether or not the menu is visible and can be affected by player input.
+ var is_active: = false:
+ 	set(value):
+-		print("Show action menu? ", value)
+ 		is_active = value
+-		
+ 		visible = is_active
+ 		set_process_unhandled_input(is_active)
+ 
+diff --git a/src/combat/ui/battler_entry/ui_player_battler_list.gd b/src/combat/ui/battler_entry/ui_player_battler_list.gd
+index 2824b41..5d59804 100644
+--- a/src/combat/ui/battler_entry/ui_player_battler_list.gd
++++ b/src/combat/ui/battler_entry/ui_player_battler_list.gd
+@@ -32,7 +32,7 @@ func _ready() -> void:
+ 
+ 
+ # Free any old battler entries, if they exist.
+-func _clear() -> void:
++func _clear(_result: bool = false) -> void:
+ 	for old_entry in get_children():
+ 		old_entry.queue_free()
+ 	_entries.clear()
+diff --git a/src/combat/ui/ui_combat.gd b/src/combat/ui/ui_combat.gd
+index 0bba1bc..9c70877 100644
+--- a/src/combat/ui/ui_combat.gd
++++ b/src/combat/ui/ui_combat.gd
+@@ -19,28 +19,6 @@ class_name UICombat extends Control
+ ## The targetting cursor scene that will be created whenever the player needs to choose targets.
+ @export var target_cursor_scene: PackedScene
+ 
+-# The UI is responsible for relaying player input to the combat systems. In this case, we want to
+-# track which battler and action are currently selected, so that we may queue orders for all player
+-# battlers before executing them sequentially.
+-#var _selected_battler: Battler
+-	#set(value):
+-		#_selected_battler = value
+-		#if _selected_battler == null:
+-			#_selected_action = null
+-
+-# Keep track of which action the player is currently building. This is relevent whenever the player
+-# is choosing targets.
+-#var _selected_action: BattlerAction = null
+-
+-# A reference to the active action menu, which is created dynamically whenever the player chooses
+-# a BattlerAction.
+-# This reference is non-null only when the player is choosing an action.
+-#var _action_menu: UIActionMenu = null
+-
+-# Keep reference to the active targeting cursor. If no cursor is active, the value is null.
+-# This allows the cursor targets to be updated in real-time as Battler states change.
+-#var _cursor: UIBattlerTargetingCursor = null
+-
+ # UI elements - effects
+ @onready var animation: = $AnimationPlayer as AnimationPlayer
+ @onready var _effect_label_builder: = $EffectLabelBuilder as UIEffectLabelBuilder
+@@ -51,11 +29,7 @@ class_name UICombat extends Control
+ @onready var _battler_list: = $PlayerMenus/PlayerBattlerList as UIPlayerBattlerList
+ 
+ 
+-## Prepare the menus for use by assigning appropriate [BattlerRoster] data.
+-func setup(battler_data: BattlerRoster) -> void:
+-	_effect_label_builder.setup(battler_data)
+-	_battler_list.battlers = battler_data.get_player_battlers()
+-	
++func _ready() -> void:
+ 	# If a player battler has been selected, the action menu should open so that the player may
+ 	# choose an action.
+ 	# If no battler is selected (i.e. it's time to execute the actions) then the menus will just be
+@@ -63,33 +37,17 @@ func setup(battler_data: BattlerRoster) -> void:
+ 	CombatEvents.player_battler_selected.connect(
+ 		(func _on_player_battler_selected(battler: Battler) -> void:
+ 			if battler != null:
+-				print("Looking for actions: ", battler.actions)
+ 				choose_action(battler)
+ 			)
+-			
+-			# Player menu. choose actions(action_list)
+-			
+-			# Player menu.cancelled.connect(one shot).bind(selected_battler)
+-			# func on_cancelled:
+-			#	find previous battler (from selected battler)
+-			#	remove their cached action
+-			#	emit selected (null) signal. Combat engine should pick that up and recall _selecte_player_action
+-			
+-			# Player menus.action_selected.connect().bind(selected_battler)
+-			# func on_action_selected
+-			#	selected_battler.cached_action = selected_action
+-			
+-			# DONE. Don't need the combat UI to do any other coordinating.
+-			
+-			## Reset the action description bar.
+-			#_action_description.description = ""
+-			#
+-			#_selected_battler = battler
+-			#if _selected_battler:
+-				#_create_action_menu()
+ 	)
+ 
+ 
++## Prepare the menus for use by assigning appropriate [BattlerRoster] data.
++func setup(battler_data: BattlerRoster) -> void:
++	_effect_label_builder.setup(battler_data)
++	_battler_list.battlers = battler_data.get_player_battlers()
++
++
+ func choose_action(battler: Battler) -> void:
+ 	# Instantiate the scene, stuff it full of action data, and show it on the screen.
+ 	var action_menu = action_menu_scene.instantiate() as UIActionMenu
+@@ -134,14 +92,14 @@ func choose_targets(battler: Battler, action: BattlerAction) -> void:
+ 	# If targets were chosen, we'll assign the targets to the action and, finally, cache the action
+ 	# on the selected Battler.
+ 	# If the user pressed "back", we'll go back to the choose action state.
+-	print("Choosing targets!")
+ 	cursor.targets_selected.connect(
+ 		(func _on_targets_selected(targets: Array[Battler], selected_action: BattlerAction,
+ 				selected_battler: Battler) -> void:
+-			print("Found targets: ", targets)
+ 			if not targets.is_empty():
+ 				_action_description.description = ""
+ 				
++				# Caching the action on the Battler will let the Combat state know to begin choosing
++				# actions for the next Battler.
+ 				selected_action.cached_targets = targets
+ 				selected_battler.cached_action = selected_action
+ 			
+@@ -149,58 +107,3 @@ func choose_targets(battler: Battler, action: BattlerAction) -> void:
+ 				choose_action(selected_battler)
+ 			).bind(action, battler)
+ 	)
+-
+-
+-#func _create_action_menu() -> void:
+-	#assert(_selected_battler, "Trying to create the action menu without a selected Battler!")
+-	#
+-	#var action_menu = action_menu_scene.instantiate() as UIActionMenu
+-	#_action_menu_anchor.add_child(action_menu)
+-	#action_menu.setup(_selected_battler.actions)
+-	#
+-	## Link the action menu to the action description bar, providing a description of the
+-	## highlighted action.
+-	#action_menu.action_focused.connect(
+-		#func _on_action_focused(action: BattlerAction) -> void:
+-			#_action_description.description = action.description
+-	#)
+-	#
+-	## The action builder will wait until the player selects an action or presses 'back'.
+-	## Selecting an action will trigger the following signal, whereas pressing 'back' will try to
+-	## return action selection to the previous player Battler.
+-	#action_menu.action_selected.connect(
+-		#func _on_action_selected(action: BattlerAction) -> void:
+-			#_selected_action = action
+-			#_create_targeting_cursor()
+-	#)
+-#
+-#
+-#func _create_targeting_cursor() -> void:
+-	#assert(_selected_action, "Trying to create the targeting cursor without a selected action!")
+-	#
+-	## Create the cursor which will respond to player input and allow choosing a target.
+-	#_cursor = target_cursor_scene.instantiate() as UIBattlerTargetingCursor
+-	#_cursor.targets_all = _selected_action.targets_all()
+-	#_cursor.targets = _selected_action.get_possible_targets()
+-	#add_child(_cursor)
+-	#
+-	## Finally, connect to the cursor's signals that will indicate that targets have been chosen.
+-	#_cursor.targets_selected.connect(
+-		#func _on_cursor_targets_selected(targets: Array[Battler]) -> void:
+-			## The cursor will be freed after emitting this signal. Remove reference to the cursor.
+-			#_cursor = null
+-			#
+-			#if not targets.is_empty():
+-				## At this point, the player should have selected a valid action and assigned it
+-				## targets, so the action may be cached for whenever the battler is ready.
+-				#CombatEvents.action_selected.emit(_selected_action, _selected_battler, targets)
+-				#
+-				## The player has properly queued an action. Return the UI to the state where the
+-				## player will pick a player Battler.
+-				#CombatEvents.player_battler_selected.emit(null)
+-			#
+-			#else:
+-				#_selected_action = null
+-				#_create_action_menu()
+-	#)
+-	
+diff --git a/src/main.tscn b/src/main.tscn
+index ea6ace4..c65d7a1 100644
+--- a/src/main.tscn
++++ b/src/main.tscn
+@@ -791,12 +791,12 @@ grow_vertical = 2
+ size_flags_horizontal = 4
+ metadata/_edit_lock_ = true
+ 
+-[node name="TransitionDelay" type="Timer" parent="Combat/CenterContainer"]
++[node name="UI" parent="Combat" instance=ExtResource("66_mo8tx")]
++
++[node name="TransitionDelay" type="Timer" parent="Combat/UI"]
+ wait_time = 0.5
+ one_shot = true
+ 
+-[node name="UI" parent="Combat" instance=ExtResource("66_mo8tx")]
+-
+ [node name="UI" type="CanvasLayer" parent="."]
+ 
+ [node name="Inventory" type="HBoxContainer" parent="UI"]

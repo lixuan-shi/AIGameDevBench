@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-09-19_942609e_014"
+category = "intent_translation"
+source_kind = "git"
+baseline_ref = "f18d2e3575ae72199a714472015344439a26e2ea"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scripts/Parts/ResourcePackTemplateCreator.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-09-19_942609e_014"
+bad_case_type = "B2"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

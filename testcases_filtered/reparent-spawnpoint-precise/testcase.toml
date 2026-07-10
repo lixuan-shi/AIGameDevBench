@@ -1,0 +1,21 @@
+[testcase]
+id = "reparent-spawnpoint-precise"
+category = "precise_edit"
+source_kind = "folder"
+source_repo = "authored:representative-set"
+task = """
+In res://scenes/main.tscn, the SpawnPoint (Marker2D) currently lives under the Level node. Reparent it so it becomes a child of the Enemies node instead (its node path goes from Level/SpawnPoint to Enemies/SpawnPoint).
+Preserve the SpawnPoint's own position exactly. Do not add, remove, or modify any other node (Level, Enemies, HUD must be untouched apart from SpawnPoint moving between them).
+"""
+
+[verifier]
+type = "py_tscn_diff"
+entry = "expected_delta.json"
+
+[scoring]
+mode = "tristate"
+
+[provenance]
+author = "Claude"
+created = "2026-06-29"
+notes = "precise_edit/hard. Reparent SpawnPoint Level->Enemies, preserving its position. Clean reparent (only removed Level/SpawnPoint + added Enemies/SpawnPoint) -> 1.0. Trap: disturbing another node (e.g. HUD) or changing SpawnPoint.position registers as a side effect -> 0.5. noop=0 (no reparent)."

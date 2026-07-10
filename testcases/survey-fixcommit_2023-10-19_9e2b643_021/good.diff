@@ -1,0 +1,702 @@
+diff --git a/scenes/enemies/common/avoidance_rays/AvoidanceRays.gd b/scenes/enemies/common/avoidance_rays/AvoidanceRays.gd
+index ce282e5..2ca4b7d 100644
+--- a/scenes/enemies/common/avoidance_rays/AvoidanceRays.gd
++++ b/scenes/enemies/common/avoidance_rays/AvoidanceRays.gd
+@@ -11,6 +11,7 @@ extends Node2D
+ 
+ @onready var actor := self.get_parent()
+ 
++
+ func _ready():
+ 	if J.is_server():
+ 		_set_ray_targets()
+@@ -18,6 +19,7 @@ func _ready():
+ 	else:
+ 		self.visible = false
+ 
++
+ func _set_ray_targets():
+ 	ray_front.target_position = Vector2(ray_magnitude, 0)
+ 	ray_left_0.target_position = Vector2(ray_magnitude / 1.5, 0)
+@@ -25,12 +27,14 @@ func _set_ray_targets():
+ 	ray_right_0.target_position = Vector2(ray_magnitude / 1.5, 0)
+ 	ray_right_1.target_position = Vector2(ray_magnitude / 2.0, 0)
+ 
++
+ func _set_ray_angles():
+ 	ray_left_0.rotation_degrees = -ray_separation_angle
+ 	ray_left_1.rotation_degrees = ray_separation_angle * -2
+ 	ray_right_0.rotation_degrees = ray_separation_angle
+ 	ray_right_1.rotation_degrees = ray_separation_angle * 2
+ 
++
+ func find_avoidant_velocity(velocity_multiplier: float) -> Vector2:
+ 	if J.is_server():
+ 		self.rotation = actor.velocity.angle()
+@@ -39,12 +43,12 @@ func find_avoidant_velocity(velocity_multiplier: float) -> Vector2:
+ 			var viable_ray = _get_viable_ray()
+ 			if viable_ray:
+ 				avoidant_velocity = (
+-					Vector2.RIGHT.rotated(self.rotation + viable_ray.rotation) * 
+-					velocity_multiplier
+-					)
++					Vector2.RIGHT.rotated(self.rotation + viable_ray.rotation) * velocity_multiplier
++				)
+ 		return avoidant_velocity
+ 	return Vector2.ZERO
+ 
++
+ func _get_viable_ray() -> RayCast2D:
+ 	for ray in self.get_children():
+ 		if !ray.is_colliding():
+diff --git a/scenes/ui/game_menu/game_menu.gd b/scenes/ui/game_menu/game_menu.gd
+index 2d57902..11dd236 100644
+--- a/scenes/ui/game_menu/game_menu.gd
++++ b/scenes/ui/game_menu/game_menu.gd
+@@ -25,7 +25,6 @@ func _input(event):
+ 	if JUI.chat_active:
+ 		return
+ 
+-
+ 	var isVisible: bool = self.is_visible_in_tree()
+ 
+ 	if event.is_action_pressed("j_toggle_game_menu"):
+@@ -69,7 +68,8 @@ func _input(event):
+ 				close_submenu()
+ 
+ 				get_viewport().set_input_as_handled()
+-		
++
++
+ #Also saves changes to disk.
+ func close_submenu():
+ 	LocalSaveSystem.save_file()
+diff --git a/scenes/ui/options_menu/input_remapping.gd b/scenes/ui/options_menu/input_remapping.gd
+index 1eb9868..fc3de10 100644
+--- a/scenes/ui/options_menu/input_remapping.gd
++++ b/scenes/ui/options_menu/input_remapping.gd
+@@ -15,204 +15,230 @@ signal remap_aborted
+ #Emitted regardless of success or failure
+ signal remap_finished
+ 
+-
+-const BUTTON_ACTIVE_MODULATE:Color = Color.WHITE * 1.5
+-const Messages:Dictionary = {
++const BUTTON_ACTIVE_MODULATE: Color = Color.WHITE * 1.5
++const Messages: Dictionary = {
+ 	SUCCESSFUL = "Remapping Successful.",
+ 	ABORTED = "Remapping Cancelled.",
+ 	INITIATED = "Press a button.",
+ 	CONFLICT = "This button is mapped."
+ }
+ 
+-@export var actionsAllowed:Array[StringName] = [
++@export var actionsAllowed: Array[StringName] = [
+ 	&"j_toggle_bag",
+ 	&"j_toggle_equipment",
+-	]
+-@export var tempTextDuration:float = 2
++]
++@export var tempTextDuration: float = 2
++
++var currentAction: StringName
++var currentEvent: InputEvent
++var currentButton: Button
+ 
+-var currentAction:StringName
+-var currentEvent:InputEvent
+-var currentButton:Button
+ 
+ func _ready() -> void:
+ 	update_list()
+-	remap_initiated.connect( temporary_text_signaled.bind(Messages.INITIATED, remap_finished) )
+-	remap_aborted.connect( temporary_text_timed.bind(Messages.ABORTED, tempTextDuration) )
+-	remap_successful.connect( temporary_text_timed.bind(Messages.SUCCESSFUL, tempTextDuration) )
+-	
++	remap_initiated.connect(temporary_text_signaled.bind(Messages.INITIATED, remap_finished))
++	remap_aborted.connect(temporary_text_timed.bind(Messages.ABORTED, tempTextDuration))
++	remap_successful.connect(temporary_text_timed.bind(Messages.SUCCESSFUL, tempTextDuration))
++
+ 	#This merely sets the mappings on the loaded ConfigFile, it does not write to disk. Making it suitable for repeated use.
+-	remap_successful.connect( save_mappings )
+-	
++	remap_successful.connect(save_mappings)
++
++
+ #Creates text on screen that dissapears after some time or when the signal is called
+-func temporary_text_timed(tempText:String, duration:float):
++func temporary_text_timed(tempText: String, duration: float):
+ 	var textLabel := Label.new()
+ 	textLabel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER + Control.SIZE_EXPAND
+ 	textLabel.size_flags_vertical = Control.SIZE_SHRINK_END + Control.SIZE_EXPAND
+ 	#This shifts it upwards a bit. To avoid overlapping with signaled text.
+-	textLabel.custom_minimum_size = Vector2(0,96)
++	textLabel.custom_minimum_size = Vector2(0, 96)
+ 	textLabel.text = tempText
+-	
++
+ 	add_sibling(textLabel)
+-	
++
+ 	if duration > 0:
+ 		get_tree().create_timer(duration).timeout.connect(textLabel.queue_free)
+-	
+-func temporary_text_signaled(tempText:String, killSignal:Signal):
++
++
++func temporary_text_signaled(tempText: String, killSignal: Signal):
+ 	var textLabel := Label.new()
+ 	textLabel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER + Control.SIZE_EXPAND
+ 	textLabel.size_flags_vertical = Control.SIZE_SHRINK_END + Control.SIZE_EXPAND
+ 	textLabel.text = tempText
+ 
+ 	add_sibling(textLabel)
+-	
++
+ 	killSignal.connect(textLabel.queue_free)
+-	
+-	
++
++
+ func update_list():
+ 	#Clear all children
+-	for child in get_children(): 
++	for child in get_children():
+ 		child.queue_free()
+-	
++
+ 	#Iterate trough each action
+ 	for action in actionsAllowed:
+-		
+ 		#Ignore non-existent inputs
+ 		if not action in InputMap.get_actions():
+ 			push_error('Cannot list invalid action "{0}"'.format([action]))
+ 			continue
+-		
++
+ 		#Add nodes for each of them
+ 		add_remap_node(action, InputMap.action_get_events(action))
+-			
+-	
+-func add_remap_node(action:StringName, events:Array[InputEvent]):
++
++
++func add_remap_node(action: StringName, events: Array[InputEvent]):
+ 	#Splits the button to the left and actions to the right
+-	var splitContainer:=HSplitContainer.new()
++	var splitContainer := HSplitContainer.new()
+ 	splitContainer.set_name(action)
+ 	splitContainer.dragger_visibility = SplitContainer.DRAGGER_HIDDEN
+-	
++
+ 	#Displays the name of the action
+-	var actionNameLabel:=Label.new()
++	var actionNameLabel := Label.new()
+ 	actionNameLabel.set_name("ActionStringName")
+-	
++
+ 	#Lists every event
+-	var eventContainer:=VBoxContainer.new()
++	var eventContainer := VBoxContainer.new()
+ 	eventContainer.set_name("InputEvents")
+-	
++
+ 	#Add nodes
+ 	add_child(splitContainer)
+ 	splitContainer.add_child(actionNameLabel)
+ 	splitContainer.add_child(eventContainer)
+-	
++
+ 	actionNameLabel.text = action
+-	
++
+ 	for event in events:
+-		var remapButton:=Button.new()
++		var remapButton := Button.new()
+ 		remapButton.text = event.as_text()
+ 		eventContainer.add_child(remapButton)
+-		
++
+ 		remapButton.pressed.connect(on_remap_attempt.bind(action, event, remapButton))
+-		
+-func on_remap_attempt(action:StringName, event:InputEvent, button:Button):
++
++
++func on_remap_attempt(action: StringName, event: InputEvent, button: Button):
+ 	currentAction = action
+ 	currentEvent = event
+ 	currentButton = button
+ 	button.modulate = BUTTON_ACTIVE_MODULATE
+ 	remap_initiated.emit()
+-	
+-func is_event_in_use(event:InputEvent)->bool:
++
++
++func is_event_in_use(event: InputEvent) -> bool:
+ 	for action in actionsAllowed:
+ 		if InputMap.action_has_event(action, event):
+ 			return true
+-			
++
+ 	return false
+-	
+-	
++
++
+ func terminate_remap_attempt():
+ 	currentButton.modulate = Color.WHITE
+ 	currentAction = &""
+ 	currentEvent = null
+ 	currentButton = null
+ 	remap_finished.emit()
+-	
+-	
+-func _input(event:InputEvent):
++
++
++func _input(event: InputEvent):
+ 	#If these are not set, abort
+-	if currentAction.is_empty(): return
+-	if currentEvent == null: return
+-	if currentButton == null: return
+-	
++	if currentAction.is_empty():
++		return
++	if currentEvent == null:
++		return
++	if currentButton == null:
++		return
++
+ 	#A remapping is in progress, prevent the input from reaching outside of this node.
+ 	get_viewport().set_input_as_handled()
+-	
++
+ 	#Cancel if the toggle menu button is pressed.
+-	if event.is_action(&"j_toggle_game_menu"): 
++	if event.is_action(&"j_toggle_game_menu"):
+ 		remap_aborted.emit()
+ 		terminate_remap_attempt()
+ 		return
+-	
++
+ 	#Only accept certain kinds of InputEvent
+-	if not (event is InputEventKey or event is InputEventMouseButton or event is InputEventJoypadButton): 
++	if not (
++		event is InputEventKey or event is InputEventMouseButton or event is InputEventJoypadButton
++	):
+ 		return
+ 	#There's no controller support yet.
+-	
++
+ 	#Fetch current event count to check for discrepancies later
+-	var eventCount:int = InputMap.action_get_events(currentAction).size()
+-	
++	var eventCount: int = InputMap.action_get_events(currentAction).size()
++
+ 	#Ensure it isn't used somewhere else
+ 	if is_event_in_use(event):
+-		temporary_text_timed(Messages.CONFLICT, tempTextDuration*0.6)
++		temporary_text_timed(Messages.CONFLICT, tempTextDuration * 0.6)
+ 		return
+-	
++
+ 	#Ensure this event belongs to the action, it should be impossible for this to be the case
+ 	if not InputMap.action_has_event(currentAction, currentEvent):
+ 		push_warning(str(currentEvent) + " does not belong to action " + currentAction)
+-		
++
+ 	#Remove the existing event
+ 	InputMap.action_erase_event(currentAction, currentEvent)
+-	
++
+ 	#Add the event just pressed as the new input
+ 	InputMap.action_add_event(currentAction, event)
+-	
++
+ 	#Make sure it worked.
+ 	if not InputMap.action_has_event(currentAction, event):
+ 		push_error("The event was not set.")
+ 	if not InputMap.action_get_events(currentAction).size() == eventCount:
+-		push_error("There's a different amount of events from before the remapping for action "+currentAction + "\n" + "These are assigned now: " + str( InputMap.action_get_events(currentAction)))
+-	
++		push_error(
++			(
++				"There's a different amount of events from before the remapping for action "
++				+ currentAction
++				+ "\n"
++				+ "These are assigned now: "
++				+ str(InputMap.action_get_events(currentAction))
++			)
++		)
++
+ 	#Update the button's text
+ 	currentButton.text = event.as_text()
+-	
+-	print_debug("Successfully remaped action {0} from event {1} to event {2}".format([currentAction, currentEvent.as_text(), event.as_text()]))
++
++	print_debug(
++		"Successfully remaped action {0} from event {1} to event {2}".format(
++			[currentAction, currentEvent.as_text(), event.as_text()]
++		)
++	)
+ 	remap_successful.emit()
+ 	terminate_remap_attempt()
+-	
++
+ 	update_list()
+ 
+-func get_mappings_as_dict()->Dictionary:
+-	var inputDict:Dictionary = {}
++
++func get_mappings_as_dict() -> Dictionary:
++	var inputDict: Dictionary = {}
+ 	for action in actionsAllowed:
+ 		inputDict[action] = []
+ 		for event in InputMap.action_get_events(action):
+ 			inputDict[action].append(event)
+-		
++
+ 	return inputDict
+ 
++
+ func save_mappings():
+-	LocalSaveSystem.set_data(LocalSaveSystem.Sections.SETTINGS, "controlMappings", get_mappings_as_dict())
+-	
++	LocalSaveSystem.set_data(
++		LocalSaveSystem.Sections.SETTINGS, "controlMappings", get_mappings_as_dict()
++	)
++
++
+ static func load_mappings():
+-	var inputDict:Dictionary = LocalSaveSystem.get_data(LocalSaveSystem.Sections.SETTINGS, "controlMappings", {})
++	var inputDict: Dictionary = LocalSaveSystem.get_data(
++		LocalSaveSystem.Sections.SETTINGS, "controlMappings", {}
++	)
+ 
+-	if inputDict.is_empty(): 
++	if inputDict.is_empty():
+ 		push_warning("No control mapping data was found, the default mappings will be used.")
+ 		return
+-	
++
+ 	for action in inputDict:
+ 		#Wipe existing events from this action
+ 		if InputMap.has_action(action):
+ 			InputMap.action_erase_events(action)
+-			
++
+ 		for event in inputDict[action]:
+ 			InputMap.action_add_event(action, event)
+-	
+diff --git a/scenes/ui/options_menu/options_menu.gd b/scenes/ui/options_menu/options_menu.gd
+index d9ff121..6dad5e5 100644
+--- a/scenes/ui/options_menu/options_menu.gd
++++ b/scenes/ui/options_menu/options_menu.gd
+@@ -2,7 +2,8 @@ extends Control
+ 
+ signal quit_pressed
+ 
+-@onready var quitBtn:Button = $QuitButton
++@onready var quitBtn: Button = $QuitButton
++
+ 
+ func _ready() -> void:
+ 	quitBtn.pressed.connect(emit_signal.bind("quit_pressed"))
+diff --git a/scenes/ui/options_menu/volume_slider.gd b/scenes/ui/options_menu/volume_slider.gd
+index 52206d7..4a812a7 100644
+--- a/scenes/ui/options_menu/volume_slider.gd
++++ b/scenes/ui/options_menu/volume_slider.gd
+@@ -1,14 +1,15 @@
+ extends HSlider
+ 
++
+ func _ready() -> void:
+ 	value = LocalSaveSystem.get_data(LocalSaveSystem.Sections.SETTINGS, "volume", max_value)
+ 	value_changed.connect(volume_update)
+-	
+-func volume_update(newValue:float):
+-	var volume:float = linear_to_db(newValue / max_value)
+-	
++
++
++func volume_update(newValue: float):
++	var volume: float = linear_to_db(newValue / max_value)
++
+ 	AudioServer.set_bus_volume_db(0, volume)
+-	
++
+ 	#Save the value from the slider, not the applied volume.
+ 	LocalSaveSystem.set_data(LocalSaveSystem.Sections.SETTINGS, "volume", newValue)
+-
+diff --git a/scenes/world/World.tscn b/scenes/world/World.tscn
+index 4643103..637c521 100644
+--- a/scenes/world/World.tscn
++++ b/scenes/world/World.tscn
+@@ -107,35 +107,27 @@ respawn_time = null
+ 
+ [node name="Sheep6" parent="Entities/Enemies" instance=ExtResource("4_uubdx")]
+ position = Vector2(-1008, -404)
+-respawn_time = null
+ 
+ [node name="Sheep8" parent="Entities/Enemies" instance=ExtResource("4_uubdx")]
+ position = Vector2(-1243, -243)
+-respawn_time = null
+ 
+ [node name="Sheep9" parent="Entities/Enemies" instance=ExtResource("4_uubdx")]
+ position = Vector2(-1216, 391)
+-respawn_time = null
+ 
+ [node name="Sheep10" parent="Entities/Enemies" instance=ExtResource("4_uubdx")]
+ position = Vector2(-814, 495)
+-respawn_time = null
+ 
+ [node name="Sheep11" parent="Entities/Enemies" instance=ExtResource("4_uubdx")]
+ position = Vector2(-1497, 606)
+-respawn_time = null
+ 
+ [node name="Sheep12" parent="Entities/Enemies" instance=ExtResource("4_uubdx")]
+ position = Vector2(-1424, -650)
+-respawn_time = null
+ 
+ [node name="Sheep13" parent="Entities/Enemies" instance=ExtResource("4_uubdx")]
+ position = Vector2(-884, -759)
+-respawn_time = null
+ 
+ [node name="Sheep7" parent="Entities/Enemies" instance=ExtResource("4_uubdx")]
+ position = Vector2(-1104, 89)
+-respawn_time = null
+ 
+ [node name="NPCs" type="Node2D" parent="Entities"]
+ 
+diff --git a/scenes/world/clientfsm.gd b/scenes/world/clientfsm.gd
+index 3051089..32d9275 100644
+--- a/scenes/world/clientfsm.gd
++++ b/scenes/world/clientfsm.gd
+@@ -23,6 +23,7 @@ var back_create_account_pressed: bool = false
+ 
+ @onready var login_panel := $"../UI/LoginPanel"
+ 
++
+ func _ready():
+ 	# Add a short timer to deffer the fsm() calls
+ 	fsm_timer = Timer.new()
+diff --git a/scripts/classes/JPlayerInput.gd b/scripts/classes/JPlayerInput.gd
+index 60794f9..1d237f9 100644
+--- a/scripts/classes/JPlayerInput.gd
++++ b/scripts/classes/JPlayerInput.gd
+@@ -7,26 +7,28 @@ signal interact(target_name: String)
+ 
+ #Signals for use with other UI elements
+ #These MAY not be usable in collision related logic due to not being synchronized with physics
+-signal hovered_enemy(node:Node2D)
+-signal hovered_npc(node:Node2D)
+-signal hovered_item(node:Node2D)
+-signal hovered_player(node:Node2D)
++signal hovered_enemy(node: Node2D)
++signal hovered_npc(node: Node2D)
++signal hovered_item(node: Node2D)
++signal hovered_player(node: Node2D)
+ 
+-const CursorGraphics:Dictionary = {
+-	DEFAULT=preload("res://assets/ui/cursors/DefaultCursor.png"), 
+-	ATTACK=preload("res://assets/ui/cursors/AttackCursor.png"), 
+-	TALK=preload("res://assets/ui/cursors/TalkCursor.png"), 
+-	PICKUP=preload("res://assets/ui/cursors/LootCursor.png")}
++const CursorGraphics: Dictionary = {
++	DEFAULT = preload("res://assets/ui/cursors/DefaultCursor.png"),
++	ATTACK = preload("res://assets/ui/cursors/AttackCursor.png"),
++	TALK = preload("res://assets/ui/cursors/TalkCursor.png"),
++	PICKUP = preload("res://assets/ui/cursors/LootCursor.png")
++}
+ 
+ var pointParams := PhysicsPointQueryParameters2D.new()
+ var targetCurrent: Node2D
+ var lastHoverTarget: Node2D
+ 
++
+ func _ready():
+ 	if J.is_server():
+ 		set_process_input(false)
+ 		set_process(false)
+-		
++
+ 	else:
+ 		#Set parameters for point-casting (can use ShapeParameters instead if necessary)
+ 		pointParams.collide_with_areas = false
+@@ -36,88 +38,93 @@ func _ready():
+ 			+ J.PHYSICS_LAYER_ENEMIES
+ 			+ J.PHYSICS_LAYER_NPCS
+ 			+ J.PHYSICS_LAYER_ITEMS
+-			)
++		)
+ 		set_cursor(CursorGraphics.DEFAULT)
+-		
++
+ 		#Set the cursor back to default if this object is deleted for any reasons
+ 		tree_exiting.connect(set_cursor.bind(CursorGraphics.DEFAULT))
+ 
+-func _input(event:InputEvent):
++
++func _input(event: InputEvent):
+ 	# Don't do anything when above ui
+ 	if JUI.above_ui:
+ 		return
+-	
++
+ 	if event.is_action_pressed("j_right_click"):
+-		_handle_right_click( get_global_mouse_position() )
++		_handle_right_click(get_global_mouse_position())
+ 
+ 
+ func _process(_delta: float) -> void:
+ 	#This update is frame based as to update the cursor visually on the client
+ 	update_target(get_global_mouse_position())
+ 	#Initialize empty variable
+-	var cursorToUse:Texture
+-	
++	var cursorToUse: Texture
++
+ 	#If it isn't touching something, set it to default
+ 	if targetCurrent == null:
+ 		cursorToUse = CursorGraphics.DEFAULT
+-	
++
+ 	#Otherwise set it to the appropiate cursor
+ 	else:
+ 		match targetCurrent.get("entity_type"):
+ 			J.ENTITY_TYPE.NPC:
+ 				cursorToUse = CursorGraphics.TALK
+ 				hovered_npc.emit(targetCurrent)
+-			
++
+ 			J.ENTITY_TYPE.ITEM:
+ 				cursorToUse = CursorGraphics.PICKUP
+ 				hovered_item.emit(targetCurrent)
+-				
++
+ 			J.ENTITY_TYPE.ENEMY:
+ 				cursorToUse = CursorGraphics.ATTACK
+ 				hovered_enemy.emit(targetCurrent)
+-			
++
+ 			J.ENTITY_TYPE.PLAYER:
+ 				cursorToUse = CursorGraphics.DEFAULT
+ 				hovered_player.emit(targetCurrent)
+-	
++
+ 	#Set the cursor
+ 	set_cursor(cursorToUse)
+ 	lastHoverTarget = targetCurrent
+ 
+-func _handle_right_click(clickGlobalPos:Vector2):
++
++func _handle_right_click(clickGlobalPos: Vector2):
+ 	#Fetch targets under the cursor
+ 	update_target(clickGlobalPos)
+-	
++
+ 	#Either move or interact depending on wether something was there or not.
+ 	if targetCurrent == null:
+ 		move.emit(pointParams.position)
+-		
++
+ 	else:
+ 		#Ignore if it was self
+ 		if targetCurrent != self:
+ 			interact.emit(targetCurrent.get_name())
+ 
+-func update_target(atGlobalPoint:Vector2):
++
++func update_target(atGlobalPoint: Vector2):
+ 	#Do not proceed if outside the tree
+-	if not is_inside_tree(): return
+-	
++	if not is_inside_tree():
++		return
++
+ 	if JUI.above_ui:
+ 		targetCurrent = null
+ 		return
+-	
++
+ 	#Get the world's space
+-	var directSpace:PhysicsDirectSpaceState2D = get_world_2d().direct_space_state
+-	
++	var directSpace: PhysicsDirectSpaceState2D = get_world_2d().direct_space_state
++
+ 	#Set the target position
+ 	pointParams.position = atGlobalPoint
+-	
++
+ 	#Update collisions from point
+ 	var collisions: Array[Dictionary] = directSpace.intersect_point(pointParams)
+-	
++
+ 	if collisions.is_empty():
+ 		targetCurrent = null
+ 	else:
+ 		targetCurrent = collisions.front().get("collider")
+ 
+-func set_cursor(graphic:Texture):
++
++func set_cursor(graphic: Texture):
+ 	DisplayServer.cursor_set_custom_image(graphic)
+diff --git a/scripts/classes/behaviors/JWanderBehavior.gd b/scripts/classes/behaviors/JWanderBehavior.gd
+index c5b5732..4e7b46a 100644
+--- a/scripts/classes/behaviors/JWanderBehavior.gd
++++ b/scripts/classes/behaviors/JWanderBehavior.gd
+@@ -66,6 +66,7 @@ func _physics_process(_delta: float):
+ 
+ 			actor.send_new_loop_animation("Idle")
+ 
++
+ func find_random_spot(origin: Vector2, distance: float) -> Vector2:
+ 	return Vector2(
+ 		float(randi_range(origin.x - distance, origin.x + distance)),
+@@ -83,4 +84,3 @@ func _on_colliding_timer_timeout():
+ 
+ func _on_died():
+ 	is_dead = true
+-
+diff --git a/scripts/network/client.gd b/scripts/network/client.gd
+index 596fcc1..2a8dd63 100644
+--- a/scripts/network/client.gd
++++ b/scripts/network/client.gd
+@@ -3,7 +3,7 @@ extends Node
+ 
+ signal connected(connected: bool)
+ 
+-const CLOCK_SYNC_TIMER_TIME:float = 0.5
++const CLOCK_SYNC_TIMER_TIME: float = 0.5
+ 
+ var clock: float = 0.0
+ var clock_sync_timer: Timer
+@@ -22,12 +22,14 @@ func _ready():
+ 	add_child(clock_sync_timer)
+ 
+ 
+-func connect_to_server(address:String, port:int) -> bool:
++func connect_to_server(address: String, port: int) -> bool:
+ 	var client := ENetMultiplayerPeer.new()
+ 
+-	var error:int = client.create_client(address, port)
++	var error: int = client.create_client(address, port)
+ 	if error != OK:
+-		J.logger.warn( "Failed to create client. Error code {0} ({1})".format([error,error_string(error)]) )
++		J.logger.warn(
++			"Failed to create client. Error code {0} ({1})".format([error, error_string(error)])
++		)
+ 		return false
+ 
+ 	if client.get_connection_status() == MultiplayerPeer.CONNECTION_DISCONNECTED:
+@@ -43,7 +45,9 @@ func connect_to_server(address:String, port:int) -> bool:
+ 
+ 	error = client.host.dtls_client_setup(address, client_tls_options)
+ 	if error != OK:
+-		J.logger.warn( "Failed to connect via DTLS. Error code {0} ({1})".format([error, error_string(error)]) )
++		J.logger.warn(
++			"Failed to connect via DTLS. Error code {0} ({1})".format([error, error_string(error)])
++		)
+ 		return false
+ 
+ 	multiplayer.multiplayer_peer = client

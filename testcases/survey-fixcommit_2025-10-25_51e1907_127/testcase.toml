@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-25_51e1907_127"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "0eb791a697acb7b43637e9983be51121c93fa65a"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scripts/Classes/Entities/Enemies/HammerBro.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-25_51e1907_127"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

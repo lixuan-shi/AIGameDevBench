@@ -1,0 +1,118 @@
+diff --git a/source/match/Match.gd b/source/match/Match.gd
+index 2beb920..db96f95 100644
+--- a/source/match/Match.gd
++++ b/source/match/Match.gd
+@@ -36,7 +36,7 @@ var map = HardcodedMap.new()  # TODO: use actual map
+ func _ready():
+ 	MatchSignals.setup_and_spawn_unit.connect(_setup_and_spawn_unit)
+ 	_create_players()
+-	_setup_controlled_player()
++	_choose_controlled_player()
+ 	visible_player = players[settings.visible_player]
+ 	_setup_player_units()
+ 	_create_and_setup_player_controllers()  # must happen after initial units are created
+@@ -108,7 +108,7 @@ func _create_and_setup_player_controllers():
+ 			assert(false, "not implemented")
+ 
+ 
+-func _setup_controlled_player():
++func _choose_controlled_player():
+ 	for player_id in range(players.size()):
+ 		if settings.players[player_id].type == settings.players[player_id].PlayerType.HUMAN:
+ 			assert(controlled_player == null, "more than one human player in settings")
+@@ -132,10 +132,9 @@ func _setup_player_units():
+ 
+ func _move_camera_to_initial_position():
+ 	if controlled_player != null:
+-		_move_camera_to_controlled_units_crowd_pivot()
++		_move_camera_to_player_units_crowd_pivot(controlled_player)
+ 	else:
+-		# TODO: do smth with camera if there's no controlled unit
+-		assert(false, "not implemented")
++		_move_camera_to_player_units_crowd_pivot(players[0])
+ 
+ 
+ func _spawn_player_units(player, spawn_transform):
+@@ -173,10 +172,12 @@ func _setup_unit(unit, player):
+ 		unit.add_to_group("revealed_units")
+ 
+ 
+-func _move_camera_to_controlled_units_crowd_pivot():
+-	var revealed_units = get_tree().get_nodes_in_group("controlled_units")
+-	assert(not revealed_units.is_empty())
+-	var crowd_pivot = Utils.Match.Unit.Movement.calculate_aabb_crowd_pivot_yless(revealed_units)
++func _move_camera_to_player_units_crowd_pivot(player):
++	var player_units = get_tree().get_nodes_in_group("units").filter(
++		func(unit): return unit.player == player
++	)
++	assert(not player_units.is_empty(), "player must have at least one initial unit")
++	var crowd_pivot = Utils.Match.Unit.Movement.calculate_aabb_crowd_pivot_yless(player_units)
+ 	_camera.set_position_safely(crowd_pivot)
+ 
+ 
+diff --git a/source/match/Match.tscn b/source/match/Match.tscn
+index 04410ba..822cacb 100644
+--- a/source/match/Match.tscn
++++ b/source/match/Match.tscn
+@@ -28,7 +28,7 @@
+ [sub_resource type="Resource" id="Resource_aehri"]
+ script = ExtResource("2_issh2")
+ color = Color(0.4, 0.694118, 1, 1)
+-type = 1
++type = 2
+ 
+ [sub_resource type="Resource" id="Resource_ohrdq"]
+ script = ExtResource("2_issh2")
+diff --git a/source/match/debug/GodModeHud.tscn b/source/match/debug/GodModeHud.tscn
+index 279e1b0..6f2b741 100644
+--- a/source/match/debug/GodModeHud.tscn
++++ b/source/match/debug/GodModeHud.tscn
+@@ -180,8 +180,6 @@ max_value = 5.0
+ step = 0.1
+ value = 1.0
+ 
+-[connection signal="value_changed" from="PlayerManager/VBoxContainer/PanelContainer/MarginContainer/VBoxContainer/ControlledPlayerSpinBox" to="PlayerManager" method="_on_controlled_player_spin_box_value_changed"]
+-[connection signal="value_changed" from="PlayerManager/VBoxContainer/PanelContainer2/MarginContainer/VBoxContainer/VisiblePlayerSpinBox" to="PlayerManager" method="_on_visible_player_spin_box_value_changed"]
+ [connection signal="pressed" from="MarginContainer/VBoxContainer/UnitsManager/MarginContainer/VBoxContainer/ActionCaptionToggleButton" to="MarginContainer/VBoxContainer/UnitsManager" method="_on_action_caption_toggle_button_pressed"]
+ [connection signal="pressed" from="MarginContainer/VBoxContainer/UnitsManager/MarginContainer/VBoxContainer/DebugVisualsToggleButton" to="MarginContainer/VBoxContainer/UnitsManager" method="_on_debug_visuals_toggle_button_pressed"]
+ [connection signal="pressed" from="MarginContainer/VBoxContainer/UnitsManager/MarginContainer/VBoxContainer/ClearAllButton" to="MarginContainer/VBoxContainer/UnitsManager" method="_on_clear_all_button_pressed"]
+diff --git a/source/match/debug/PlayerManager.gd b/source/match/debug/PlayerManager.gd
+index c6b969d..79efb32 100644
+--- a/source/match/debug/PlayerManager.gd
++++ b/source/match/debug/PlayerManager.gd
+@@ -10,6 +10,8 @@ func _ready():
+ 	await _match.ready
+ 	_controlled_player.value = _match.players.find(_match.controlled_player)
+ 	_visible_player.value = _match.players.find(_match.visible_player)
++	_controlled_player.value_changed.connect(_on_controlled_player_spin_box_value_changed)
++	_visible_player.value_changed.connect(_on_visible_player_spin_box_value_changed)
+ 
+ 
+ func _on_controlled_player_spin_box_value_changed(value):
+diff --git a/source/match/players/simple-clairvoyant-ai/IntelligenceController.gd b/source/match/players/simple-clairvoyant-ai/IntelligenceController.gd
+index 1436a4f..75b9245 100644
+--- a/source/match/players/simple-clairvoyant-ai/IntelligenceController.gd
++++ b/source/match/players/simple-clairvoyant-ai/IntelligenceController.gd
+@@ -69,7 +69,7 @@ func _on_drone_action_changed(new_action, drone):
+ 			. create_timer(randf_range(TARGET_SWITICHING_TIME_MIN_S, TARGET_SWITICHING_TIME_MAX_S))
+ 			. timeout
+ 		)
+-		var drone_was_freed = not weakref(drone).get_ref()
++		var drone_was_freed = not is_instance_valid(drone)
+ 		if drone_was_freed:
+ 			return
+ 		_navigate_to_random_position(drone)
+diff --git a/source/match/units/actions/Constructing.gd b/source/match/units/actions/Constructing.gd
+index af4ca32..6af3cca 100644
+--- a/source/match/units/actions/Constructing.gd
++++ b/source/match/units/actions/Constructing.gd
+@@ -42,6 +42,9 @@ func _to_string():
+ func _on_sub_action_finished():
+ 	if not is_inside_tree():
+ 		return
++	if not is_instance_valid(_target_unit) or not _target_unit.is_inside_tree():
++		queue_free()
++		return
+ 	_sub_action = null
+ 	assert(_try_constructing_structure())
+ 

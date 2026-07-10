@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-09-21_5156738_029"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "b91cfc6471c17477c7d509a25c5cfe213561083f"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Levels/SMB1/World8/8-1.tscn, Scenes/Levels/SMB1/World8/8-2.tscn, Scenes/Levels/SMBLL/CoinHeavens/3.tscn, Scripts/Classes/CoinHeaven.gd, Scripts/Classes/Components/CoinHeavenDestinationSetter.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-09-21_5156738_029"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

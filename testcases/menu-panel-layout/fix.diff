@@ -1,0 +1,20 @@
+diff --git a/scenes/menu.tscn b/scenes/menu.tscn
+index dab7748..fbdeb5d 100644
+--- a/scenes/menu.tscn
++++ b/scenes/menu.tscn
+@@ -5,12 +5,11 @@ anchors_preset = 15
+ anchor_right = 1.0
+ anchor_bottom = 1.0
+ 
+-[node name="QuitButton" type="Button" parent="."]
+-text = "Quit"
+-
+ [node name="StartButton" type="Button" parent="."]
+ text = "Start"
+ 
+ [node name="OptionsButton" type="Button" parent="."]
+-visible = false
+ text = "Options"
++
++[node name="QuitButton" type="Button" parent="."]
++text = "Quit"

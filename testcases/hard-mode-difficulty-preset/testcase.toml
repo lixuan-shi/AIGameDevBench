@@ -1,0 +1,21 @@
+[testcase]
+id = "hard-mode-difficulty-preset"
+category = "intent_translation"
+source_kind = "folder"
+source_repo = "authored:representative-set"
+task = """
+Implement the "hard mode" difficulty preset. Hard mode means: enemies have 50% more health, and enemies spawn twice as often (the spawn interval is halved).
+The relevant values are split across two config files: res://config/enemy_stats.json (enemy_health, base 100) and res://config/spawn_config.json (spawn_interval, base 4.0). Update BOTH so they reflect hard mode.
+"""
+
+[verifier]
+type = "py_config"
+entry = "expected.json"
+
+[scoring]
+mode = "fields"
+
+[provenance]
+author = "Claude"
+created = "2026-06-29"
+notes = "intent_translation/hard. Intent split across two files: enemy_health 100->150 (+50%) and spawn_interval 4.0->2.0 (halved). Trap: AI edits one file and leaves the other stale -> 1/2 = 0.5. bad.diff captures the one-file edit. noop=0; both must_differ_from_base guard copies."

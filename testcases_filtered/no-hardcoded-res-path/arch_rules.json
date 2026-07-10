@@ -1,0 +1,10 @@
+{
+  "target_files": ["scripts/spawner.gd"],
+  "rules": [
+    {
+      "id": "no_hardcoded_res_path",
+      "type": "forbid_hardcoded_res_path",
+      "weight": 100
+    }
+  ]
+}

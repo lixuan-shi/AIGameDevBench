@@ -1,0 +1,22 @@
+{
+  "fields": [
+    {
+      "name": "legendary_tripled",
+      "aliases": ["legendary"],
+      "files_glob": "data/loot_table.json",
+      "expected": 0.06,
+      "tol": 0.0001,
+      "base": 0.02,
+      "must_differ_from_base": true
+    },
+    {
+      "name": "common_reduced_to_keep_sum_1",
+      "aliases": ["common"],
+      "files_glob": "data/loot_table.json",
+      "expected": 0.76,
+      "tol": 0.0001,
+      "base": 0.80,
+      "must_differ_from_base": true
+    }
+  ]
+}

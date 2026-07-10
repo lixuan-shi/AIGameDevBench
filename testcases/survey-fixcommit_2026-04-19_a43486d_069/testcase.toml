@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2026-04-19_a43486d_069"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "31180a97bfcb707c1021e51a9fcb471517ec7161"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\tabletop-club"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: game/Scenes/Game/3D/Hand.tscn, game/Scenes/Game/3D/PaintPlane.tscn, game/Scripts/Game/3D/Hand.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2026-04-19_a43486d_069"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

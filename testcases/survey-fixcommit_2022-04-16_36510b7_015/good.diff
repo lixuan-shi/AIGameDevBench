@@ -1,0 +1,82 @@
+diff --git a/scenes/title/CreditsButton.gd b/scenes/title/CreditsButton.gd
+index ac071c3..12c2c18 100644
+--- a/scenes/title/CreditsButton.gd
++++ b/scenes/title/CreditsButton.gd
+@@ -3,9 +3,6 @@ extends Button
+ var corn_icon = load("res://sprites/corncob.png")
+ 
+ func _ready():
+-  # This is so you can use the menu with the keyboard
+-  grab_focus()
+-
+   # Signals can be found here: https://docs.godotengine.org/en/stable/classes/class_basebutton.html
+   self.connect("mouse_entered", self, "grab_focus")
+   self.connect("pressed", self, "_on_pressed")
+diff --git a/scenes/title/DanceButton.gd b/scenes/title/DanceButton.gd
+index 7c0b327..ecd4df3 100644
+--- a/scenes/title/DanceButton.gd
++++ b/scenes/title/DanceButton.gd
+@@ -3,9 +3,6 @@ extends Button
+ var corn_icon = load("res://sprites/corncob.png")
+ 
+ func _ready():
+-  # This is so you can use the menu with the keyboard
+-  grab_focus()
+-
+   # Signals can be found here: https://docs.godotengine.org/en/stable/classes/class_basebutton.html
+   self.connect("mouse_entered", self, "grab_focus")
+   self.connect("pressed", self, "_on_pressed")
+diff --git a/scenes/title/FlappyMarioButton.gd b/scenes/title/FlappyMarioButton.gd
+index 8bea7b1..eb838a5 100644
+--- a/scenes/title/FlappyMarioButton.gd
++++ b/scenes/title/FlappyMarioButton.gd
+@@ -4,9 +4,6 @@ var corn_icon = preload("res://sprites/corncob.png")
+ 
+ 
+ func _ready():
+-	# This is so you can use the menu with the keyboard
+-	grab_focus()
+-
+ 	# Signals can be found here: https://docs.godotengine.org/en/stable/classes/class_basebutton.html
+ 	self.connect("mouse_entered", self, "grab_focus")
+ 	self.connect("pressed", self, "_on_pressed")
+diff --git a/scenes/title/MarwingButton.gd b/scenes/title/MarwingButton.gd
+index d6f7c34..8481afd 100644
+--- a/scenes/title/MarwingButton.gd
++++ b/scenes/title/MarwingButton.gd
+@@ -3,8 +3,6 @@ extends Button
+ var corn_icon = load("res://sprites/corncob.png")
+ 
+ func _ready():
+-  grab_focus()
+-
+   self.connect("mouse_entered", self, "grab_focus")
+   self.connect("pressed", self, "_on_pressed")
+   self.connect("focus_entered", self, "_on_focus_entered") 
+diff --git a/scenes/title/OptionsButton.gd b/scenes/title/OptionsButton.gd
+index 07f77e2..e05824a 100644
+--- a/scenes/title/OptionsButton.gd
++++ b/scenes/title/OptionsButton.gd
+@@ -3,9 +3,6 @@ extends Button
+ var corn_icon = load("res://sprites/corncob.png")
+ 
+ func _ready():
+-  # This is so you can use the menu with the keyboard
+-  grab_focus()
+-
+   # Signals can be found here: https://docs.godotengine.org/en/stable/classes/class_basebutton.html
+   self.connect("mouse_entered", self, "grab_focus")
+   self.connect("pressed", self, "_on_pressed")
+diff --git a/scenes/title/SokobanButton.gd b/scenes/title/SokobanButton.gd
+index 080e38a..d4fa7cf 100644
+--- a/scenes/title/SokobanButton.gd
++++ b/scenes/title/SokobanButton.gd
+@@ -4,8 +4,6 @@ var corn_icon = preload("res://sprites/corncob.png")
+ 
+ 
+ func _ready():
+-	# This is so you can use the menu with the keyboard
+-	grab_focus()
+ 
+ 	# Signals can be found here: https://docs.godotengine.org/en/stable/classes/class_basebutton.html
+ 	self.connect("mouse_entered", self, "grab_focus")

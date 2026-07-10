@@ -1,0 +1,300 @@
+diff --git a/Assets/Sprites/Blocks/QuestionBlock.json b/Assets/Sprites/Blocks/QuestionBlock.json
+index 4a12253..2f136f8 100644
+--- a/Assets/Sprites/Blocks/QuestionBlock.json
++++ b/Assets/Sprites/Blocks/QuestionBlock.json
+@@ -1,36 +1,156 @@
+ {
+ 	"animations": {
+ 		"default": {
+-			"frames": 
+-				[
+-					[0, 0, 16, 16],
+-					[0, 0, 16, 16],
+-					[0, 0, 16, 16],
+-					[0, 0, 16, 16],
+-					[0, 0, 16, 16],
+-					[0, 0, 16, 16],
+-					[0, 0, 16, 16],
+-					[0, 0, 16, 16],
+-					[0, 0, 16, 16],
+-					[0, 0, 16, 16],
+-					[16, 0, 16, 16],
+-					[32, 0, 16, 16],
+-					[16, 0, 16, 16],
++			"frames": [
++				[
++					0.0,
++					0.0,
++					16.0,
++					16.0
++				],
++				[
++					0.0,
++					0.0,
++					16.0,
++					16.0
++				],
++				[
++					0.0,
++					0.0,
++					16.0,
++					16.0
++				],
++				[
++					0.0,
++					0.0,
++					16.0,
++					16.0
++				],
++				[
++					0.0,
++					0.0,
++					16.0,
++					16.0
++				],
++				[
++					0.0,
++					0.0,
++					16.0,
++					16.0
++				],
++				[
++					0.0,
++					0.0,
++					16.0,
++					16.0
+ 				],
++				[
++					0.0,
++					0.0,
++					16.0,
++					16.0
++				],
++				[
++					0.0,
++					0.0,
++					16.0,
++					16.0
++				],
++				[
++					0.0,
++					0.0,
++					16.0,
++					16.0
++				],
++				[
++					16.0,
++					0.0,
++					16.0,
++					16.0
++				],
++				[
++					32.0,
++					0.0,
++					16.0,
++					16.0
++				],
++				[
++					16.0,
++					0.0,
++					16.0,
++					16.0
++				]
++			],
+ 			"speed": 10.0,
+ 			"loop": true
+ 		}
+ 	},
+-	
+-	"variations":
+-	{
+-		"default": {"source": "QuestionBlock.png", "rect": [0, 0, 64, 16]},
+-		"Underground": {"source": "QuestionBlock.png", "rect": [0, 16, 64, 16]},
+-		"GhostHouse": {"link": "Underground"},
+-		"Castle": {"source": "QuestionBlock.png", "rect": [0, 32, 64, 16]},
+-		"Snow": {"source": "QuestionBlock.png", "rect": [0, 48, 64, 16]},
+-		"Space": {"source": "QuestionBlock.png", "rect": [0, 64, 64, 16]},
+-		"Volcano": {"source": "QuestionBlock.png", "rect": [0, 80, 64, 16]},
+-		"Bonus": {"source": "QuestionBlock.png", "rect": [0, 96, 64, 16]}
++	"variations": {
++		"default": {
++			"source": "QuestionBlock.png",
++			"rect": [
++				0.0,
++				0.0,
++				64.0,
++				16.0
++			]
++		},
++		"Underground": {
++			"source": "QuestionBlock.png",
++			"rect": [
++				0.0,
++				16.0,
++				64.0,
++				16.0
++			]
++		},
++		"GhostHouse": {
++			"link": "Underground"
++		},
++		"Castle": {
++			"source": "QuestionBlock.png",
++			"rect": [
++				0.0,
++				32.0,
++				64.0,
++				16.0
++			]
++		},
++		"Snow": {
++			"source": "QuestionBlock.png",
++			"rect": [
++				0.0,
++				48.0,
++				64.0,
++				16.0
++			]
++		},
++		"Space": {
++			"source": "QuestionBlock.png",
++			"rect": [
++				0.0,
++				64.0,
++				64.0,
++				16.0
++			]
++		},
++		"Volcano": {
++			"source": "QuestionBlock.png",
++			"rect": [
++				0.0,
++				80.0,
++				64.0,
++				16.0
++			]
++		},
++		"Bonus": {
++			"source": "QuestionBlock.png",
++			"rect": [
++				0.0,
++				96.0,
++				64.0,
++				16.0
++			]
++		}
+ 	}
+-}
++}
+\ No newline at end of file
+diff --git a/Scenes/Prefabs/UI/SettingsMenu.tscn b/Scenes/Prefabs/UI/SettingsMenu.tscn
+index 9b9271e..0c96dab 100644
+--- a/Scenes/Prefabs/UI/SettingsMenu.tscn
++++ b/Scenes/Prefabs/UI/SettingsMenu.tscn
+@@ -550,13 +550,6 @@ script = ExtResource("4_avtty")
+ category_name = "SETTINGS_RESOURCE_PACK"
+ options = [NodePath("SelectableOptionNode"), NodePath("SelectableOptionNode2"), NodePath("SelectableOptionNode3")]
+ 
+-[node name="Label" type="Label" parent="PanelContainer/MarginContainer/VBoxContainer/ResourcePacks"]
+-visible = false
+-modulate = Color(1, 1, 0, 1)
+-layout_mode = 2
+-text = "RESOURCE_PACK_WARNING"
+-autowrap_mode = 2
+-
+ [node name="SelectableOptionNode" parent="PanelContainer/MarginContainer/VBoxContainer/ResourcePacks" groups=["Options"] instance=ExtResource("9_t6b48")]
+ layout_mode = 2
+ title = "RESOURCE_OPEN_FOLDER"
+diff --git a/Scripts/Classes/Blocks/BlockClass.gd b/Scripts/Classes/Blocks/BlockClass.gd
+index b35dadf..3d72313 100644
+--- a/Scripts/Classes/Blocks/BlockClass.gd
++++ b/Scripts/Classes/Blocks/BlockClass.gd
+@@ -86,6 +86,8 @@ func spawn_empty_block() -> void:
+ 	if get_parent().get_parent() is TrackRider:
+ 		get_parent().get_parent().attached_entity = block
+ 	block_emptied.emit()
++	if get_parent() is TileMapLayer:
++		get_parent().erase_cell(get_parent().local_to_map(position))
+ 	queue_free()
+ 
+ func destroy() -> void:
+@@ -94,5 +96,7 @@ func destroy() -> void:
+ 	AudioManager.play_sfx("block_break", global_position)
+ 	var particles = destruction_particle_scene.instantiate()
+ 	particles.global_position = global_position
++	if get_parent() is TileMapLayer:
++		get_parent().erase_cell(get_parent().local_to_map(position))
+ 	add_sibling(particles)
+ 	queue_free()
+diff --git a/Scripts/Classes/Components/ResourceSetterNew.gd b/Scripts/Classes/Components/ResourceSetterNew.gd
+index 1b89857..64fc80c 100644
+--- a/Scripts/Classes/Components/ResourceSetterNew.gd
++++ b/Scripts/Classes/Components/ResourceSetterNew.gd
+@@ -57,7 +57,6 @@ func update_resource() -> void:
+ 		cache.clear()
+ 		property_cache.clear()
+ 	if node_to_affect != null:
+-		print(resource_json.data)
+ 		var resource = get_resource(resource_json)
+ 		node_to_affect.set(property_name, resource)
+ 		if node_to_affect is AnimatedSprite2D:
+@@ -210,7 +209,6 @@ func get_variation_json(json := {}) -> Dictionary:
+ 	
+ 	var campaign = Global.current_campaign
+ 	if force_properties.has("Campaign"):
+-		is_random = true
+ 		campaign = force_properties.Campaign
+ 	if json.has(campaign) == false:
+ 		campaign = "SMB1"
+@@ -226,9 +224,7 @@ func get_variation_json(json := {}) -> Dictionary:
+ 	
+ 	var world = "World" + str(Global.world_num)
+ 	if force_properties.has("World"):
+-		is_random = true
+ 		world = "World" + str(force_properties.World)
+-		print(world)
+ 	if json.has(world) == false:
+ 		world = "World1"
+ 	if json.has(world):
+@@ -332,8 +328,6 @@ func load_image_from_path(path := "") -> Texture2D:
+ 			return null
+ 		return load(path)
+ 	var image = Image.new()
+-	if path == "":
+-		print([path, owner.name])
+ 	image.load(path)
+ 	return ImageTexture.create_from_image(image)
+ 
+diff --git a/Scripts/Classes/Components/TilesetTextureSetter.gd b/Scripts/Classes/Components/TilesetTextureSetter.gd
+index 4b82ef3..9e485c5 100644
+--- a/Scripts/Classes/Components/TilesetTextureSetter.gd
++++ b/Scripts/Classes/Components/TilesetTextureSetter.gd
+@@ -16,7 +16,6 @@ func _ready() -> void:
+ 	texture_changed.connect(update)
+ 
+ func update() -> void:
+-	print(name)
+ 	var source = tile_map.tile_set.get_source(atlas_id)
+ 	if source != null:
+ 		source.texture = texture
+diff --git a/Scripts/Classes/Entities/Items/Coin.gd b/Scripts/Classes/Entities/Items/Coin.gd
+index b1b9a8a..2ea7840 100644
+--- a/Scripts/Classes/Entities/Items/Coin.gd
++++ b/Scripts/Classes/Entities/Items/Coin.gd
+@@ -24,12 +24,16 @@ func collect() -> void:
+ 		$Sprite.queue_free()
+ 	else:
+ 		queue_free()
++	if get_parent() is TileMapLayer:
++		get_parent().erase_cell(get_parent().local_to_map(position))
+ 
+ func summon_block_coin() -> void:
+ 	var node = spinning_coin_scene.instantiate()
+ 	node.global_position = global_position
+ 	add_sibling(node)
+ 	queue_free()
++	if get_parent() is TileMapLayer:
++		get_parent().erase_cell(get_parent().local_to_map(position))
+ 
+ func summon_particle() -> void:
+ 	var node = COIN_SPARKLE.instantiate()

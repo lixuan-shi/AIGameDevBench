@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2026-01-26_37104e2_046"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "bf7caa5036cff52129d33110903f8d3738f07c4c"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: src/combat/battlers/battler.gd, src/combat/battlers/battler_roster.gd, src/combat/combat.gd, src/combat/combat_ai_random.gd, src/combat/ui/action_menu/ui_action_button.gd, src/combat/ui/action_menu/ui_action_menu.gd, src/combat/ui/battler_entry/ui_player_battler_list.gd, src/combat/ui/ui_combat.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2026-01-26_37104e2_046"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

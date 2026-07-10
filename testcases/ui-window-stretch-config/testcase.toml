@@ -1,0 +1,19 @@
+[testcase]
+id = "ui-window-stretch-config"
+category = "intent_translation"
+source_kind = "folder"
+task = """
+Make the UI scale with the window. project.godot already sets a stretch mode (window/stretch/mode="canvas_items", aspect="expand"), but the canvas_items stretch only takes effect once a base resolution is defined. Add the base resolution window/size/viewport_width=1280 and window/size/viewport_height=720 to project.godot so the stretch actually applies.
+"""
+
+[verifier]
+type = "py_config"
+entry = "expected.json"
+
+[scoring]
+mode = "fields"
+
+[provenance]
+author = "Claude"
+created = "2026-06-29"
+notes = "intent_translation/easy. Mined from a real Godot ui-login session: project.godot set window/stretch/mode=canvas_items + aspect=expand but OMITTED the base resolution window/size/viewport_width/height, so the stretch silently did nothing and the agent thrashed on login.gd. Baseline lacks the two viewport_* keys -> py_config finds nothing -> noop=0. Golden adds viewport_width=1280 / viewport_height=720 -> 1.0. (Requires flatten_config to parse Godot .godot config files; aliases use the full slash key window/size/viewport_width.)"

@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-11-22_7457570_137"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "a681fed56d74dfdbcadea64d498a0b92b18e28c7"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Prefabs/LevelObjects/EndFinalCastle.tscn, Scenes/Prefabs/LevelObjects/EndFinalSpCastle.tscn, Scenes/Prefabs/LevelObjects/EndSmallCastle.tscn, Scripts/Parts/EndCastle.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-11-22_7457570_137"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

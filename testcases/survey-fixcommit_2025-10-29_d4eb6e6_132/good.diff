@@ -1,0 +1,23 @@
+diff --git a/Assets/Sprites/Items/Vine.json b/Assets/Sprites/Items/Vine.json
+index f41372f..5668458 100644
+--- a/Assets/Sprites/Items/Vine.json
++++ b/Assets/Sprites/Items/Vine.json
+@@ -67,4 +67,4 @@
+ 			]
+ 		}
+ 	}
+-}
+\ No newline at end of file
++}
+diff --git a/Scripts/Classes/Entities/Items/Coin.gd b/Scripts/Classes/Entities/Items/Coin.gd
+index 4940485..dda006b 100644
+--- a/Scripts/Classes/Entities/Items/Coin.gd
++++ b/Scripts/Classes/Entities/Items/Coin.gd
+@@ -13,6 +13,7 @@ func area_entered(area: Area2D) -> void:
+ 		collect()
+ 
+ func collect() -> void:
++	remove_from_group("Coins")
+ 	collected.emit()
+ 	$Hitbox.area_entered.disconnect(area_entered)
+ 	Global.coins += 1

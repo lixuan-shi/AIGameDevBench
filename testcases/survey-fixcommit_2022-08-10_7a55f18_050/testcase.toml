@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-08-10_7a55f18_050"
+category = "intent_translation"
+source_kind = "git"
+baseline_ref = "a57e63a01693d4c9f5a3210f24b005aac6003deb"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\a-little-game-called-mario"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/title/options/OptionsMenu.gd, scenes/title/options/OptionsMenu.tscn, scenes/ui/PauseMenu.gd, scenes/ui/PauseMenu.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-08-10_7a55f18_050"
+bad_case_type = "B2"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

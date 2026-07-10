@@ -1,0 +1,65 @@
+diff --git a/Scenes/Parts/Tiles.tscn b/Scenes/Parts/Tiles.tscn
+index 02f01b5..5630cfb 100644
+--- a/Scenes/Parts/Tiles.tscn
++++ b/Scenes/Parts/Tiles.tscn
+@@ -577,7 +577,6 @@ texture = ExtResource("1_vdakf")
+ &"type": 22
+ }
+ 5:8/0 = 0
+-5:8/0/z_index = 1
+ 5:8/0/physics_layer_0/polygon_0/points = PackedVector2Array(8, -8, 8, 8, -8, 8, -8, 0)
+ 5:8/0/metadata/_better_terrain = {
+ 0: [0],
+@@ -608,7 +607,6 @@ texture = ExtResource("1_vdakf")
+ &"type": 18
+ }
+ 0:9/0 = 0
+-0:9/0/z_index = -10
+ 0:9/0/physics_layer_0/polygon_0/points = PackedVector2Array(8, -8, 8, 8, -8, -8)
+ 0:9/0/metadata/_better_terrain = {
+ 0: [0],
+@@ -617,7 +615,6 @@ texture = ExtResource("1_vdakf")
+ &"type": 20
+ }
+ 1:9/0 = 0
+-1:9/0/z_index = -10
+ 1:9/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, -8, 8)
+ 1:9/0/metadata/_better_terrain = {
+ 8: [0],
+@@ -626,7 +623,6 @@ texture = ExtResource("1_vdakf")
+ &"type": 21
+ }
+ 2:9/0 = 0
+-2:9/0/z_index = -10
+ 2:9/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+ 2:9/0/metadata/_better_terrain = {
+ 0: [0],
+diff --git a/Scripts/Classes/Singletons/Global.gd b/Scripts/Classes/Singletons/Global.gd
+index daebf53..67efc10 100644
+--- a/Scripts/Classes/Singletons/Global.gd
++++ b/Scripts/Classes/Singletons/Global.gd
+@@ -344,6 +344,7 @@ func transition_to_scene(scene_path := "") -> void:
+ 		$Transition/AnimationPlayer.play("RESET")
+ 		$Transition.hide()
+ 	transitioning_scene = false
++	transition_finished.emit()
+ 
+ 
+ 
+diff --git a/Scripts/Parts/GameOver.gd b/Scripts/Parts/GameOver.gd
+index 1eafd24..d16f69c 100644
+--- a/Scripts/Parts/GameOver.gd
++++ b/Scripts/Parts/GameOver.gd
+@@ -21,8 +21,11 @@ func _ready() -> void:
+ func _process(_delta: float) -> void:
+ 	print(can_continue)
+ 	if Input.is_action_just_pressed("jump_0") and can_continue:
+-		go_back_to_title()
+ 		can_continue = false
++		if Global.transitioning_scene:
++			await Global.transition_finished
++			await get_tree().create_timer(0.15, false).timeout
++		go_back_to_title()
+ 
+ 
+ func go_back_to_title() -> void:

@@ -1,0 +1,52 @@
+diff --git a/source/match/Match.gd b/source/match/Match.gd
+index 8122c2f..3091388 100644
+--- a/source/match/Match.gd
++++ b/source/match/Match.gd
+@@ -213,5 +213,4 @@ func _on_unit_died(unit):
+ 		navigation.update_terrain()
+ 		
+ func _on_resource_depleted():
+-	print("die")
+ 	navigation.update_terrain()
+diff --git a/source/match/Navigation.gd b/source/match/Navigation.gd
+index 3175338..76e6c65 100644
+--- a/source/match/Navigation.gd
++++ b/source/match/Navigation.gd
+@@ -34,7 +34,6 @@ func rebake(map):
+ 	
+ func update_terrain():
+ 	terrain.rebake(true)
+-	print("update_terrain")
+ 
+ func _clear_static_obstacles():
+ 	for static_obstacle in _static_obstacles:
+diff --git a/source/match/utils/UnitPlacementUtils.gd b/source/match/utils/UnitPlacementUtils.gd
+index 2a5ab5b..b498815 100644
+--- a/source/match/utils/UnitPlacementUtils.gd
++++ b/source/match/utils/UnitPlacementUtils.gd
+@@ -1,5 +1,7 @@
+ enum { VALID, COLLIDES_WITH_AGENT, NOT_NAVIGABLE }
+ 
++const epsilon = 0.05 # Custom approximation variable check for terrain
++
+ 
+ static func find_valid_position_radially(
+ 	starting_position: Vector3, radius: float, navigation_map_rid: RID, scene_tree
+@@ -79,14 +81,14 @@ static func validate_agent_placement_position(position, radius, existing_units,
+ 				position + Vector3(x, 0, z).normalized() * radius
+ 			)
+ 	for point_expected_to_be_navigable in points_expected_to_be_navigable:
+-		if not (point_expected_to_be_navigable * Vector3(1, 0, 1)).is_equal_approx(
++		if not (point_expected_to_be_navigable * Vector3(1, 0, 1)).distance_to(
+ 			(
+ 				NavigationServer3D.map_get_closest_point(
+ 					navigation_map_rid, point_expected_to_be_navigable
+ 				)
+ 				* Vector3(1, 0, 1)
+-			)
+-		):
++			 )
++		) < epsilon :
+ 			return NOT_NAVIGABLE
+ 	return VALID
+ 

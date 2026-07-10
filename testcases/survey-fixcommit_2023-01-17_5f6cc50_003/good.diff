@@ -1,0 +1,15 @@
+diff --git a/source/shaders/3d/simple_fog_of_war.gdshader b/source/shaders/3d/simple_fog_of_war.gdshader
+index f6b51e6..c11996c 100644
+--- a/source/shaders/3d/simple_fog_of_war.gdshader
++++ b/source/shaders/3d/simple_fog_of_war.gdshader
+@@ -52,6 +52,10 @@ void fragment()
+           textureLod(world_visibility_texture, world_visibility_texture_uv, 0.0).r;
+       ALPHA = max(ALPHA, 1.0 - transparency_from_world_visibility_texture);
+     }
++    else
++    {
++      ALPHA = 1.0;
++    }
+   }
+ 
+   if (debug_texture_view && UV.x <= 0.2 && UV.y <= 0.2)

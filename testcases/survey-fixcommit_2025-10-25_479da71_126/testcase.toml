@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-25_479da71_126"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "0f0f1484a0aa483df80f4e1e8bb6cd4bc6183c56"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Prefabs/UI/SettingsMenu.tscn, Scripts/Parts/DifficultySetter.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-25_479da71_126"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

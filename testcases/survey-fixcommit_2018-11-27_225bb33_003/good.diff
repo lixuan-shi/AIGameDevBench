@@ -1,0 +1,181 @@
+diff --git a/godot/local_map/LocalMap.tscn b/godot/local_map/LocalMap.tscn
+index 162a473..b463c04 100644
+--- a/godot/local_map/LocalMap.tscn
++++ b/godot/local_map/LocalMap.tscn
+@@ -15,7 +15,6 @@
+ [ext_resource path="res://local_map/DialogueBox.gd" type="Script" id=13]
+ [ext_resource path="res://dialogue/dialogue_player/DialoguePlayer.tscn" type="PackedScene" id=14]
+ 
+-
+ [node name="LocalMap" type="Node2D"]
+ script = ExtResource( 1 )
+ 
+@@ -72,7 +71,6 @@ sort_enabled = true
+ script = ExtResource( 5 )
+ 
+ [node name="Actor" parent="Grid/Pawns" instance=ExtResource( 6 )]
+-editor/display_folded = true
+ position = Vector2( 416, 288 )
+ 
+ [node name="Actor2" type="Node2D" parent="Grid/Pawns" groups=[
+diff --git a/godot/local_map/grid/Grid.gd b/godot/local_map/grid/Grid.gd
+index 9dba405..5a88e83 100644
+--- a/godot/local_map/grid/Grid.gd
++++ b/godot/local_map/grid/Grid.gd
+@@ -6,6 +6,8 @@ onready var pawns = get_node("Pawns")
+ 
+ func _ready():
+ 	for child in pawns.get_children():
++		if child is PawnFollower:
++			continue
+ 		child.position = request_move(child, Vector2(0, 0))
+ 		set_cellv(world_to_map(child.position), child.type)
+ 
+@@ -32,8 +34,11 @@ func request_move(pawn, direction):
+ 			object_pawn.queue_free()
+ 			return update_pawn_position(pawn, cell_start, cell_target)
+ 		CELL_TYPES.ACTOR:
+-			var enemy = get_cell_pawn(cell_target)
+-			get_parent().emit_signal("encounter" , enemy.formation.instance())
++			var target_pawn = get_cell_pawn(cell_target)
++			if target_pawn is PawnFollower:
++				return update_pawn_position(pawn, cell_start, cell_target)
++			else:
++				get_parent().emit_signal("encounter", target_pawn.formation.instance())
+ 
+ func update_pawn_position(pawn, cell_start, cell_target):
+ 	set_cellv(cell_target, pawn.type)
+diff --git a/godot/local_map/pawns/Actor.gd b/godot/local_map/pawns/Actor.gd
+index 84c8019..68c2df2 100644
+--- a/godot/local_map/pawns/Actor.gd
++++ b/godot/local_map/pawns/Actor.gd
+@@ -1,7 +1,8 @@
+-extends "Pawn.gd"
++extends Pawn
+ 
+-onready var Grid = get_parent()
++class_name PawnActor
+ 
++onready var grid = get_parent()
+ signal moved(last_position, current_position)
+ 
+ func _ready():
+@@ -13,19 +14,16 @@ func update_look_direction(direction):
+ func move_to(target_position):
+ 	emit_signal("moved", position, target_position)
+ 	set_process(false)
+-	$AnimationPlayer.play("walk")
+ 
+ 	# Move the node to the target cell instantly,
+ 	# and animate the sprite moving from the start to the target cell
+ 	var move_direction = (target_position - position).normalized()
+ 	$Tween.interpolate_property($Pivot, "position", - move_direction * 32, Vector2(), $AnimationPlayer.current_animation_length, Tween.TRANS_LINEAR, Tween.EASE_IN)
++	$AnimationPlayer.play("walk")
+ 	position = target_position
+ 
+ 	$Tween.start()
+-
+-	# Stop the function execution until the animation finished
+ 	yield($AnimationPlayer, "animation_finished")
+-	
+ 	set_process(true)
+ 	
+ func bump():
+diff --git a/godot/local_map/pawns/Follower.gd b/godot/local_map/pawns/Follower.gd
+index e0f32d9..9d6f36c 100644
+--- a/godot/local_map/pawns/Follower.gd
++++ b/godot/local_map/pawns/Follower.gd
+@@ -1,11 +1,12 @@
+-extends "Actor.gd"
++extends PawnActor
++
++class_name PawnFollower
+ 
+ func _on_Actor_moved(last_position, current_position):
+ 	follow(last_position)
+ 
+-func follow(to_position):
+-	var direction = (to_position - position).normalized()
++func follow(target_position):
++	var direction = (target_position - position).normalized()
+ 	update_look_direction(direction)
+ 	
+-	Grid.request_move(self, direction)
+-	move_to(to_position)
++	move_to(target_position)
+diff --git a/godot/local_map/pawns/Leader.gd b/godot/local_map/pawns/Leader.gd
+index 7a9c067..354277a 100644
+--- a/godot/local_map/pawns/Leader.gd
++++ b/godot/local_map/pawns/Leader.gd
+@@ -1,4 +1,6 @@
+-extends "Actor.gd"
++extends PawnActor
++
++class_name PawnLeader
+ 
+ func _process(delta):
+ 	var input_direction = get_input_direction()
+@@ -6,7 +8,7 @@ func _process(delta):
+ 		return
+ 	update_look_direction(input_direction)
+ 
+-	var target_position = Grid.request_move(self, input_direction)
++	var target_position = grid.request_move(self, input_direction)
+ 	if target_position:
+ 		move_to(target_position)
+ 	else:
+diff --git a/godot/local_map/pawns/Pawn.gd b/godot/local_map/pawns/Pawn.gd
+index 5226f30..529b315 100644
+--- a/godot/local_map/pawns/Pawn.gd
++++ b/godot/local_map/pawns/Pawn.gd
+@@ -1,6 +1,7 @@
+ extends Node2D
+ 
++class_name Pawn
++
+ enum CELL_TYPES { ACTOR, OBSTACLE, OBJECT }
+ export(CELL_TYPES) var type = CELL_TYPES.ACTOR
+-# holds the formation
+ export var formation : PackedScene
+diff --git a/godot/project.godot b/godot/project.godot
+index 7fa36df..de4bbce 100644
+--- a/godot/project.godot
++++ b/godot/project.godot
+@@ -89,6 +89,26 @@ _global_script_classes=[ {
+ "language": "GDScript",
+ "path": "res://party/Party.gd"
+ }, {
++"base": "Node2D",
++"class": "Pawn",
++"language": "GDScript",
++"path": "res://local_map/pawns/Pawn.gd"
++}, {
++"base": "Node2D",
++"class": "PawnActor",
++"language": "GDScript",
++"path": "res://local_map/pawns/Actor.gd"
++}, {
++"base": "Node2D",
++"class": "PawnFollower",
++"language": "GDScript",
++"path": "res://local_map/pawns/Follower.gd"
++}, {
++"base": "Node2D",
++"class": "PawnLeader",
++"language": "GDScript",
++"path": "res://local_map/pawns/Leader.gd"
++}, {
+ "base": "Resource",
+ "class": "Skill",
+ "language": "GDScript",
+@@ -121,6 +141,10 @@ _global_script_class_icons={
+ "LifeBar": "",
+ "ManaBar": "",
+ "Party": "",
++"Pawn": "",
++"PawnActor": "",
++"PawnFollower": "",
++"PawnLeader": "",
+ "Skill": "",
+ "StatBar": "",
+ "TurnQueue": ""

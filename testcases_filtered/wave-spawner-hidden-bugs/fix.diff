@@ -1,0 +1,29 @@
+diff --git a/scripts/wave_spawner.gd b/scripts/wave_spawner.gd
+index ae8718e..7197a1c 100644
+--- a/scripts/wave_spawner.gd
++++ b/scripts/wave_spawner.gd
+@@ -17,7 +17,7 @@ func start() -> void:
+ 
+ func _spawn_current_wave() -> void:
+ 	var size: int = wave_sizes[current_wave]
+-	for i in range(size - 1):
++	for i in range(size):
+ 		live += 1
+ 		spawned_total += 1
+ 	wave_started.emit(current_wave, size)
+@@ -26,10 +26,13 @@ func notify_enemy_killed() -> void:
+ 	if finished:
+ 		return
+ 	live -= 1
+-	if live < 0:
++	if live <= 0:
+ 		_advance()
+ 
+ func _advance() -> void:
+-	if current_wave + 1 >= wave_sizes.size():
++	if current_wave + 1 < wave_sizes.size():
+ 		current_wave += 1
+ 		_spawn_current_wave()
++	else:
++		finished = true
++		all_waves_cleared.emit()

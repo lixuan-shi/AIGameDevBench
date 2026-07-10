@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-06-05_a7010d0_044"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "efcaed4d7f9a77f742df88112e3ef29ca4107dae"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: assets/characters/generic_character_gfx.tscn, assets/characters/ghost_gfx.tscn, assets/characters/knight_gfx.tscn, assets/characters/lady_gfx.tscn, assets/characters/monk_gfx.tscn, assets/characters/smith_gfx.tscn, assets/characters/wizard_gfx.tscn, src/Main2.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-06-05_a7010d0_044"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

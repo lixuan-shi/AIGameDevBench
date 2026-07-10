@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://3tu6iflvsjd7"]
+
+[ext_resource type="Script" uid="uid://dktnpiire82vn" path="res://scripts/score_tracker.gd" id="1_tracker"]
+
+[node name="Main" type="Node2D" unique_id=1000055234]
+
+[node name="ScoreTracker" type="Node" parent="." unique_id=1322702290]
+script = ExtResource("1_tracker")

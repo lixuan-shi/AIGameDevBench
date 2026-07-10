@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-05-15_f2404ed_029"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "006ad57b28bc5148f22cfb6d94078f374f5900d9"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\a-little-game-called-mario"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/levels/TypeShoot/Characters/TypeShootEnemy.tscn, scenes/levels/TypeShoot/Characters/TypeShootPlayer.tscn, scenes/levels/TypeShoot/TypeShoot00.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-05-15_f2404ed_029"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

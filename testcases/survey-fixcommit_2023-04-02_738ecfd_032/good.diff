@@ -1,0 +1,72 @@
+diff --git a/source/match/Match.tscn b/source/match/Match.tscn
+index 98d3db4..83da8bb 100644
+--- a/source/match/Match.tscn
++++ b/source/match/Match.tscn
+@@ -1,4 +1,4 @@
+-[gd_scene load_steps=53 format=3 uid="uid://c84syrhfooaf0"]
++[gd_scene load_steps=54 format=3 uid="uid://c84syrhfooaf0"]
+ 
+ [ext_resource type="Script" path="res://source/match/Match.gd" id="1_1555u"]
+ [ext_resource type="Script" path="res://source/match/IsometricCamera3D.gd" id="1_qb2ry"]
+@@ -82,6 +82,13 @@ fog_height_density = 1.2
+ material = ExtResource("6_u47mu")
+ size = Vector2(50, 50)
+ 
++[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_q5xfu"]
++shading_mode = 0
++albedo_color = Color(0, 0, 0, 1)
++
++[sub_resource type="PlaneMesh" id="PlaneMesh_c56pn"]
++size = Vector2(1000, 1000)
++
+ [sub_resource type="BoxShape3D" id="BoxShape3D_dua43"]
+ size = Vector3(1, 1, 100)
+ 
+@@ -181,6 +188,11 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25, 0, 25)
+ mesh = SubResource("PlaneMesh_5wwb3")
+ skeleton = NodePath("../../../DummyContent")
+ 
++[node name="BlackBackgroundFixingAntiAliasingBug" type="MeshInstance3D" parent="Map/Geometry/Terrain"]
++transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
++material_override = SubResource("StandardMaterial3D_q5xfu")
++mesh = SubResource("PlaneMesh_c56pn")
++
+ [node name="Boundry" type="Area3D" parent="Map/Geometry"]
+ collision_layer = 2
+ collision_mask = 0
+diff --git a/tests/manual/TestAllUnits.tscn b/tests/manual/TestAllUnits.tscn
+index f282207..9e58a12 100644
+--- a/tests/manual/TestAllUnits.tscn
++++ b/tests/manual/TestAllUnits.tscn
+@@ -36,7 +36,6 @@ render_priority = 1
+ shader = ExtResource("5_f2ny6")
+ shader_parameter/color = Color(0, 0, 0, 1)
+ shader_parameter/texture_units_per_world_unit = 2
+-shader_parameter/lowest_y_allowed = -0.1
+ shader_parameter/debug_texture_view = false
+ shader_parameter/world_visibility_texture = SubResource("ViewportTexture_v46ss")
+ 
+diff --git a/tests/manual/TestOneUnit.tscn b/tests/manual/TestOneUnit.tscn
+index 1b04d0d..294c08f 100644
+--- a/tests/manual/TestOneUnit.tscn
++++ b/tests/manual/TestOneUnit.tscn
+@@ -28,7 +28,6 @@ render_priority = 1
+ shader = ExtResource("12_ke5ti")
+ shader_parameter/color = Color(0, 0, 0, 1)
+ shader_parameter/texture_units_per_world_unit = 2
+-shader_parameter/lowest_y_allowed = -0.1
+ shader_parameter/debug_texture_view = false
+ shader_parameter/world_visibility_texture = SubResource("ViewportTexture_v46ss")
+ 
+diff --git a/tests/manual/TestUnitsFightingEachOther.tscn b/tests/manual/TestUnitsFightingEachOther.tscn
+index 5e375a0..c4b26d0 100644
+--- a/tests/manual/TestUnitsFightingEachOther.tscn
++++ b/tests/manual/TestUnitsFightingEachOther.tscn
+@@ -36,7 +36,6 @@ render_priority = 1
+ shader = ExtResource("2_ojmlq")
+ shader_parameter/color = Color(0, 0, 0, 1)
+ shader_parameter/texture_units_per_world_unit = 2
+-shader_parameter/lowest_y_allowed = -0.1
+ shader_parameter/debug_texture_view = false
+ shader_parameter/world_visibility_texture = SubResource("ViewportTexture_v46ss")
+ 

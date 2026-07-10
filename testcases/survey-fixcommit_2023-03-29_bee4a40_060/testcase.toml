@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-03-29_bee4a40_060"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "a08ff2cccccefa2dca047cbe4aa9e0edfaaf7c41"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\tabletop-club"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: game/Scripts/Lobby.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-03-29_bee4a40_060"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

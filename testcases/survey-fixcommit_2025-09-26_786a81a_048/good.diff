@@ -1,0 +1,457 @@
+diff --git a/Assets/Sprites/Backgrounds/SecondaryMushrooms/Mushrooms.json b/Assets/Sprites/Backgrounds/SecondaryMushrooms/Mushrooms.json
+index 6a31d09..a86eff0 100644
+--- a/Assets/Sprites/Backgrounds/SecondaryMushrooms/Mushrooms.json
++++ b/Assets/Sprites/Backgrounds/SecondaryMushrooms/Mushrooms.json
+@@ -143,4 +143,4 @@
+ 			"link": "Underwater"
+ 		}
+ 	}
+-}
++}
+\ No newline at end of file
+diff --git a/Assets/Sprites/Enemies/Goomba.json b/Assets/Sprites/Enemies/Goomba.json
+index fe2d500..b33fe66 100644
+--- a/Assets/Sprites/Enemies/Goomba.json
++++ b/Assets/Sprites/Enemies/Goomba.json
+@@ -5,170 +5,335 @@
+ 	"animations": {
+ 		"Walk": {
+ 			"frames": [
+-				[0, 0, 16, 16],
+-				[16, 0, 16, 16]
++				[
++					0.0,
++					0.0,
++					16.0,
++					16.0
++				],
++				[
++					16.0,
++					0.0,
++					16.0,
++					16.0
++				]
+ 			],
+ 			"speed": 5.0,
+ 			"loop": true
+ 		},
+ 		"Stomped": {
+-			"frames": [[32, 0, 16, 16]],
++			"frames": [
++				[
++					32.0,
++					0.0,
++					16.0,
++					16.0
++				]
++			],
+ 			"speed": 5.0,
+ 			"loop": true
+ 		}
+ 	},
+-	
+-	"variations":
+-	{
++	"variations": {
+ 		"default": {
+ 			"SMB1": {
+ 				"source": "Goomba.png",
+-				"rect": [0, 0, 48, 16]
++				"rect": [
++					0.0,
++					0.0,
++					48.0,
++					16.0
++				]
+ 			},
+ 			"SMBANN": {
+ 				"source": "DiscoGoomba.png",
+-				"rect": [0, 0, 48, 16]
++				"rect": [
++					0.0,
++					0.0,
++					48.0,
++					16.0
++				]
+ 			}
+ 		},
+ 		"Underground": {
+ 			"SMB1": {
+ 				"source": "Goomba.png",
+-				"rect": [48, 0, 48, 16]
++				"rect": [
++					48.0,
++					0.0,
++					48.0,
++					16.0
++				]
+ 			},
+ 			"SMBANN": {
+ 				"source": "DiscoGoomba.png",
+-				"rect": [48, 0, 48, 16]
++				"rect": [
++					48.0,
++					0.0,
++					48.0,
++					16.0
++				]
+ 			}
+ 		},
+ 		"GhostHouse": {
+ 			"SMB1": {
+ 				"source": "Goomba.png",
+-				"rect": [48, 0, 48, 16]
++				"rect": [
++					48.0,
++					0.0,
++					48.0,
++					16.0
++				]
+ 			},
+ 			"SMBANN": {
+ 				"source": "DiscoGoomba.png",
+-				"rect": [48, 0, 48, 16]
++				"rect": [
++					48.0,
++					0.0,
++					48.0,
++					16.0
++				]
+ 			}
+ 		},
+ 		"Castle": {
+ 			"SMB1": {
+ 				"source": "Goomba.png",
+-				"rect": [96, 0, 48, 16]
++				"rect": [
++					96.0,
++					0.0,
++					48.0,
++					16.0
++				]
+ 			},
+ 			"SMBANN": {
+ 				"source": "DiscoGoomba.png",
+-				"rect": [96, 0, 48, 16]
++				"rect": [
++					96.0,
++					0.0,
++					48.0,
++					16.0
++				]
+ 			}
+ 		},
+ 		"Underwater": {
+ 			"SMB1": {
+ 				"source": "Goomba.png",
+-				"rect": [144, 0, 48, 16]
++				"rect": [
++					144.0,
++					0.0,
++					48.0,
++					16.0
++				]
+ 			},
+ 			"SMBANN": {
+ 				"source": "DiscoGoomba.png",
+-				"rect": [144, 0, 48, 16]
++				"rect": [
++					144.0,
++					0.0,
++					48.0,
++					16.0
++				]
+ 			}
+ 		},
+ 		"CastleWater": {
+ 			"SMB1": {
+ 				"source": "Goomba.png",
+-				"rect": [144, 0, 48, 16]
++				"rect": [
++					144.0,
++					0.0,
++					48.0,
++					16.0
++				]
+ 			},
+ 			"SMBANN": {
+ 				"source": "DiscoGoomba.png",
+-				"rect": [144, 0, 48, 16]
++				"rect": [
++					144.0,
++					0.0,
++					48.0,
++					16.0
++				]
+ 			}
+ 		},
+ 		"Desert": {
+ 			"SMB1": {
+ 				"source": "Goomba.png",
+-				"rect": [0, 16, 48, 16]
++				"rect": [
++					0.0,
++					16.0,
++					48.0,
++					16.0
++				]
+ 			},
+ 			"SMBANN": {
+ 				"source": "DiscoGoomba.png",
+-				"rect": [0, 16, 48, 16]
++				"rect": [
++					0.0,
++					16.0,
++					48.0,
++					16.0
++				]
+ 			}
+ 		},
+ 		"Jungle": {
+ 			"SMB1": {
+ 				"source": "Goomba.png",
+-				"rect": [48, 16, 48, 16]
++				"rect": [
++					48.0,
++					16.0,
++					48.0,
++					16.0
++				]
+ 			},
+ 			"SMBANN": {
+ 				"source": "DiscoGoomba.png",
+-				"rect": [48, 16, 48, 16]
++				"rect": [
++					48.0,
++					16.0,
++					48.0,
++					16.0
++				]
+ 			}
+ 		},
+ 		"Snow": {
+ 			"SMB1": {
+ 				"source": "Goomba.png",
+-				"rect": [96, 16, 48, 16]
++				"rect": [
++					96.0,
++					16.0,
++					48.0,
++					16.0
++				]
+ 			},
+ 			"SMBANN": {
+ 				"source": "DiscoGoomba.png",
+-				"rect": [96, 16, 48, 16]
++				"rect": [
++					96.0,
++					16.0,
++					48.0,
++					16.0
++				]
+ 			}
+ 		},
+ 		"Volcano": {
+ 			"SMB1": {
+ 				"source": "Goomba.png",
+-				"rect": [144, 16, 48, 16]
++				"rect": [
++					144.0,
++					16.0,
++					48.0,
++					16.0
++				]
+ 			},
+ 			"SMBANN": {
+ 				"source": "DiscoGoomba.png",
+-				"Rect": [144, 16, 48, 16]
++				"Rect": [
++					144.0,
++					16.0,
++					48.0,
++					16.0
++				]
+ 			}
+ 		},
+ 		"Autumn": {
+ 			"SMB1": {
+ 				"source": "Goomba.png",
+-				"rect": [0, 32, 48, 16]
++				"rect": [
++					0.0,
++					32.0,
++					48.0,
++					16.0
++				]
+ 			},
+ 			"SMBANN": {
+ 				"source": "DiscoGoomba.png",
+-				"rect": [0, 32, 48, 16]
++				"rect": [
++					0.0,
++					32.0,
++					48.0,
++					16.0
++				]
+ 			}
+ 		},
+ 		"Beach": {
+ 			"SMB1": {
+ 				"source": "Goomba.png",
+-				"rect": [48, 32, 48, 16]
++				"rect": [
++					48.0,
++					32.0,
++					48.0,
++					16.0
++				]
+ 			},
+ 			"SMBANN": {
+ 				"source": "DiscoGoomba.png",
+-				"rect": [48, 32, 48, 16]
++				"rect": [
++					48.0,
++					32.0,
++					48.0,
++					16.0
++				]
+ 			}
+ 		},
+ 		"Mountain": {
+ 			"SMB1": {
+ 				"source": "Goomba.png",
+-				"rect": [96, 32, 48, 16]
++				"rect": [
++					96.0,
++					32.0,
++					48.0,
++					16.0
++				]
+ 			},
+ 			"SMBANN": {
+ 				"source": "DiscoGoomba.png",
+-				"rect": [96, 32, 48, 16]
++				"rect": [
++					96.0,
++					32.0,
++					48.0,
++					16.0
++				]
+ 			}
+ 		},
+ 		"Space": {
+ 			"SMB1": {
+ 				"source": "Goomba.png",
+-				"rect": [144, 32, 48, 16]
++				"rect": [
++					144.0,
++					32.0,
++					48.0,
++					16.0
++				]
+ 			},
+ 			"SMBANN": {
+ 				"source": "DiscoGoomba.png",
+-				"rect": [144, 32, 48, 16]
++				"rect": [
++					144.0,
++					32.0,
++					48.0,
++					16.0
++				]
+ 			}
+ 		},
+ 		"Bonus": {
+ 			"SMB1": {
+ 				"source": "Goomba.png",
+-				"rect": [0, 48, 48, 16]
++				"rect": [
++					0.0,
++					48.0,
++					48.0,
++					16.0
++				]
+ 			},
+ 			"SMBANN": {
+ 				"source": "DiscoGoomba.png",
+-				"rect": [0, 48, 48, 16]
++				"rect": [
++					0.0,
++					48.0,
++					48.0,
++					16.0
++				]
+ 			}
+ 		}
+ 	}
+-}
++}
+\ No newline at end of file
+diff --git a/Assets/Sprites/Tilesets/CastleFlag.json b/Assets/Sprites/Tilesets/CastleFlag.json
+index db0cf08..e212ec9 100644
+--- a/Assets/Sprites/Tilesets/CastleFlag.json
++++ b/Assets/Sprites/Tilesets/CastleFlag.json
+@@ -3,14 +3,24 @@
+ 		"SMB1": {
+ 			"default": {
+ 				"source": "CastleFlag.png",
+-				"rect": [0, 0, 16, 16]
++				"rect": [
++					0.0,
++					0.0,
++					16.0,
++					16.0
++				]
+ 			}
+ 		},
+ 		"SMBANN": {
+ 			"default": {
+ 				"source": "CastleFlag.png",
+-				"rect": [16, 0, 16, 16]
++				"rect": [
++					16.0,
++					0.0,
++					16.0,
++					16.0
++				]
+ 			}
+ 		}
+ 	}
+-}
++}
+\ No newline at end of file
+diff --git a/Scripts/Classes/Singletons/SaveManager.gd b/Scripts/Classes/Singletons/SaveManager.gd
+index 4f73681..0de3abc 100644
+--- a/Scripts/Classes/Singletons/SaveManager.gd
++++ b/Scripts/Classes/Singletons/SaveManager.gd
+@@ -81,6 +81,8 @@ func write_save(campaign: String = Global.current_campaign, force := false) -> v
+ 		save_json = SAVE_TEMPLATE.duplicate(true)
+ 	match Global.current_game_mode:
+ 		Global.GameMode.CAMPAIGN:
++			if Global.world_num < 0:
++				Global.world_num = 1
+ 			if Global.high_score < Global.score:
+ 				Global.high_score = Global.score
+ 			save_json["World"] = Global.world_num
+diff --git a/Scripts/Parts/TitleScreen.gd b/Scripts/Parts/TitleScreen.gd
+index 2d8af61..eee4dd1 100644
+--- a/Scripts/Parts/TitleScreen.gd
++++ b/Scripts/Parts/TitleScreen.gd
+@@ -124,8 +124,6 @@ func get_highscore() -> void:
+ 
+ func clear_stats() -> void:
+ 	Global.clear_saved_values()
+-	Global.world_num = 1
+-	Global.level_num = 1
+ 	LevelTransition.level_to_transition_to = Level.get_scene_string(Global.world_num, Global.level_num)
+ 
+ func start_game() -> void:
+@@ -227,6 +225,8 @@ func quit_game() -> void:
+ 	get_tree().quit()
+ 
+ func new_game_selected() -> void:
++	Global.world_num = 1
++	Global.level_num = 1
+ 	Global.second_quest = false
+ 	Global.current_game_mode = Global.GameMode.CAMPAIGN
+ 	if Global.game_beaten:

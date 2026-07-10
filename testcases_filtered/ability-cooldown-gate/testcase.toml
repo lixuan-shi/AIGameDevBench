@@ -1,0 +1,24 @@
+[testcase]
+id = "ability-cooldown-gate"
+category = "behavior_logic"
+source_kind = "folder"
+source_repo = "authored:representative-set"
+task = """
+Implement the cooldown for res://scripts/ability.gd. The Ability has an exported `cooldown` (seconds). After a successful use() the ability must be on cooldown and unusable until `cooldown` seconds have elapsed.
+- can_use() returns true only when the ability is off cooldown.
+- use() succeeds (returns true) and starts the cooldown only when can_use() is true; otherwise it returns false and does nothing.
+- tick(delta) advances the cooldown timer by delta seconds.
+The timer is advanced via tick(delta) (do not rely on _process); cooldown elapses when the accumulated time since the last use reaches `cooldown`.
+"""
+
+[verifier]
+type = "godot_scene_assert"
+entry = "verifier_scene.tscn"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+author = "Claude"
+created = "2026-06-29"
+notes = "behavior_logic/easy. Trap: baseline can_use() always returns true and use()/tick() don't track time, so the ability fires every frame. All 5 checkpoints require real gating, so noop=0. Golden implements the cooldown timer -> 1.0."

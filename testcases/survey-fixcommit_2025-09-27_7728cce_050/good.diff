@@ -1,0 +1,12 @@
+diff --git a/Scripts/UI/CustomLevelMenu.gd b/Scripts/UI/CustomLevelMenu.gd
+index eabbb0c..f091703 100644
+--- a/Scripts/UI/CustomLevelMenu.gd
++++ b/Scripts/UI/CustomLevelMenu.gd
+@@ -46,6 +46,7 @@ func _ready() -> void:
+ 		%LevelList.close()
+ 
+ func clear_saved_stuff() -> void:
++	last_played_container = null
+ 	%LSSLevelInfo.saved_stuff.clear()
+ 	saved_search_values = [-1, -1, -1]
+ 	%LSSBrowser.number_of_pages = -1

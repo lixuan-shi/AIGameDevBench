@@ -12,6 +12,7 @@ dependencies = [
     "godot-parser>=0.1.6",
     "gdtoolkit>=4.0",
     "networkx>=3.0",
+    "pyyaml>=6.0",
     "tomli>=2.0; python_version < '3.11'",
 ]
 
@@ -20,6 +21,19 @@ dev = ["pytest>=8.0"]
 
 [project.scripts]
 aigdbench = "aigamedevbench.cli:main"
+
+[tool.pytest.ini_options]
+addopts = ["-p", "no:libtmux"]
+norecursedirs = [
+    ".git",
+    ".venv",
+    "artifacts",
+    "build",
+    "dist",
+    "harness-artifacts",
+    "harness-logs",
+    "results",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/aigamedevbench"]

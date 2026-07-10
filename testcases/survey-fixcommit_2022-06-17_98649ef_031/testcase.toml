@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-06-17_98649ef_031"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "5c70ead1123b52aca443f8fb1d5977983149a8f4"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\a-little-game-called-mario"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/ui/HeartIconContainer.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-06-17_98649ef_031"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

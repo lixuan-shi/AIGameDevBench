@@ -1,0 +1,16 @@
+diff --git a/Scenes/Levels/BooRaceMenu.tscn b/Scenes/Levels/BooRaceMenu.tscn
+index 1736f52..c725dc2 100644
+--- a/Scenes/Levels/BooRaceMenu.tscn
++++ b/Scenes/Levels/BooRaceMenu.tscn
+@@ -258,9 +258,11 @@ layout_mode = 1
+ anchors_preset = 15
+ anchor_right = 1.0
+ anchor_bottom = 1.0
++offset_right = -0.3999939
+ grow_horizontal = 2
+ grow_vertical = 2
+ texture = ExtResource("2_dwawm")
++expand_mode = 1
+ stretch_mode = 1
+ script = ExtResource("3_dwawm")
+ metadata/_custom_type_script = "uid://ca3bew33g45eq"

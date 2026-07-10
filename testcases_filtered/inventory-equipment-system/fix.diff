@@ -1,0 +1,44 @@
+diff --git a/scripts/equipment.gd b/scripts/equipment.gd
+index fd6a981..8a6be11 100644
+--- a/scripts/equipment.gd
++++ b/scripts/equipment.gd
+@@ -8,5 +8,10 @@ var _slots: Dictionary = {}  # slot -> bonus
+ func equip(slot: String, bonus: int) -> void:
+-	pass
++	if _slots.has(slot):
++		total_bonus -= _slots[slot]
++	_slots[slot] = bonus
++	total_bonus += bonus
+
+ func unequip(slot: String) -> void:
+-	pass
++	if _slots.has(slot):
++		total_bonus -= _slots[slot]
++		_slots.erase(slot)
+diff --git a/scripts/inventory.gd b/scripts/inventory.gd
+index ec6ac95..3c8488e 100644
+--- a/scripts/inventory.gd
++++ b/scripts/inventory.gd
+@@ -8,11 +8,17 @@ func add(item_id: String, qty: int) -> bool:
+-	# TODO: implement
+-	return false
++	if _stacks.has(item_id):
++		_stacks[item_id] += qty
++		return true
++	if _stacks.size() >= capacity:
++		return false
++	_stacks[item_id] = qty
++	return true
+
+ func total_quantity() -> int:
+-	# TODO
+-	return 0
++	var t := 0
++	for q in _stacks.values():
++		t += q
++	return t
+
+ func slot_count() -> int:
+-	# TODO
+-	return 0
++	return _stacks.size()

@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-03-18_1a1bd3e_025"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "7aa117bd98c6b67575762ffbcb7b27374fe37dd9"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rts"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: source/FeatureFlags.tscn, source/match/units/traits/Movement.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-03-18_1a1bd3e_025"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

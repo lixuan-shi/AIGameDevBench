@@ -1,0 +1,21 @@
+[testcase]
+id = "component-layer-boundary"
+category = "architecture"
+source_kind = "folder"
+source_repo = "authored:representative-set"
+task = """
+res://components/health_component.gd is meant to be a reusable gameplay component: it must extend a plain Node (not a UI type) and must NOT depend on the ui/ layer. Right now it `extends Control` and `preload()`s res://ui/health_bar.gd, which couples the gameplay layer to the UI layer.
+Refactor health_component.gd so it extends Node and no longer imports anything from ui/. Keep the take_damage()/health-tracking behavior; instead of reaching into the UI directly, expose the health state (e.g. a signal or a getter) so the UI layer can observe it. Do not move the rule-checking into other files.
+"""
+
+[verifier]
+type = "py_gdscript_ast"
+entry = "arch_rules.json"
+
+[scoring]
+mode = "weighted"
+
+[provenance]
+author = "Claude"
+created = "2026-06-29"
+notes = "architecture/hard. Two rules (each weight 50): require_extends Node + forbid_import_glob 'ui/'. Baseline violates both -> score 0. Trap: AI fixes only the obvious 'extends' and leaves the ui/ preload -> 1 rule still violated -> 0.5 partial. Golden fixes both -> 1.0. noop=0."

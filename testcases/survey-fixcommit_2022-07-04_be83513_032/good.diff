@@ -1,0 +1,232 @@
+diff --git a/scenes/platformer/characters/Bus.gd b/scenes/platformer/characters/Bus.gd
+index 907fb0e..a7b3565 100644
+--- a/scenes/platformer/characters/Bus.gd
++++ b/scenes/platformer/characters/Bus.gd
+@@ -8,11 +8,10 @@ onready var player : Player = owner
+ onready var horn_sound : AudioStreamPlayer = get_node("Horn")
+ onready var resting_sound : AudioStreamPlayer2D = get_node("brrrrrrrrr")
+ onready var moving_sound : AudioStreamPlayer2D = get_node("moving_sound")
++onready var collision: CollisionShape2D = get_node(collision_shape)
+ 
+ enum busState {RESTING, MOVING};
+ var state
+-onready var collision: CollisionShape2D = get_node(collision_shape)
+-
+ 
+ 
+ func _ready() -> void:
+@@ -21,12 +20,6 @@ func _ready() -> void:
+ 
+ 
+ func _process(_delta: float) -> void:
+-	if inventory.has_bus:
+-		player.powerupspeed = 4
+-		player.powerupaccel = 2
+-	else:
+-		player.powerupspeed = 1
+-		player.powerupaccel = 1
+ 	
+ 	if  (Input.is_action_pressed("right") or Input.is_action_pressed("left")):
+ 		_set_state(busState.MOVING)
+@@ -66,13 +59,16 @@ func _activate_bus(active: bool) -> void:
+ 		player.powerupaccel = 1
+ 		moving_sound.playing = false 
+ 		resting_sound.playing = false
++	else:
++		player.powerupspeed = 4
++		player.powerupaccel = 2
+ 
+ func _set_state(newState):
+ 	if(state == newState):
+ 		return
+ 	if (newState == busState.RESTING):
+ 		animation = "standing"
+-		playing = false
++		playing = true
+ 		resting_sound.playing = true # When more state sounds are added that continuously should play
+ 		moving_sound.playing = false # make all the sounds a dictionary.
+ 	if (newState == busState.MOVING):
+diff --git a/scenes/platformer/characters/Trail.gd b/scenes/platformer/characters/Trail.gd
+index ebe3f87..09a2869 100644
+--- a/scenes/platformer/characters/Trail.gd
++++ b/scenes/platformer/characters/Trail.gd
+@@ -6,16 +6,13 @@ export(int) var trail_length = 5
+ var positions = []
+ var height = 0.0
+ 
+-onready var parent = get_parent()
+ onready var player: Node2D = owner
+-	
+ 
+ func _ready():
+-	randomize()
+ 	var result = FileUtils._getFilePathsFromImport(textures_directory, ".png", ".jpg")
+ 	var finalPath = result[randi() % result.size()]
+ 	if result:
+-		ResourceLoader.load(finalPath, "Texture")
++		texture = ResourceLoader.load(finalPath, "Texture")
+ 
+ func _process(_delta):
+ 	global_position = Vector2(0, 0)
+diff --git a/scenes/title/TitleScreen.gd b/scenes/title/TitleScreen.gd
+index 9fa11ba..506fecc 100644
+--- a/scenes/title/TitleScreen.gd
++++ b/scenes/title/TitleScreen.gd
+@@ -18,13 +18,10 @@ func alternate_title_screen():
+ 		var screen_index = randi() % label_texts.size()
+ 		var mario_sprite = get_node("VBoxContainer/IdleMario")
+ 		var size=mario_sprite.texture.get_size()
+-		
+ 		mario_sprite.texture = ResourceLoader.load(sprite_paths[screen_index].rstrip(".import"), "Texture")
+ 		var sizeto=mario_sprite.texture.get_size()
+-		
+ 		var scale_factor = sizeto/size if sizeto < size else size/sizeto
+ 		mario_sprite.scale=scale_factor
+-		
+ 		var mario_label = get_node("VBoxContainer/Mario")
+ 		mario_label.text = label_texts[screen_index]
+ 		mario_label.bbcode_text = "\n" + TextUtils.center(TextUtils.wave(TextUtils.rainbow(mario_label.text)))
+diff --git a/sprites/title_mario.png b/sprites/title_mario.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..679b2e7c2adbf9b7a8d0525a96e3106fd91062e1
+GIT binary patch
+literal 7256
+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
+MY+#P7K6o_hKTgf()&Kwi
+
+literal 0
+HcmV?d00001
+
+diff --git a/sprites/title_mario.png.import b/sprites/title_mario.png.import
+new file mode 100644
+index 0000000..2a3a9f7
+--- /dev/null
++++ b/sprites/title_mario.png.import
+@@ -0,0 +1,35 @@
++[remap]
++
++importer="texture"
++type="StreamTexture"
++path="res://.import/title_mario.png-b9f50bd0b9134336f888935383617de3.stex"
++metadata={
++"vram_texture": false
++}
++
++[deps]
++
++source_file="res://sprites/title_mario.png"
++dest_files=[ "res://.import/title_mario.png-b9f50bd0b9134336f888935383617de3.stex" ]
++
++[params]
++
++compress/mode=0
++compress/lossy_quality=0.7
++compress/hdr_mode=0
++compress/bptc_ldr=0
++compress/normal_map=0
++flags/repeat=0
++flags/filter=false
++flags/mipmaps=false
++flags/anisotropic=false
++flags/srgb=2
++process/fix_alpha_border=true
++process/premult_alpha=false
++process/HDR_as_SRGB=false
++process/invert_color=false
++process/normal_map_invert_y=false
++stream=false
++size_limit=0
++detect_3d=false
++svg/scale=1.0

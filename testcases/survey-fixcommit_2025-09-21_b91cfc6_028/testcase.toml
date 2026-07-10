@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-09-21_b91cfc6_028"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "c26bf96dd9a46af10ba9b86b74dbb0fc0089c2af"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Levels/SMBLL/LostLevelsEnding.tscn, Scenes/Levels/SMBLL/World9/9-2.tscn, Scripts/Classes/Singletons/Global.gd, Scripts/Parts/CameraHandler.gd, Scripts/Parts/Checkpoint.gd, Scripts/Parts/UpsideDownGravityArea.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-09-21_b91cfc6_028"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

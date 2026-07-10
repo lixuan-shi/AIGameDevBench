@@ -1,0 +1,42 @@
+diff --git a/scripts/components/networking/projectilesynchronizercomponent/projectilesynchronizercomponent.gd b/scripts/components/networking/projectilesynchronizercomponent/projectilesynchronizercomponent.gd
+index 3fa58c7..dd9ca99 100644
+--- a/scripts/components/networking/projectilesynchronizercomponent/projectilesynchronizercomponent.gd
++++ b/scripts/components/networking/projectilesynchronizercomponent/projectilesynchronizercomponent.gd
+@@ -122,10 +122,10 @@ func launch_to_json(
+ func add_track_instance(entity: String, type: J.ENTITY_TYPE, projectile_node: Projectile2D):
+ 	assert(G.is_server())
+ 	var max_instances: int = projectile_node.instance_limit
+-	if not instance_tracker.has(entity+str(type)):
+-		instance_tracker[entity+str(type)] = []
++	if not instance_tracker.has(entity+str(type)+projectile_node.projectile_class):
++		instance_tracker[entity+str(type)+projectile_node.projectile_class] = []
+ 	
+-	var oldest_projectile: Projectile2D = instance_tracker[entity+str(type)].front()
++	var oldest_projectile: Projectile2D = instance_tracker.get(entity+str(type)+projectile_node.projectile_class, []).front()
+ 	# If the limit was exceeded and the oldest entity is not currently being deleted, do so.
+ 	if get_track_instance_count(entity, type, projectile_node) > projectile_node.instance_limit:
+ 		remove_track_instance(entity, type, oldest_projectile)
+diff --git a/scripts/components/player/charclasscomponent/classes/Ranger.tres b/scripts/components/player/charclasscomponent/classes/Ranger.tres
+index 5283d28..a8690f5 100644
+--- a/scripts/components/player/charclasscomponent/classes/Ranger.tres
++++ b/scripts/components/player/charclasscomponent/classes/Ranger.tres
+@@ -8,7 +8,7 @@ displayed_name = "Ranger"
+ class_registered = &"Ranger"
+ icon_path = "res://assets/images/equipment/weapons/expertbow/ExpertBow.png"
+ description = "Despite the name, range is not the only thing they have."
+-available_skills = Array[String](["LaunchArrow"])
++available_skills = Array[String](["LaunchArrow", "SetTrap"])
+ stat_multipliers = {
+ "attack_power_max": 1.1,
+ "attack_power_min": 1.1,
+diff --git a/scripts/components/player/skillcomponent/Skills/SetTrap.tres b/scripts/components/player/skillcomponent/Skills/SetTrap.tres
+index 1af80a3..0c5e9ad 100644
+--- a/scripts/components/player/skillcomponent/Skills/SetTrap.tres
++++ b/scripts/components/player/skillcomponent/Skills/SetTrap.tres
+@@ -17,5 +17,5 @@ cast_on_select = false
+ hitbox_shape = [Vector2(50, 0)]
+ hitbox_hits_user = false
+ hitbox_rotate_shape = false
+-hit_range = 80.0
++hit_range = 150.0
+ description = "Places down a harmful trap."

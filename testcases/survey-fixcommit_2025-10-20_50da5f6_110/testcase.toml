@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-20_50da5f6_110"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "b87d6e6a7ce2fc2febf695fc9990683a5c428dcb"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Prefabs/Entities/Enemies/Bowser.tscn, Scenes/Prefabs/Entities/Enemies/BowsersBro.tscn, Scenes/Prefabs/Entities/Enemies/TrueBowser.tscn, Scripts/Classes/Entities/Enemies/Bowser.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-20_50da5f6_110"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

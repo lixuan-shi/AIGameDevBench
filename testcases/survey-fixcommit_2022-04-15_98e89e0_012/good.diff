@@ -1,0 +1,119 @@
+diff --git a/project.godot b/project.godot
+index 47f8476..ba1716f 100644
+--- a/project.godot
++++ b/project.godot
+@@ -119,6 +119,11 @@ _global_script_classes=[ {
+ "language": "GDScript",
+ "path": "res://scenes/levels/Flappy/Characters/Player/PlayerFlyingControls.gd"
+ }, {
++"base": "Resource",
++"class": "PlayerInventory",
++"language": "GDScript",
++"path": "res://scripts/resources/PlayerInventory.gd"
++}, {
+ "base": "Area2D",
+ "class": "PlayerProjectile",
+ "language": "GDScript",
+@@ -197,6 +202,7 @@ _global_script_class_icons={
+ "Platform": "",
+ "Player": "",
+ "PlayerFlying": "",
++"PlayerInventory": "",
+ "PlayerProjectile": "",
+ "PopcornKernel": "",
+ "PopcornPopped": "",
+diff --git a/scenes/levels/Flappy/Characters/Player/PlayerFlying.tscn b/scenes/levels/Flappy/Characters/Player/PlayerFlying.tscn
+index 6f0fa34..5753163 100644
+--- a/scenes/levels/Flappy/Characters/Player/PlayerFlying.tscn
++++ b/scenes/levels/Flappy/Characters/Player/PlayerFlying.tscn
+@@ -1,7 +1,8 @@
+-[gd_scene load_steps=4 format=2]
++[gd_scene load_steps=5 format=2]
+ 
+ [ext_resource path="res://sprites/mario.png" type="Texture" id=1]
+ [ext_resource path="res://scenes/levels/Flappy/Characters/Player/PlayerFlyingControls.gd" type="Script" id=2]
++[ext_resource path="res://scripts/mariocontroller/CoinCollector.gd" type="Script" id=3]
+ 
+ [sub_resource type="CircleShape2D" id=1]
+ radius = 15.0
+@@ -18,3 +19,6 @@ vframes = 2
+ [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+ position = Vector2( 0, 2.5 )
+ shape = SubResource( 1 )
++
++[node name="CoinCollector" type="Node" parent="."]
++script = ExtResource( 3 )
+diff --git a/scenes/levels/Flappy/UI_flappy.tscn b/scenes/levels/Flappy/UI_flappy.tscn
+index 2453380..7e75fc4 100644
+--- a/scenes/levels/Flappy/UI_flappy.tscn
++++ b/scenes/levels/Flappy/UI_flappy.tscn
+@@ -1,12 +1,14 @@
+-[gd_scene load_steps=6 format=2]
++[gd_scene load_steps=7 format=2]
+ 
+ [ext_resource path="res://scenes/ui/Themes/Default/DefaultFont.tres" type="DynamicFont" id=1]
+ [ext_resource path="res://scenes/ui/CoinCount.gd" type="Script" id=2]
++[ext_resource path="res://scenes/ui/FlappyUi.gd" type="Script" id=3]
+ [ext_resource path="res://scenes/ui/Themes/Default/default.tres" type="Theme" id=5]
+ [ext_resource path="res://scenes/ui/scripts/TranslatedRichTextLabel.gd" type="Script" id=6]
+ [ext_resource path="res://scenes/ui/HeartCount.gd" type="Script" id=7]
+ 
+-[node name="UI" type="CanvasLayer"]
++[node name="UI_flappy" type="CanvasLayer"]
++script = ExtResource( 3 )
+ 
+ [node name="UI" type="Control" parent="."]
+ margin_right = 1024.0
+diff --git a/scenes/ui/FlappyUi.gd b/scenes/ui/FlappyUi.gd
+new file mode 100644
+index 0000000..05502ef
+--- /dev/null
++++ b/scenes/ui/FlappyUi.gd
+@@ -0,0 +1,9 @@
++extends CanvasLayer
++
++func _ready() -> void:
++	EventBus.connect("level_started", self, "_on_level_started")
++
++
++func _on_level_started(_data) -> void:
++	# if we started as a level, we already have an UI
++	queue_free()
+\ No newline at end of file
+diff --git a/scripts/mariocontroller/CoinCollector.gd b/scripts/mariocontroller/CoinCollector.gd
+index ba5aba0..1f4fe4d 100644
+--- a/scripts/mariocontroller/CoinCollector.gd
++++ b/scripts/mariocontroller/CoinCollector.gd
+@@ -1,6 +1,6 @@
+ extends Node
+ 
+-onready var player : Player = owner
++onready var inventory: PlayerInventory = owner.inventory if owner is Player else preload("res://scripts/resources/PlayerInventory.tres")
+ 
+ func _ready() -> void:
+ 	EventBus.connect("coin_collected", self, "_on_coin_collected")
+@@ -10,7 +10,8 @@ func _on_coin_collected(data: Dictionary) -> void:
+ 	var value := 1
+ 	if data.has("value"):
+ 		value = data["value"]
+-	player.inventory.coins += value
++	inventory.coins += value
+ 
+-func _exit_tree():
+-	EventBus.disconnect("coin_collected", self, "_on_coin_collected")
+\ No newline at end of file
++
++func _exit_tree() -> void:
++	EventBus.disconnect("coin_collected", self, "_on_coin_collected")
+diff --git a/scripts/resources/PlayerInventory.gd b/scripts/resources/PlayerInventory.gd
+index d2946b8..d6bb851 100644
+--- a/scripts/resources/PlayerInventory.gd
++++ b/scripts/resources/PlayerInventory.gd
+@@ -1,6 +1,7 @@
+ # hold player information across scenes
+ # has to be reset on game restart
+ extends Resource
++class_name PlayerInventory
+ 
+ export var coins: int
+ export var hearts: int

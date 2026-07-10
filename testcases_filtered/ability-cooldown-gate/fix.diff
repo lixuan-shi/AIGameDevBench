@@ -1,0 +1,21 @@
+diff --git a/scripts/ability.gd b/scripts/ability.gd
+index 1264fbd..e3730aa 100644
+--- a/scripts/ability.gd
++++ b/scripts/ability.gd
+@@ -7,10 +7,14 @@ class_name Ability
+ var _time_remaining: float = 0.0
+ 
+ func can_use() -> bool:
+-	return true
++	return _time_remaining <= 0.0
+ 
+ func use() -> bool:
++	if not can_use():
++		return false
++	_time_remaining = cooldown
+ 	return true
+ 
+ func tick(delta: float) -> void:
+-	pass
++	if _time_remaining > 0.0:
++		_time_remaining = max(0.0, _time_remaining - delta)

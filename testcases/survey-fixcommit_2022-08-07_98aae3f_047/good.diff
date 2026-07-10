@@ -1,0 +1,89 @@
+diff --git a/scenes/title/levelselect/LevelList.gd b/scenes/title/levelselect/LevelList.gd
+index 521b47b..58a175e 100644
+--- a/scenes/title/levelselect/LevelList.gd
++++ b/scenes/title/levelselect/LevelList.gd
+@@ -7,15 +7,14 @@ export (Texture) var icon
+ export (Dictionary) var tag_colors
+ 
+ onready var secret: bool = Input.is_action_pressed("secret_button")
+-var levels: Array = []
+-var last_item_selected: int = -1
++onready var levels: Array = (
++	FileUtils.get_all_levels_in_dir(level_directory) if secret
++	else FileUtils.get_all_first_levels_in_dir(level_directory)
++)
++onready var last_item_selected: int = 0 if len(levels) else -1
+ 
+ 
+ func _ready():
+-	if secret:
+-		levels = FileUtils.get_all_levels_in_dir(level_directory)
+-	else: 
+-		levels = FileUtils.get_all_first_levels_in_dir(level_directory)
+ 	_set_items(levels, secret)
+ 
+ 
+@@ -49,6 +48,17 @@ func _set_item_tag(idx: int, tag: String):
+ 
+ func _on_item_selected(index):
+ 	if last_item_selected > -1:
+-		set_item_icon(last_item_selected, null)
+-	set_item_icon(index, icon)
++		self.set_item_icon(last_item_selected, null)
++	self.set_item_icon(index, icon)
+ 	last_item_selected = index
++
++
++func _on_focus_entered():
++	if last_item_selected > -1:
++		self.select(last_item_selected)
++		self.emit_signal("item_selected", last_item_selected)
++
++
++func unselect_active_item():
++	self.unselect(last_item_selected)
++	self.set_item_icon(last_item_selected, null)
+diff --git a/scenes/title/levelselect/LevelList.tscn b/scenes/title/levelselect/LevelList.tscn
+index dc304e5..d82bc26 100644
+--- a/scenes/title/levelselect/LevelList.tscn
++++ b/scenes/title/levelselect/LevelList.tscn
+@@ -16,5 +16,5 @@ tag_colors = {
+ "default": Color( 0.27451, 0.705882, 0.470588, 1 )
+ }
+ 
++[connection signal="focus_entered" from="." to="." method="_on_focus_entered"]
+ [connection signal="item_selected" from="." to="." method="_on_item_selected"]
+-[connection signal="tree_entered" from="." to="." method="grab_focus"]
+diff --git a/scenes/title/levelselect/LevelSelect.gd b/scenes/title/levelselect/LevelSelect.gd
+index 8d7641d..cb2b622 100644
+--- a/scenes/title/levelselect/LevelSelect.gd
++++ b/scenes/title/levelselect/LevelSelect.gd
+@@ -13,6 +13,7 @@ var main_scene = null
+ 
+ func _ready():
+ 	EventBus.connect("hub_entered", self, "_exit_to_menu")
++	level_list.grab_focus()
+ 
+ 
+ func _on_StartButton_pressed():
+@@ -51,4 +52,3 @@ func _on_LevelList_item_selected(index: int) -> void:
+ 	if len(metadata.tags) > 0:
+ 		tags_text = "[ %s ]" % PoolStringArray(metadata.tags).join(" ")
+ 	tags.text = tags_text
+-	
+diff --git a/scenes/title/levelselect/LevelSelect.tscn b/scenes/title/levelselect/LevelSelect.tscn
+index 611d663..4fb624c 100644
+--- a/scenes/title/levelselect/LevelSelect.tscn
++++ b/scenes/title/levelselect/LevelSelect.tscn
+@@ -212,9 +212,10 @@ focus_neighbour_right = NodePath("../VBoxContainer/HBoxContainer/LevelList")
+ shortcut_in_tooltip = false
+ shortcut = SubResource( 6 )
+ text = "< BACK"
+-icon = null
++align = 0
+ redirect_scene = "res://scenes/title/TitleScreen.tscn"
+ 
+ [connection signal="item_activated" from="Menu/VBoxContainer/HBoxContainer/LevelList" to="." method="_on_LevelList_item_activated"]
+ [connection signal="item_selected" from="Menu/VBoxContainer/HBoxContainer/LevelList" to="." method="_on_LevelList_item_selected"]
+ [connection signal="pressed" from="Menu/VBoxContainer/HBoxContainer/VBoxContainer/StartButton" to="." method="_on_StartButton_pressed"]
++[connection signal="focus_entered" from="Menu/BackButton" to="Menu/VBoxContainer/HBoxContainer/LevelList" method="unselect_active_item"]

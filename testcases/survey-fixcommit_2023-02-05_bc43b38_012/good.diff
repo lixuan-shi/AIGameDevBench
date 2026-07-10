@@ -1,0 +1,125 @@
+diff --git a/source/generic-scenes-and-nodes/3d/Circle3D.gd b/source/generic-scenes-and-nodes/3d/Circle3D.gd
+index 9733672..4069b6e 100644
+--- a/source/generic-scenes-and-nodes/3d/Circle3D.gd
++++ b/source/generic-scenes-and-nodes/3d/Circle3D.gd
+@@ -7,6 +7,8 @@ extends Node3D
+ 	set = _set_width
+ @export var color = Color.WHITE:
+ 	set = _set_color
++@export var render_priority = 0:
++	set = _set_render_priority
+ 
+ var _plane = null
+ 
+@@ -35,10 +37,16 @@ func _set_color(a_color):
+ 	_recalculate_plane_parameters()
+ 
+ 
++func _set_render_priority(a_render_priority):
++	render_priority = a_render_priority
++	_recalculate_plane_parameters()
++
++
+ func _recalculate_plane_parameters():
+ 	if _plane == null:
+ 		return
+ 	_plane.mesh.size = Vector2(radius * 2.0, radius * 2.0)
++	_plane.material_override.render_priority = render_priority
+ 	_plane.material_override.set_shader_parameter("color", color)
+ 	_plane.material_override.set_shader_parameter("width_pixels", width)
+ 	_plane.material_override.set_shader_parameter("edge_width_pixels", 2.0)
+diff --git a/source/generic-scenes-and-nodes/3d/Circle3D.tscn b/source/generic-scenes-and-nodes/3d/Circle3D.tscn
+index ccba12c..b2b34b8 100644
+--- a/source/generic-scenes-and-nodes/3d/Circle3D.tscn
++++ b/source/generic-scenes-and-nodes/3d/Circle3D.tscn
+@@ -4,3 +4,4 @@
+ 
+ [node name="Circle3D" type="Node3D"]
+ script = ExtResource("1_l65r6")
++render_priority = null
+diff --git a/source/generic-scenes-and-nodes/3d/FadedCircle3D.gd b/source/generic-scenes-and-nodes/3d/FadedCircle3D.gd
+index 569f408..33ea81d 100644
+--- a/source/generic-scenes-and-nodes/3d/FadedCircle3D.gd
++++ b/source/generic-scenes-and-nodes/3d/FadedCircle3D.gd
+@@ -11,6 +11,8 @@ extends Node3D
+ 	set = _set_outer_edge_width
+ @export var color = Color.WHITE:
+ 	set = _set_color
++@export var render_priority = 0:
++	set = _set_render_priority
+ 
+ var _plane = null
+ 
+@@ -49,10 +51,16 @@ func _set_color(a_color):
+ 	_recalculate_plane_parameters()
+ 
+ 
++func _set_render_priority(a_render_priority):
++	render_priority = a_render_priority
++	_recalculate_plane_parameters()
++
++
+ func _recalculate_plane_parameters():
+ 	if _plane == null:
+ 		return
+ 	_plane.mesh.size = Vector2(radius * 2.0, radius * 2.0)
++	_plane.material_override.render_priority = render_priority
+ 	_plane.material_override.set_shader_parameter("color", color)
+ 	_plane.material_override.set_shader_parameter("width_pixels", width)
+ 	_plane.material_override.set_shader_parameter("inner_edge_width_pixels", inner_edge_width)
+diff --git a/source/match/Match.tscn b/source/match/Match.tscn
+index 8442de3..c3e8554 100644
+--- a/source/match/Match.tscn
++++ b/source/match/Match.tscn
+@@ -164,6 +164,7 @@ skeleton = NodePath("../../../DummyContent")
+ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -50, 0, 0)
+ collision_layer = 2
+ collision_mask = 0
++input_ray_pickable = false
+ monitoring = false
+ 
+ [node name="CollisionShape3D" type="CollisionShape3D" parent="Map/Geometry/Boundry"]
+@@ -173,6 +174,7 @@ shape = SubResource("BoxShape3D_dua43")
+ transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0, -50)
+ collision_layer = 2
+ collision_mask = 0
++input_ray_pickable = false
+ monitoring = false
+ 
+ [node name="CollisionShape3D" type="CollisionShape3D" parent="Map/Geometry/Boundry2"]
+@@ -182,6 +184,7 @@ shape = SubResource("BoxShape3D_dua43")
+ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0, 0)
+ collision_layer = 2
+ collision_mask = 0
++input_ray_pickable = false
+ monitoring = false
+ 
+ [node name="CollisionShape3D" type="CollisionShape3D" parent="Map/Geometry/Boundry3"]
+@@ -191,6 +194,7 @@ shape = SubResource("BoxShape3D_dua43")
+ transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0, 50)
+ collision_layer = 2
+ collision_mask = 0
++input_ray_pickable = false
+ monitoring = false
+ 
+ [node name="CollisionShape3D" type="CollisionShape3D" parent="Map/Geometry/Boundry4"]
+diff --git a/source/match/units/traits/Highlight.tscn b/source/match/units/traits/Highlight.tscn
+index 0bc9414..df851ed 100644
+--- a/source/match/units/traits/Highlight.tscn
++++ b/source/match/units/traits/Highlight.tscn
+@@ -7,3 +7,5 @@
+ script = ExtResource("1_68q8u")
+ 
+ [node name="Circle3D" parent="." instance=ExtResource("2_u8emv")]
++width = 5.0
++render_priority = 127
+diff --git a/source/match/units/traits/Selection.tscn b/source/match/units/traits/Selection.tscn
+index 44f5f24..59259d3 100644
+--- a/source/match/units/traits/Selection.tscn
++++ b/source/match/units/traits/Selection.tscn
+@@ -7,3 +7,5 @@
+ script = ExtResource("1_be1f2")
+ 
+ [node name="FadedCircle3D" parent="." instance=ExtResource("1_fvq0j")]
++inner_edge_width = 10.0
++render_priority = 127

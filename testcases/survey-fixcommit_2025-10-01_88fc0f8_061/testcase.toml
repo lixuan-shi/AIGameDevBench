@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-01_88fc0f8_061"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "8fbfbd84bfa2dc37fc94ad5c670d26b00ec2fa1a"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Prefabs/Entities/Enemies/PiranhaPlant.tscn, Scenes/Prefabs/Entities/Player.tscn, Scenes/Prefabs/LevelBG.tscn, Scripts/Classes/Entities/Enemies/PiranhaPlant.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-01_88fc0f8_061"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

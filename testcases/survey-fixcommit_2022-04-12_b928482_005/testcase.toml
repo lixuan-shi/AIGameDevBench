@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-04-12_b928482_005"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "3044ba4268cb3fa1c2c5640296ce4fb99c9f1b85"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\a-little-game-called-mario"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/levels/CameraFollow.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-04-12_b928482_005"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

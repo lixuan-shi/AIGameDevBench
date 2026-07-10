@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-17_a0521be_099"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "2e66c00163f9dea51a1e91dec247c747e3e2784c"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scripts/Classes/Components/ResourceSetterNew.gd, Scripts/Classes/Entities/Player.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-17_a0521be_099"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

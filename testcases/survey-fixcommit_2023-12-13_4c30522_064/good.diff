@@ -1,0 +1,15 @@
+diff --git a/scripts/singletons/jdungeon.gd b/scripts/singletons/jdungeon.gd
+index 64dab46..4f15972 100644
+--- a/scripts/singletons/jdungeon.gd
++++ b/scripts/singletons/jdungeon.gd
+@@ -116,7 +116,9 @@ func register_items():
+ 
+ 
+ func register_skills():
+-	J.register_skill_resource("debug", "res://scripts/components/player/skillcomponent/Skills/debug.tres")
++	J.register_skill_resource(
++		"debug", "res://scripts/components/player/skillcomponent/Skills/debug.tres"
++	)
+ 	J.register_skill_resource(
+ 		"HealSelf", "res://scripts/components/player/skillcomponent/Skills/HealSelf.tres"
+ 	)

@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-05-05_1d6e20f_028"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "fdf918609dbbd9cc225bf56931eb2cde2a940d43"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\a-little-game-called-mario"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/BallPlayer.tscn, scenes/Coin/Coin.tscn, scenes/ConeSpotter.tscn, scenes/Corncob.tscn, scenes/Credits.tscn, scenes/EndPortal.tscn, scenes/FollowTrigger.tscn, scenes/GravityZone.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-05-05_1d6e20f_028"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

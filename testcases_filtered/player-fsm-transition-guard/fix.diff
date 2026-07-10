@@ -1,0 +1,16 @@
+diff --git a/scripts/state_machine.gd b/scripts/state_machine.gd
+index 1cd9f41..53b0187 100644
+--- a/scripts/state_machine.gd
++++ b/scripts/state_machine.gd
+@@ -17,3 +17,9 @@ func set_initial(name: String) -> void:
+ func change_state(target_name: String) -> bool:
+-	current = states.get(target_name)
++	if current == null or not current.can_transition_to(target_name):
++		return false
++	var next: PlayerState = states.get(target_name)
++	if next == null:
++		return false
++	current.exit()
++	next.enter()
++	current = next
+ 	return true

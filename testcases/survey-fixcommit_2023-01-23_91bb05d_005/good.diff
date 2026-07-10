@@ -1,0 +1,40 @@
+diff --git a/makefile b/makefile
+index ed015cf..eb24d36 100644
+--- a/makefile
++++ b/makefile
+@@ -11,3 +11,6 @@ lint:
+ 
+ cc:
+ 	find source/ -name '*.gd' | xargs gdradon cc
++
++todo:
++	ack ' todo' -i source/
+diff --git a/source/match/players/human/UnitActionsController.gd b/source/match/players/human/UnitActionsController.gd
+index 268a585..758beef 100644
+--- a/source/match/players/human/UnitActionsController.gd
++++ b/source/match/players/human/UnitActionsController.gd
+@@ -31,11 +31,6 @@ func _navigate_selected_units_towards_position(target_point):
+ 		var unit = tuple[0]
+ 		var new_target = tuple[1]
+ 		unit.action = Actions.Moving.new(new_target)
+-	# # 	if unit.movement.is_movable():
+-	# # 		StageSignals.emit_signal("set_unit_action", unit, UnitActions.Movement.new(new_target))
+-	# for unit in get_tree().get_nodes_in_group("selected_units"):
+-	# 	if unit.is_in_group("controlled_units") and Actions.Moving.is_applicable(unit):
+-	# 		unit.action = Actions.Moving.new(target_point)
+ 
+ 
+ func _navigate_selected_units_towards_unit(target_unit):
+diff --git a/source/match/utils/UnitMovementUtils.gd b/source/match/utils/UnitMovementUtils.gd
+index 4e0ca5d..7765908 100644
+--- a/source/match/utils/UnitMovementUtils.gd
++++ b/source/match/utils/UnitMovementUtils.gd
+@@ -8,6 +8,8 @@ const DISTANCE_REDUCTION_BY_SUBTRACTION_ITERATIONS_MAX = 10
+ 
+ static func crowd_moved_to_new_pivot(units, new_pivot):
+ 	"""calculates new unit positions relative to new_pivot"""
++	if units.is_empty():
++		return []
+ 	if units.size() == 1:
+ 		return [[units[0], new_pivot]]
+ 	var old_pivot = _calculate_aabb_crowd_pivot_yless(units)

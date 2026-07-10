@@ -1,0 +1,87 @@
+diff --git a/Scenes/Levels/RomResourceGenerator.tscn b/Scenes/Levels/RomResourceGenerator.tscn
+index bb895cd..ec717cd 100644
+--- a/Scenes/Levels/RomResourceGenerator.tscn
++++ b/Scenes/Levels/RomResourceGenerator.tscn
+@@ -47,6 +47,7 @@ grow_horizontal = 2
+ grow_vertical = 0
+ text = "EXTRACTING ASSETS..."
+ horizontal_alignment = 1
++uppercase = true
+ 
+ [node name="Error" type="Label" parent="MarginContainer"]
+ unique_name_in_owner = true
+diff --git a/Scripts/Classes/Components/TimerSprite.gd b/Scripts/Classes/Components/TimerSprite.gd
+index 05ae325..c695242 100644
+--- a/Scripts/Classes/Components/TimerSprite.gd
++++ b/Scripts/Classes/Components/TimerSprite.gd
+@@ -26,6 +26,8 @@ func _process(_delta: float) -> void:
+ 	get_parent().visible = percent < 1 and Settings.file.visuals.visible_timers
+ 	frame = lerp(0, 6, percent)
+ 	if percent >= warn_threshold and Settings.file.audio.extra_sfx == 1:
++		if node is Timer:
++			if node.is_stopped(): return
+ 		if can_warn:
+ 			can_warn = false
+ 			AudioManager.play_global_sfx("timer_warning")
+diff --git a/Scripts/Classes/Singletons/Global.gd b/Scripts/Classes/Singletons/Global.gd
+index 5c14eda..7515562 100644
+--- a/Scripts/Classes/Singletons/Global.gd
++++ b/Scripts/Classes/Singletons/Global.gd
+@@ -34,7 +34,7 @@ var ROM_POINTER_PATH = config_path.path_join("rom_pointer.smb")
+ var ROM_PATH = config_path.path_join("baserom.nes")
+ var ROM_ASSETS_PATH = config_path.path_join("resource_packs/BaseAssets")
+ const ROM_PACK_NAME := "BaseAssets"
+-const ROM_ASSETS_VERSION := 0
++const ROM_ASSETS_VERSION := 1
+ 
+ var server_version := -1
+ var current_version := -1
+@@ -235,6 +235,7 @@ func check_for_rom() -> void:
+ 		if pack_dict.get("version", -1) == ROM_ASSETS_VERSION:
+ 			rom_assets_exist = true 
+ 		else:
++			ResourceGenerator.updating = true
+ 			OS.move_to_trash(ROM_ASSETS_PATH)
+ 
+ func _process(delta: float) -> void:
+@@ -471,3 +472,11 @@ func sanitize_string(string := "") -> String:
+ 		if FONT.has_char(string.unicode_at(i)) == false and string[i] != "\n":
+ 			string = string.replace(string[i], " ")
+ 	return string
++
++func get_base_asset_version() -> int:
++	var json = JSON.parse_string(FileAccess.open("user://BaseAssets/pack_info.json", FileAccess.READ).get_as_text())
++	var version = json.version
++	return get_version_num_int(version)
++
++func get_version_num_int(ver_num := "0.0.0") -> int:
++	return int(ver_num.replace(".", ""))
+diff --git a/Scripts/Parts/Disclaimer.gd b/Scripts/Parts/Disclaimer.gd
+index ee994c6..ea04267 100644
+--- a/Scripts/Parts/Disclaimer.gd
++++ b/Scripts/Parts/Disclaimer.gd
+@@ -29,6 +29,7 @@ func _process(_delta: float) -> void:
+ 		go_to_menu()
+ 
+ func go_to_menu() -> void:
++	ResourceGenerator.updating = true
+ 	if Global.rom_path == "":
+ 		Global.transition_to_scene("res://Scenes/Levels/RomVerifier.tscn")
+ 	elif not Global.rom_assets_exist:
+diff --git a/Scripts/UI/RomResourceGenerator.gd b/Scripts/UI/RomResourceGenerator.gd
+index be1b8dd..734efe5 100644
+--- a/Scripts/UI/RomResourceGenerator.gd
++++ b/Scripts/UI/RomResourceGenerator.gd
+@@ -4,9 +4,11 @@ extends AssetRipper
+ @onready var progress_bar: ProgressBar = %ProgressBar
+ @onready var error: Label = %Error
+ 
++static var updating := false
++
+ func _ready() -> void:
+ 	Global.get_node("GameHUD").hide()
+-	
++	if updating: $MarginContainer/ProgressBar/Label.text = "UPDATING ASSETS..."
+ 	rom = FileAccess.get_file_as_bytes(Global.rom_path)
+ 	prg_rom_size = rom[4] * 16384
+ 	chr_rom = rom.slice(16 + prg_rom_size)

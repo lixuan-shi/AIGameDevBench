@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-10_437f988_078"
+category = "precise_edit"
+source_kind = "git"
+baseline_ref = "7e0443d030fb871cf84f36932b731d605392d879"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Levels/SMBS/World8/8-2b.tscn, Scenes/Parts/DecoTiles.tscn, Scenes/Parts/SmallCastleVisual.tscn, Scenes/Parts/Tiles.tscn, Scenes/Prefabs/DecoTiles/Deco1.tscn, Scenes/Prefabs/DecoTiles/Deco2.tscn, Scenes/Prefabs/LevelObjects/EndFinalCastle.tscn, Scenes/Prefabs/LevelObjects/EndSmallCastle.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-10_437f988_078"
+bad_case_type = "C2"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

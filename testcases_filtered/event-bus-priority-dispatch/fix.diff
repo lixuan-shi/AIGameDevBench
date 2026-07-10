@@ -1,0 +1,48 @@
+diff --git a/scripts/event_bus.gd b/scripts/event_bus.gd
+--- a/scripts/event_bus.gd
++++ b/scripts/event_bus.gd
+@@ -3,20 +3,35 @@
+
+ var dispatch_log: Array = []
+
+-var _subs: Array = []   # array of {"id":String, "priority":int}
++var _subs: Array = []   # array of {"id":String, "priority":int, "seq":int}
++var _seq: int = 0
+
+ func subscribe(id: String, priority: int) -> void:
+-	# TODO
+-	pass
++	for s in _subs:
++		if s["id"] == id:
++			s["priority"] = priority
++			return
++	_subs.append({"id": id, "priority": priority, "seq": _seq})
++	_seq += 1
+
+ func unsubscribe(id: String) -> void:
+-	# TODO
+-	pass
++	for i in range(_subs.size() - 1, -1, -1):
++		if _subs[i]["id"] == id:
++			_subs.remove_at(i)
++
++func _ordered() -> Array:
++	var arr := _subs.duplicate()
++	arr.sort_custom(func(a, b):
++		if a["priority"] != b["priority"]:
++			return a["priority"] > b["priority"]
++		return a["seq"] < b["seq"])
++	return arr
+
+ func publish() -> void:
+-	# TODO
+-	pass
++	dispatch_log = []
++	for s in _ordered():
++		dispatch_log.append(s["id"])
+
+ func publish_removing(remove_id: String) -> void:
+-	# TODO
+-	pass
++	unsubscribe(remove_id)
++	publish()

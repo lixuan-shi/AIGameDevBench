@@ -1,0 +1,53 @@
+diff --git a/godot/local_map/LocalMap.tscn b/godot/local_map/LocalMap.tscn
+index 6c9951b..b7ff058 100644
+--- a/godot/local_map/LocalMap.tscn
++++ b/godot/local_map/LocalMap.tscn
+@@ -63,7 +63,7 @@ script = ExtResource( 4 )
+ __meta__ = {
+ "_edit_lock_": true
+ }
+-map_size = null
++map_size = Vector2( 16, 16 )
+ 
+ [node name="SpawningPoint" parent="Grid" instance=ExtResource( 5 )]
+ position = Vector2( 544, 544 )
+diff --git a/godot/local_map/grid/GameBoard.gd b/godot/local_map/grid/GameBoard.gd
+index 13329d0..d06a26f 100644
+--- a/godot/local_map/grid/GameBoard.gd
++++ b/godot/local_map/grid/GameBoard.gd
+@@ -12,7 +12,7 @@ var pathfinder : Pathfinder = preload("res://local_map/grid/Pathfinder.gd").new(
+ onready var pawns : YSort = $Pawns
+ onready var spawning_point = $SpawningPoint
+ 
+-export var map_size : Vector2
++export var map_size : = Vector2(16, 16)
+ 
+ func _ready():
+ 	for pawn in pawns.get_children():
+diff --git a/godot/local_map/grid/Pathfinder.gd b/godot/local_map/grid/Pathfinder.gd
+index c7409f0..16fe6ed 100644
+--- a/godot/local_map/grid/Pathfinder.gd
++++ b/godot/local_map/grid/Pathfinder.gd
+@@ -19,18 +19,20 @@ func initialize(grid : TileMap, obstacle_tile_ids : Array) -> void:
+ 		var occupied_cells = (grid as TileMap).get_used_cells_by_id(id)
+ 		for cell in occupied_cells:
+ 			_obstacles.append(cell)
+-
++	
+ 	# Find all walkable cells and store them in an array
++	var points_array : = []
+ 	for y in range(_map_size.y):
+ 		for x in range(_map_size.x):
+ 			var point = Vector2(x, y)
+ 			if point in _obstacles:
+ 				continue
++			points_array.append(point)
+ 			var point_index = calculate_point_index(point)
+ 			astar.add_point(point_index, Vector3(point.x, point.y, 0))
+ 	# Loop through all walkable cells and their neighbors
+ 	# to connect the points
+-	for point in astar.get_points():
++	for point in points_array:
+ 		var point_index = calculate_point_index(point)
+ 		for local_y in range(3):
+ 			for local_x in range(3):

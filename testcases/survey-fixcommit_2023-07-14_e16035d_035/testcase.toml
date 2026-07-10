@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-07-14_e16035d_035"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "bd2ec90fbb62c87abde3f3f97866c10f6a0102a8"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rts"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: source/generic-scenes-and-nodes/3d/Circle3D.gd, source/match/Match.tscn, source/match/units/traits/HealthBar.tscn, source/match/units/traits/Highlight.tscn, source/match/units/traits/Selection.tscn, source/match/units/traits/Targetability.tscn, source/shaders/3d/fog.gdshader, source/shaders/3d/simple_fog_of_war.gdshader."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-07-14_e16035d_035"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

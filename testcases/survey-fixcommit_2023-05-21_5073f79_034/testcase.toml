@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-05-21_5073f79_034"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "6238f456151c1a0f2abbae08f420fd71445f5a35"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rts"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: source/match/maps/BigArena.tscn, source/match/units/AircraftFactory.tscn, source/match/units/AntiAirTurret.tscn, source/match/units/AntiGroundTurret.tscn, source/match/units/CommandCenter.tscn, source/match/units/Tank.tscn, source/match/units/VehicleFactory.tscn, source/match/units/Worker.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-05-21_5073f79_034"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

@@ -1,0 +1,95 @@
+diff --git a/godot/local_map/LocalMap.gd b/godot/local_map/LocalMap.gd
+index 4ea4e57..8162124 100644
+--- a/godot/local_map/LocalMap.gd
++++ b/godot/local_map/LocalMap.gd
+@@ -13,7 +13,7 @@ func _ready() -> void:
+ 		(action as MapAction).initialize(self)
+ 
+ func spawn_party(party) -> void:
+-	$Grid/Pawns.spawn_party(party, $Grid.map_to_world(Vector2(2,2)))
++	$Grid/Pawns.spawn_party(party, $Grid.calculate_world_pos(Vector2(2,2)))
+ 
+ func start_encounter(formation) -> void:
+ 	emit_signal("enemies_encountered", formation.instance())
+diff --git a/godot/local_map/grid/GameBoard.gd b/godot/local_map/grid/GameBoard.gd
+index e254398..4d1a501 100644
+--- a/godot/local_map/grid/GameBoard.gd
++++ b/godot/local_map/grid/GameBoard.gd
+@@ -44,3 +44,6 @@ func update_pawn_position(pawn : PawnActor, cell_start : Vector2, cell_target :
+ 	set_cellv(cell_target, pawn.type)
+ 	set_cellv(cell_start, CELL_TYPES.EMPTY)
+ 	return map_to_world(cell_target) + cell_size / 2
++
++func calculate_world_pos(grid_pos : Vector2) -> Vector2:
++	return map_to_world(grid_pos) - cell_size / 2
+diff --git a/godot/local_map/grid/PawnContainer.gd b/godot/local_map/grid/PawnContainer.gd
+index f531945..7f35e3a 100644
+--- a/godot/local_map/grid/PawnContainer.gd
++++ b/godot/local_map/grid/PawnContainer.gd
+@@ -2,25 +2,30 @@ extends Node2D
+ 
+ export var party_scene : PackedScene
+ 
+-const LEADER = preload("res://local_map/pawns/Actor.tscn")
+-const FOLLOWER = preload("res://local_map/pawns/Follower.tscn")
++const Leader = preload("res://local_map/pawns/Actor.tscn")
++const Follower = preload("res://local_map/pawns/Follower.tscn")
+ 
+ var party_members : = []
+ var party
+ 
+-func spawn_party(party : Object, spawn_position : Vector2) -> void:
++func spawn_party(party : Object, world_position : Vector2) -> void:
+ 	self.party = party
+-	var last_spawned_pawn = null
+-	for index in range(party.get_child_count()):
+-		last_spawned_pawn = spawn_new_pawn(spawn_position, last_spawned_pawn, party.get_child(index).name, index == 0)
+-		party_members.append(last_spawned_pawn)
++	var pawn_previous = null
++	var party_size = min(get_child_count(), party.PARTY_SIZE) - 1
++	for index in range(party_size):
++		pawn_previous = spawn_pawn(
++			world_position, 
++			pawn_previous, 
++			party.get_child(index).name, 
++			index == 0)
++		party_members.append(pawn_previous)
+ 
+-func spawn_new_pawn(pos : Vector2, last_spawned : Object, name : String, is_leader : bool = false) -> Object:
+-	var new_pawn = LEADER.instance() if is_leader else FOLLOWER.instance()
+-	new_pawn.name = name
+-	if last_spawned != null:
+-		last_spawned.connect("moved", new_pawn, "_on_target_Pawn_moved")
++func spawn_pawn(pos : Vector2, pawn_previous : Object, pawn_name : String, is_leader : bool = false) -> Object:
++	var new_pawn = Leader.instance() if is_leader else Follower.instance()
++	new_pawn.name = pawn_name
+ 	new_pawn.position = pos
++	if pawn_previous:
++		pawn_previous.connect("moved", new_pawn, "_on_target_Pawn_moved")
+ 	add_child(new_pawn)
+ 	return new_pawn
+ 
+@@ -28,8 +33,8 @@ func request_move(pawn, direction):
+ 	return get_parent().request_move(pawn, direction)
+ 
+ func rebuild_party() -> void:
+-	var leader_pos = party_members[0].position
++	var Leader_pos = party_members[0].position
+ 	for member in party_members:
+ 		member.queue_free()
+ 	party_members.clear()
+-	spawn_party(party, leader_pos)
++	spawn_party(party, Leader_pos)
+diff --git a/godot/party/Party.gd b/godot/party/Party.gd
+index 459aaf3..07cccc2 100644
+--- a/godot/party/Party.gd
++++ b/godot/party/Party.gd
+@@ -1,7 +1,7 @@
+ extends Node2D
+ class_name Party
+ 
+-const PARTY_SIZE = 3
++export var PARTY_SIZE : int = 3
+ 
+ var inventory = Inventory.new()
+ 

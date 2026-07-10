@@ -1,0 +1,197 @@
+diff --git a/project.godot b/project.godot
+index 27db5de..d60dc73 100644
+--- a/project.godot
++++ b/project.godot
+@@ -284,6 +284,11 @@ _global_script_classes=[ {
+ "language": "GDScript",
+ "path": "res://scenes/levels/story_mode/item/Item.gd"
+ }, {
++"base": "Area2D",
++"class": "TextTrigger",
++"language": "GDScript",
++"path": "res://scenes/ui/scripts/TextTrigger.gd"
++}, {
+ "base": "Object",
+ "class": "TextUtils",
+ "language": "GDScript",
+@@ -355,6 +360,7 @@ _global_script_class_icons={
+ "Spotter": "",
+ "StoryCharacterData": "",
+ "StoryItem": "",
++"TextTrigger": "",
+ "TextUtils": "",
+ "TrackParser": "",
+ "TypeShootEnemy": ""
+diff --git a/scenes/friends/Blug.tscn b/scenes/friends/Blug.tscn
+index 2a9595c..2825a7f 100644
+--- a/scenes/friends/Blug.tscn
++++ b/scenes/friends/Blug.tscn
+@@ -1,6 +1,6 @@
+ [gd_scene load_steps=6 format=2]
+ 
+-[ext_resource path="res://scenes/ui/TextTrigger.tscn" type="PackedScene" id=1]
++[ext_resource path="res://scenes/ui/TextRandomTrigger.tscn" type="PackedScene" id=1]
+ [ext_resource path="res://sprites/NPCs/blug.png" type="Texture" id=2]
+ [ext_resource path="res://scripts/friends/Blug.gd" type="Script" id=3]
+ [ext_resource path="res://scenes/objects/NotesNewTrigger.tscn" type="PackedScene" id=4]
+@@ -12,21 +12,10 @@ extents = Vector2( 512, 512 )
+ collision_layer = 0
+ collision_mask = 64
+ script = ExtResource( 3 )
+-dialog = "blug
+-glug
+-hello
+-it's a me, blug!
+-how ya doin mario?
+-wanna hang out sometime?
+-what are you doing over here?
+-stop that!
+-come back!
+-i need you!
+-love me!
+-love me mario!!"
+ 
+-[node name="TextTrigger" parent="." instance=ExtResource( 1 )]
++[node name="TextRandomTrigger" parent="." instance=ExtResource( 1 )]
+ text = "blug"
++phrases = [ "blug", "glug", "hello", "it's a me, blug!", "how ya doin mario?", "wanna hang out sometime?", "what are you doing over here?", "stop that!", "come back!", "i need you!", "love me!", "love me mario!!" ]
+ 
+ [node name="Sprite" type="Sprite" parent="."]
+ scale = Vector2( 2, 2 )
+@@ -40,5 +29,3 @@ shape = SubResource( 1 )
+ pageName = "blug"
+ pageDesc = "blug"
+ pageSprite = "blug"
+-
+-[connection signal="body_exited" from="TextTrigger" to="." method="_on_TextTrigger_body_exited"]
+diff --git a/scenes/ui/TextRandomTrigger.tscn b/scenes/ui/TextRandomTrigger.tscn
+new file mode 100644
+index 0000000..adc83bb
+--- /dev/null
++++ b/scenes/ui/TextRandomTrigger.tscn
+@@ -0,0 +1,7 @@
++[gd_scene load_steps=3 format=2]
++
++[ext_resource path="res://scenes/ui/scripts/TextRandomTrigger.gd" type="Script" id=1]
++[ext_resource path="res://scenes/ui/TextTrigger.tscn" type="PackedScene" id=2]
++
++[node name="TextRandomTrigger" instance=ExtResource( 2 )]
++script = ExtResource( 1 )
+diff --git a/scenes/ui/TextTrigger.tscn b/scenes/ui/TextTrigger.tscn
+index 4e0bcdf..f1618b8 100644
+--- a/scenes/ui/TextTrigger.tscn
++++ b/scenes/ui/TextTrigger.tscn
+@@ -15,7 +15,6 @@ script = ExtResource( 2 )
+ shape = SubResource( 1 )
+ 
+ [node name="TextPanel" parent="." instance=ExtResource( 1 )]
+-visible = false
+ margin_left = -146.0
+ margin_top = -148.0
+ margin_right = 148.0
+diff --git a/scenes/ui/scripts/TextRandomTrigger.gd b/scenes/ui/scripts/TextRandomTrigger.gd
+new file mode 100644
+index 0000000..3eeb388
+--- /dev/null
++++ b/scenes/ui/scripts/TextRandomTrigger.gd
+@@ -0,0 +1,26 @@
++extends TextTrigger
++
++export(float, 0, 1, 0.01) var random_phrase_chance: float = 0.3
++export(Array, String) var phrases: Array
++
++onready var original_text: String = text
++
++var idx: int = 0
++
++
++func _ready():
++	randomize()
++	phrases.shuffle()
++
++
++func _on_body_entered(_body):
++	if randf() >= random_phrase_chance and not phrases.empty():
++		var phrase = phrases[idx]
++		idx += 1
++		if idx >= phrases.size():
++			idx = 0
++			phrases.shuffle()
++		.set_text(phrase)
++	else:
++		.set_text(original_text)
++	._on_body_entered(_body)
+diff --git a/scenes/ui/scripts/TextTrigger.gd b/scenes/ui/scripts/TextTrigger.gd
+index 19a697d..51f7f4b 100644
+--- a/scenes/ui/scripts/TextTrigger.gd
++++ b/scenes/ui/scripts/TextTrigger.gd
+@@ -1,25 +1,27 @@
+-tool
++class_name TextTrigger
+ extends Area2D
+-export var text = "some text" setget set_text, get_text 
++
++export var text = "some text" setget set_text
++
+ 
+ func _ready():
+ 	$TextPanel.visible = false
+ 	self.connect("body_entered", self, "_on_body_entered")
+ 	self.connect("body_exited", self, "_on_body_exited")
+ 
++
+ func _on_body_entered(_body):
+ 	if not _body.is_in_group("Player"):
+ 		return
+ 	$TextPanel.visible = true
+ 
++
+ func _on_body_exited(_body):
+ 	if not _body.is_in_group("Player"):
+ 		return
+ 	$TextPanel.visible = false
+ 
++
+ func set_text(t):
+ 	text = t
+ 	$TextPanel/Panel/Label.text = tr(text)
+-
+-func get_text():
+-	return text
+diff --git a/scripts/friends/Blug.gd b/scripts/friends/Blug.gd
+index 8fd60cf..2da3618 100644
+--- a/scripts/friends/Blug.gd
++++ b/scripts/friends/Blug.gd
+@@ -5,14 +5,11 @@ const SPEED = 2
+ const DIST = 64
+ 
+ onready var _sprite := $Sprite
+-onready var _text_trigger := $TextTrigger
+ 
+-export (String, MULTILINE) var dialog = "blug\nglug\nhello"
+-var queue := []
+ 
+ func _ready():
+ 	$Collision.visible = true
+-	fill_queue()
++
+ 
+ func _physics_process(delta):
+ 	var playPos = Vector2()
+@@ -27,16 +24,3 @@ func _physics_process(delta):
+ 		position.x -= SPEED
+ 		_sprite.scale.x = -2
+ 
+-func _on_TextTrigger_body_exited(_body):
+-	randomize()
+-	if randf() > 0.3:
+-		if queue.empty():
+-			fill_queue()
+-		if !queue.empty():
+-			_text_trigger.text = queue.pop_back()
+-	else:
+-		_text_trigger.text = "blug"
+-
+-func fill_queue():
+-	queue = dialog.split("\n")
+-	queue.shuffle()

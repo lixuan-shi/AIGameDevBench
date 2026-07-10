@@ -1,0 +1,153 @@
+{
+  "schema": "survey.bad_case.testcase.v1",
+  "testcase_id": "survey-fixcommit_2023-12-09_a582399_060",
+  "source_repo": "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon",
+  "baseline_ref": "3219690ae7e47640f7932efb319f242c32598624",
+  "repro_ref": "3219690ae7e47640f7932efb319f242c32598624",
+  "bad_ref": "3219690ae7e47640f7932efb319f242c32598624",
+  "good_ref": "a582399f8c705e2a64f878eff4a1a4ba8bc637bf",
+  "baseline_resolution_error": null,
+  "expected": {
+    "bad_case_type": "A3",
+    "notes": "fix commit a582399: Stats are now properly applied when changing classes; Improved class selection screen; Improved error checks; Fixed CharSelectionMenu scene; Moved away from ItemList for displaying classes to it's own system; Misc fixes",
+    "original_l0_pass": null,
+    "original_l1_pass": null,
+    "original_l0_details": [],
+    "original_l1_details": [],
+    "original_human_intervention_ratio": 0.0,
+    "original_rounds_to_resolution": 2,
+    "must_change_one_of": [
+      "scripts/components/charclasscomponent/CharClassSelection.gd",
+      "scripts/components/charclasscomponent/CharClassSelection.tscn",
+      "scripts/components/charclasscomponent/CharacterClassResource.gd",
+      "scripts/components/charclasscomponent/characterclasscomponent.gd",
+      "scripts/network/rpcs/gameserver/sync.gd",
+      "scripts/singletons/jdungeon.gd"
+    ],
+    "minimum_changed_files": 1
+  },
+  "hidden_oracle": {
+    "good_ref": "a582399f8c705e2a64f878eff4a1a4ba8bc637bf",
+    "good_diff_file": "good.diff",
+    "good_changed_files": [
+      "scripts/components/charclasscomponent/CharClassSelection.gd",
+      "scripts/components/charclasscomponent/CharClassSelection.tscn",
+      "scripts/components/charclasscomponent/CharacterClassResource.gd",
+      "scripts/components/charclasscomponent/characterclasscomponent.gd",
+      "scripts/network/rpcs/gameserver/sync.gd",
+      "scripts/singletons/jdungeon.gd"
+    ],
+    "history_mining_strategy": "fix_commit_parent"
+  },
+  "bench_record": {
+    "testcase_id": "fixcommit_2023-12-09_a582399_060",
+    "harness": "git-history",
+    "category": "survey:A1",
+    "l0_l1_pass": true,
+    "score": 0.0,
+    "verifier_result": {
+      "score": 0.0,
+      "status": "fail",
+      "category": "survey:A1",
+      "error": "fix commit a582399: Stats are now properly applied when changing classes; Improved class selection screen; Improved error checks; Fixed CharSelectionMenu scene; Moved away from ItemList for displaying classes to it's own system; Misc fixes",
+      "checks": [
+        {
+          "name": "bad_case_detected",
+          "passed": false,
+          "detail": "fix commit a582399: Stats are now properly applied when changing classes; Improved class selection screen; Improved error checks; Fixed CharSelectionMenu scene; Moved away from ItemList for displaying classes to it's own system; Misc fixes",
+          "expected": "none",
+          "actual": "A1"
+        },
+        {
+          "name": "human_intervention_ratio",
+          "passed": true,
+          "detail": "",
+          "expected": "<= 0.40",
+          "actual": 0.0
+        },
+        {
+          "name": "rounds_to_resolution",
+          "passed": true,
+          "detail": "",
+          "expected": "<= 4",
+          "actual": 2
+        }
+      ]
+    },
+    "diff": "",
+    "artifacts_path": null,
+    "ai_agent_context": {
+      "harness": "git-history",
+      "transcript_session_id": null,
+      "transcript_match_confidence": null,
+      "transcript_path": null,
+      "codex_session_id": null,
+      "total_tokens": null,
+      "filtered_to_commits": [
+        "a582399"
+      ],
+      "filtered_turns": null,
+      "turns": []
+    },
+    "survey_session": {
+      "session_id": "fixcommit_2023-12-09_a582399_060",
+      "harness": "git-history",
+      "config": {},
+      "bad_case_type": "A1",
+      "auto_detected": true,
+      "confidence": "low",
+      "notes": "fix commit a582399: Stats are now properly applied when changing classes; Improved class selection screen; Improved error checks; Fixed CharSelectionMenu scene; Moved away from ItemList for displaying classes to it's own system; Misc fixes",
+      "prompts": [],
+      "system_context": {
+        "source": "git-history-fix",
+        "baseline_ref": "3219690ae7e47640f7932efb319f242c32598624",
+        "bad_ref": "3219690ae7e47640f7932efb319f242c32598624",
+        "good_ref": "a582399f8c705e2a64f878eff4a1a4ba8bc637bf",
+        "good_commit_timestamp": "2023-12-09T22:54:40-03:00",
+        "good_changed_files": [
+          "scripts/components/charclasscomponent/CharClassSelection.gd",
+          "scripts/components/charclasscomponent/CharClassSelection.tscn",
+          "scripts/components/charclasscomponent/CharacterClassResource.gd",
+          "scripts/components/charclasscomponent/characterclasscomponent.gd",
+          "scripts/network/rpcs/gameserver/sync.gd",
+          "scripts/singletons/jdungeon.gd"
+        ],
+        "fix_commit_subject": "Stats are now properly applied when changing classes; Improved class selection screen; Improved error checks; Fixed CharSelectionMenu scene; Moved away from ItemList for displaying classes to it's own system; Misc fixes",
+        "oracle_level": "diff_only",
+        "history_mining_strategy": "fix_commit_parent",
+        "failure_mode": "node type restructure"
+      },
+      "changed_files": [
+        "scripts/components/charclasscomponent/CharClassSelection.gd",
+        "scripts/components/charclasscomponent/CharClassSelection.tscn",
+        "scripts/components/charclasscomponent/CharacterClassResource.gd",
+        "scripts/components/charclasscomponent/characterclasscomponent.gd",
+        "scripts/network/rpcs/gameserver/sync.gd",
+        "scripts/singletons/jdungeon.gd"
+      ],
+      "commits": [
+        "a582399"
+      ],
+      "timestamps": {
+        "started": "2023-12-09T22:54:40-03:00",
+        "ended": "2023-12-09T22:54:40-03:00"
+      },
+      "verification": null,
+      "outcome": {
+        "first_pass_success": false,
+        "rounds_to_resolution": 2,
+        "ai_lines_changed": 0,
+        "human_lines_changed": 0,
+        "human_intervention_ratio": 0.0,
+        "token_cost": 0,
+        "session_duration_minutes": 0.0
+      },
+      "tag": {
+        "bad_case_type": "A3",
+        "suggested_type": "A3",
+        "confidence": "medium",
+        "root_cause": "Replaces ItemList nodes with GridContainer and reworks the class-selection scene/node structure and its signal connections."
+      }
+    }
+  }
+}

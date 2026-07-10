@@ -1,0 +1,2850 @@
+diff --git a/combat/battlers/wolf/area_attack.tres b/combat/battlers/wolf/area_attack.tres
+index 8566fa8..625d619 100644
+--- a/combat/battlers/wolf/area_attack.tres
++++ b/combat/battlers/wolf/area_attack.tres
+@@ -4,16 +4,8 @@
+ 
+ [resource]
+ script = ExtResource("1_bbarm")
+-attack_distance = 350.0
+-attack_time = 0.25
+-return_time = 0.25
+-hit_chance = 50.0
+-base_damage = 65
++base_damage = 999
+ label = "Area Attack"
+ description = "A sweeping attack, hitting all enemy Battlers"
+ target_scope = 2
+-targets_friendlies = false
+ targets_enemies = true
+-element = 0
+-energy_cost = 0
+-readiness_saved = 0.0
+diff --git a/src/combat/actions/battler_action.gd b/src/combat/actions/battler_action.gd
+index dae291d..2264551 100644
+--- a/src/combat/actions/battler_action.gd
++++ b/src/combat/actions/battler_action.gd
+@@ -83,7 +83,7 @@ func execute(source: Battler, _targets: Array[Battler] = []) -> void:
+ ## Returns and array of [Battler]s that could be affected by the action.
+ ## This includes most cases, accounting for parameters such as [member targets_self]. Specific
+ ## actions may wish to override get_possible_targets (to target only mushrooms, for example).
+-func get_possible_targets(source: Battler, battlers: BattlerList) -> Array[Battler]:
++func get_possible_targets(source: Battler, battlers: BattlerRoster) -> Array[Battler]:
+ 	var possible_targets: Array[Battler] = []
+ 	
+ 	# Normally, actions can pick from battlers of the opposing team. However, actions may be
+@@ -93,20 +93,20 @@ func get_possible_targets(source: Battler, battlers: BattlerList) -> Array[Battl
+ 	
+ 	elif source.is_player:
+ 		if targets_friendlies:
+-			possible_targets.append_array(battlers.players)
++			possible_targets.append_array(battlers.get_player_battlers())
+ 		
+ 		if targets_enemies:
+-			possible_targets.append_array(battlers.enemies)
++			possible_targets.append_array(battlers.get_enemy_battlers())
+ 	
+ 	else:
+ 		if targets_friendlies:
+-			possible_targets.append_array(battlers.enemies)
++			possible_targets.append_array(battlers.get_enemy_battlers())
+ 		
+ 		elif targets_enemies:
+-			possible_targets.append_array(battlers.players)
++			possible_targets.append_array(battlers.get_player_battlers())
+ 	
+ 	# Filter the targets to only include live Battlers.
+-	possible_targets = battlers.get_live_battlers(possible_targets)
++	possible_targets = battlers.find_live_battlers(possible_targets)
+ 	return possible_targets
+ 
+ 
+diff --git a/src/combat/active_turn_queue.gd b/src/combat/active_turn_queue.gd
+deleted file mode 100644
+index 0bd48d3..0000000
+--- a/src/combat/active_turn_queue.gd
++++ /dev/null
+@@ -1,184 +0,0 @@
+-## Responsible for [Battler]s, managing their turns, action order, and lifespans.
+-##
+-## The ActiveTurnQueue sorts Battlers neatly into a queue as they are ready to act. Time is paused
+-## as Battlers act and is resumed once actors have finished acting. The queue ceases once the player
+-## or enemy Battlers have been felled, signaling that the combat has finished.
+-##
+-## Note: the turn queue defers action/target selection to either AI or player input. While
+-## time is slowed for player input, it is not stopped completely which may result in an AI Battler
+-## acting while the player is taking their turn.
+-class_name ActiveTurnQueue extends Node2D
+-
+-## The slow-motion value of [time_scale] used when the player is navigating action/target menus.
+-const SLOW_TIME_SCALE: = 0.05
+-
+-## Emitted once a player has won or lost a battle, indicating whether or not it may be considered a 
+-## victory for the player. All combat animations have finished playing.
+-signal combat_finished(is_player_victory: bool)
+-
+-## Allows pausing the Active Time Battle during combat intro, a cutscene, or combat end.
+-var is_active: = true:
+-	set(value):
+-		if value != is_active:
+-			is_active = value
+-			for battler in battlers.get_all_battlers():
+-				battler.is_active = is_active
+-
+-## A list of the combat participants, in [BattlerList] form. This object is created by the turn
+-## queue from children [Battler]s and then made available to other combat systems.
+-var battlers: BattlerList
+-
+-## Battlers may select their action at any point, where they will be cached in this dictionary.
+-## The battlers will not act, however, until the queue receives their [signal Battler.ready_to_act]
+-## signal and validates the action.[br][br]
+-## Key = Battler, Value = named dictionary with two entries: 'action' and 'targets'.
+-var _cached_actions: = {}
+-
+-# Multiplier for the global pace of battle, to slow down time while the player is making decisions.
+-# This is meant for accessibility and to control difficulty. It is set according to combat state,
+-# as follows:
+-#     - _time_scale is 1 during normal gameplay.
+-#     - _time_scale is [const SLOW_TIME_SCALE] when the player has a menu open.
+-#     - _time_scale is 0 whenver an action is being executed.
+-var _time_scale: = 1.0:
+-	set(value):
+-		_time_scale = value
+-		for battler in battlers.get_all_battlers():
+-			battler.time_scale = _time_scale
+-
+-# Tracks which [BattlerAction] is currently running. _active_action is null if no action is running.
+-var _active_action: BattlerAction = null:
+-	set(value):
+-		_active_action = value
+-		_update_time_scale()
+-
+-# Tracks whether or not the player has a menu open at any given moment.
+-var _is_player_menu_open: = false:
+-	set(value):
+-		_is_player_menu_open = value
+-		_update_time_scale()
+-
+-
+-func _ready() -> void:
+-	# The time scale slows down whenever the user is picking an action. Connect to UI signals here
+-	# to adjust accordingly to whether or not the play is navigating the target/action menus.
+-	CombatEvents.player_battler_selected.connect(
+-		func _on_player_battler_selected(battler: Battler):
+-			_is_player_menu_open = battler != null
+-	)
+-	CombatEvents.action_selected.connect(
+-		# The player has fashioned an action for their Battler. Cache it now.
+-		func _on_action_selected(action: BattlerAction, source: Battler, targets: Array[Battler]):
+-			# If the action passed is null, unqueue the source Battler from any cached actions.
+-			if action == null:
+-				_cached_actions.erase(source)
+-			
+-			else:
+-				# Otherwise, cache the action for execution whenever the Battler is ready to act.
+-				_cached_actions[source] = {"action" = action, "targets" = targets}
+-				
+-				# Note that the battler only emits its ready_to_act signal once upon reaching 100
+-				# readiness. If the battler is currently ready to act, re-emit the signal now.
+-				if source.is_ready_to_act():
+-					source.ready_to_act.emit.call_deferred()
+-	)
+-	
+-	# Combat participants are children of the ActiveTurnQueue. Create the data structure that will
+-	# track battlers and be passed across states.
+-	# Note that we first need to assign typed arrays from the untyped return of get_children() in
+-	# order to create the combat participant structure.
+-	var players: Array[Battler]
+-	players.assign(get_children().filter(func(i): return i.is_player))
+-	var enemies: Array[Battler]
+-	enemies.assign(get_children().filter(func(i): return !i.is_player))
+-	
+-	battlers = BattlerList.new(players, enemies)
+-	battlers.battlers_downed.connect(
+-		# Begin the shutdown sequence for the combat, flagging end of the combat logic.
+-		# This is called immediately when the player has either won or lost the combat.
+-		func _on_combat_side_downed() -> void:
+-			# On combat end, a number of systems will animate out (the UI fades, for example).
+-			# However, the battlers also end with animations: celebration or death animations. The 
+-			# combat cannot truly end until these animations have finished, so wait for children 
+-			# Battlers to 'wrap up' from this point onwards.
+-			# This is done with the ActiveTurnQueue's process function, which will check each frame
+-			# to see if the losing team's final animations have finished.
+-			set_process(true)
+-			
+-			# Don't allow anyone else to act.
+-			is_active = false
+-	)
+-	
+-	for battler in battlers.get_all_battlers():
+-		# Setup Battler AIs to make use of the BattlerList object (needed to pick targets).
+-		if battler.ai != null:
+-			battler.ai.setup(battler, battlers)
+-		
+-		# Battlers will act as their ready_to_act signal is emitted. The turn queue will allow them 
+-		# to act if another action is not currently underway.
+-		battler.ready_to_act.connect(_on_battler_ready_to_act.bind(battler))
+-		
+-		# Remove any cached actions whenever the Battler is downed.
+-		battler.health_depleted.connect(
+-			(func _on_battler_health_depleted(downed_battler: Battler):
+-				_cached_actions.erase(downed_battler)).bind(battler)
+-		)
+-	
+-	# The ActiveTurnQueue uses _process to wait for animations to finish at combat end, so disable
+-	# _process for now.
+-	set_process(false)
+-	
+-	# Don't begin combat until the state has been setup. I.e. intro animations, UI is ready, etc.
+-	is_active = false
+-
+-
+-# The active turn queue waits until all battlers have finished their animations before emitting the
+-# finished signal.
+-func _process(_delta: float) -> void:
+-	# Only track the animations of the losing team, as the winning team will animate their idle
+-	# poses indefinitely.
+-	var tracked_battlers: Array[Battler] = battlers.enemies if battlers.has_player_won \
+-		else battlers.players
+-	
+-	for child: Battler in tracked_battlers:
+-		# If there are still playing BattlerAnims, don't finish the battle yet.
+-		if child.anim.is_playing():
+-			return
+-
+-	# There are no defeat animations being played. Combat can now finish.
+-	set_process(false)
+-	combat_finished.emit(battlers.has_player_won)
+-
+-
+-# The time scale is affected by the player navigating menus and actions being played. Update the
+-# time scale to 
+-func _update_time_scale() -> void:
+-	if _active_action != null:
+-		_time_scale = 0
+-	elif _is_player_menu_open:
+-		_time_scale = SLOW_TIME_SCALE
+-	else:
+-		_time_scale = 1
+-
+-
+-# When a Battler emits its ready_to_act signal, check to see if it can act. The action must be valid
+-# and there must not be another ongoing action.
+-func _on_battler_ready_to_act(battler: Battler):
+-	if _active_action != null:
+-		return
+-	
+-	# Check, first of all, to see if there is a cached action registered to this Battler.
+-	var action_data: Dictionary = _cached_actions.get(battler, {})
+-	
+-	# If so, check to see if the action is valid, in which case it will execute.
+-	if not action_data.is_empty():
+-		var action: BattlerAction = action_data.action
+-		var targets: Array[Battler] = action_data.targets.filter(
+-			func(target: Battler): return action.can_target_battler(target)
+-		)
+-		
+-		if action.can_execute(battler, targets):
+-			_cached_actions.erase(battler)
+-			_active_action = action
+-			await battler.act(action, targets)
+-			_active_action = null
+diff --git a/src/combat/active_turn_queue.gd.uid b/src/combat/active_turn_queue.gd.uid
+deleted file mode 100644
+index 02077c3..0000000
+--- a/src/combat/active_turn_queue.gd.uid
++++ /dev/null
+@@ -1 +0,0 @@
+-uid://jfn0daa3i05h
+diff --git a/src/combat/actors/combat_actor.gd b/src/combat/actors/combat_actor.gd
+index 1e68630..3faaef2 100644
+--- a/src/combat/actors/combat_actor.gd
++++ b/src/combat/actors/combat_actor.gd
+@@ -14,7 +14,7 @@
+ ## For example, a player-controlled actor would show the action menu UI, while an AI enemy
+ ## might have different attack patterns or decision-making logic.
+ @abstract
+-class_name CombatActor extends Node2D
++extends Node2D
+ 
+ ## Emitted whenever the actor's turn is finished. You should emit this only
+ ## after all actions and animations are complete.
+@@ -37,10 +37,6 @@ const GROUP: = "combat_actors"
+ var has_acted_this_round: = false
+ 
+ 
+-static func sort(a: CombatActor, b: CombatActor) -> bool:
+-	return a.initiative > b.initiative
+-
+-
+ func _ready() -> void:
+ 	add_to_group(GROUP)
+ 
+diff --git a/src/combat/actors/combat_turn_queue.gd b/src/combat/actors/combat_turn_queue.gd
+index c83018d..6d42964 100644
+--- a/src/combat/actors/combat_turn_queue.gd
++++ b/src/combat/actors/combat_turn_queue.gd
+@@ -4,7 +4,7 @@ class_name CombatTurnQueue extends Node
+ ## Emitted whenever the combat logic has finished, including all animation details.
+ signal finished(has_player_won: bool)
+ 
+-## A list of the combat participants, in [BattlerList] form. This object is created by the turn
++## A list of the combat participants, in [BattlerRoster] form. This object is created by the turn
+ ## queue from children [Battler]s and then made available to other combat systems.
+ var battler_roster: BattlerRoster
+ 
+@@ -17,7 +17,7 @@ var round_count = 1:
+ 
+ 
+ func _ready() -> void:
+-	battler_roster = BattlerRoster.new(get_tree())
++	battler_roster = BattlerRoster.new(self)
+ 
+ 
+ func start() -> void:
+diff --git a/src/combat/battlers/battler.gd b/src/combat/battlers/battler.gd
+index 943a408..4dcfba2 100644
+--- a/src/combat/battlers/battler.gd
++++ b/src/combat/battlers/battler.gd
+@@ -8,9 +8,9 @@
+ @tool
+ class_name Battler extends Node2D
+ 
+-
+-## Emitted when the battler finished their action and arrived back at their rest position.
+-signal action_finished
++## Emitted whenever the Battler's turn is finished. Thos should emit only after all actions and 
++## animations are complete.
++signal turn_finished
+ ## Forwarded from the receiving of [signal BettlerStats.health_depleted].
+ signal health_depleted
+ ## Emitted when taking damage or being healed from a [BattlerHit].
+@@ -19,10 +19,6 @@ signal health_depleted
+ signal hit_received(value: int)
+ ## Emitted whenever a hit targeting this battler misses.
+ signal hit_missed
+-## Emitted when the battler's `_readiness` changes.
+-signal readiness_changed(new_value)
+-## Emitted when the battler is ready to take a turn.
+-signal ready_to_act
+ ## Emitted when modifying `is_selected`. The user interface will react to this for
+ ## player-controlled battlers.
+ signal selection_toggled(value: bool)
+@@ -91,24 +87,10 @@ const GROUP: = "_COMBAT_BATTLER_GROUP"
+ 				ai = new_instance
+ 				add_child(ai)
+ 
+-## The [CombatActor] object that will determine the Battler's combat behavior. A Battler without an CombatActor
+-## is just a dummy object that will not take turns or perform actions.
+-@export var actor_scene: PackedScene:
+-	set(value):
+-		if value == actor_scene:
+-			return
+-
+-		actor_scene = value
+-
+-		if not is_inside_tree():
+-			await ready
+-
+-		if actor:
+-			actor.queue_free()
+-			actor = null
+-
+-#TODO: Battler.is_player is redundant. Use that defined by CombatActor instead.
+-## Player battlers are controlled by the player.
++## If this is [b]true[/b], this actor is controlled by the player. Use this to
++## differentiate between player-controlled actors and AI-controlled ones.
++## [/n][/n] Note that player Battlers may be controlled by an AI controller, but enemy Battlers may
++## not be controlled by the player.
+ @export var is_player: = false:
+ 	set(value):
+ 		is_player = value
+@@ -116,29 +98,19 @@ const GROUP: = "_COMBAT_BATTLER_GROUP"
+ 			var facing: = BattlerAnim.Direction.LEFT if is_player else BattlerAnim.Direction.RIGHT
+ 			anim.direction = facing
+ 
+-## Reference to the Battler's child [CombatActor], which controls it's combat behaviour.
+-## Note that this value is assigned automatically with reference to [member actor_scene].
+-var actor: CombatActor = null
+-
+ ## Reference to this Battler's child [CombatAI] node, if applicable.
+ var ai: CombatAI = null
+ 
+ ## Reference to this Battler's child [BattlerAnim] node.
+ var anim: BattlerAnim = null
+ 
+-# TODO: this property belongs with the CombatActor.
+-## If `false`, the battler will not be able to act.
++## If this is [b]true[/b], this Battler can take turns.
+ var is_active: bool = true:
+ 	set(value):
+ 		is_active = value
+ 
+ 		set_process(is_active)
+ 
+-## The turn queue will change this property when another battler is acting.
+-var time_scale := 1.0:
+-	set(value):
+-		time_scale = value
+-
+ ## If `true`, the battler is selected, which makes it move forward.
+ var is_selected: bool = false:
+ 	set(value):
+@@ -155,25 +127,16 @@ var is_selectable: bool = true:
+ 		if not is_selectable:
+ 			is_selected = false
+ 
+-## When this value reaches `100.0`, the battler is ready to take their turn.
+-var readiness := 0.0:
+-	set(value):
+-		readiness = value
+-		readiness_changed.emit(readiness)
++## Describes whether or not the Battler has taken a turn during this combat round.
++var has_acted_this_round: = false
+ 
+-		if readiness >= 100.0:
+-			readiness = 100.0
+-			stats.energy += 1
+ 
+-			ready_to_act.emit()
+-			set_process(false)
++static func sort(a: Battler, b: Battler) -> bool:
++	return a.stats.speed > b.stats.speed
+ 
+ 
+ func _ready() -> void:
+-	if Engine.is_editor_hint():
+-		set_process(false)
+-
+-	else:
++	if not Engine.is_editor_hint():
+ 		assert(stats, "Battler %s does not have stats assigned!" % name)
+ 
+ 		add_to_group(GROUP)
+@@ -189,25 +152,22 @@ func _ready() -> void:
+ 		)
+ 
+ 
+-func _process(delta: float) -> void:
+-	readiness += stats.speed * delta * time_scale
++func start_turn() -> void:
++	print(get_parent().name, " starts their turn!")
+ 
++	await get_tree().create_timer(1.5).timeout
++	turn_finished.emit()
+ 
+-func act(action: BattlerAction, targets: Array[Battler] = []) -> void:
+-	set_process(false)
+ 
++func act(action: BattlerAction, targets: Array[Battler] = []) -> void:
+ 	stats.energy -= action.energy_cost
+ 
+-	# action.execute() almost certainly is a coroutine.
++	# action.execute() is almost certainly is a coroutine.
+ 	@warning_ignore("redundant_await")
+ 	await action.execute(self, targets)
+-	if stats.health > 0:
+-		readiness = action.readiness_saved
+-
+-		if is_active:
+-			set_process(true)
+-
+-	action_finished.emit.call_deferred()
++	
++	has_acted_this_round = true
++	turn_finished.emit.call_deferred()
+ 
+ 
+ func take_hit(hit: BattlerHit) -> void:
+@@ -218,5 +178,10 @@ func take_hit(hit: BattlerHit) -> void:
+ 		hit_missed.emit()
+ 
+ 
+-func is_ready_to_act() -> bool:
+-	return readiness >= 100.0
++func _to_string() -> String:
++	var msg: = "%s (CombatActor)" % name
++	if not is_active:
++		msg += " - INACTIVE"
++	elif has_acted_this_round:
++		msg += " - HAS ACTED"
++	return msg
+diff --git a/src/combat/battlers/battler_list.gd b/src/combat/battlers/battler_list.gd
+deleted file mode 100644
+index d37a4d5..0000000
+--- a/src/combat/battlers/battler_list.gd
++++ /dev/null
+@@ -1,57 +0,0 @@
+-## Keeps reference to the various combat participants, including all [Battler]s and their teams.
+-class_name BattlerList extends RefCounted
+-
+-## Emitted immediately once the player has won or lost the battle. Note that all animations (such
+-## as the player or AI battlers disappearing) are not yet completed.
+-## This is the point at which most UI elements will disappear.
+-signal battlers_downed
+-
+-var players: Array[Battler] = []:
+-	set(value):
+-		players = value
+-		for battler in players:
+-			# If a party member falls in battle, check to see if the player has lost.
+-			battler.health_depleted.connect(
+-				func _on_party_member_health_depleted():
+-					for player in players:
+-						if player.stats.health > 0:
+-							return
+-					
+-					# All player battlers have zero health. The player lost the battle!
+-					has_player_won = false
+-					battlers_downed.emit()
+-			)
+-
+-var enemies: Array[Battler] = []:
+-	set(value):
+-		enemies = value
+-		for battler in enemies:
+-			# If an enemy falls in battle, check to see if the player has won.
+-			battler.health_depleted.connect(
+-				func _on_enemy_health_depleted():
+-					for enemy in enemies:
+-						if enemy.stats.health > 0:
+-							return
+-					
+-					# All enemy battlers have zero health. The player won!
+-					has_player_won = true
+-					battlers_downed.emit()
+-			)
+-
+-## Tracks whether or not the player has won the combat.
+-var has_player_won: = false
+-
+-
+-func _init(player_battlers: Array[Battler], enemy_battlers: Array[Battler]) -> void:
+-	players = player_battlers
+-	enemies = enemy_battlers
+-
+-
+-func get_all_battlers() -> Array[Battler]:
+-	var all_battlers: = players.duplicate()
+-	all_battlers.append_array(enemies)
+-	return all_battlers
+-
+-
+-func get_live_battlers(battlers: Array[Battler]) -> Array[Battler]:
+-	return battlers.filter(func(battler: Battler): return battler.stats.health > 0)
+diff --git a/src/combat/battlers/battler_list.gd.uid b/src/combat/battlers/battler_list.gd.uid
+deleted file mode 100644
+index 1758dee..0000000
+--- a/src/combat/battlers/battler_list.gd.uid
++++ /dev/null
+@@ -1 +0,0 @@
+-uid://c1lruqev5102x
+diff --git a/src/combat/battlers/battler_roster.gd b/src/combat/battlers/battler_roster.gd
+index 2033890..749c9ae 100644
+--- a/src/combat/battlers/battler_roster.gd
++++ b/src/combat/battlers/battler_roster.gd
+@@ -1,18 +1,22 @@
+ class_name BattlerRoster extends RefCounted
+ 
+-var get_nodes_in_group: Callable
++# Battlers searched for by the roster must be descendants (children, grandchildren, etc.) of this
++# node. They will be found based on type - Battler.
++var _battler_parent: Node
+ 
+ 
+-func _init(tree_ref: SceneTree) -> void:
+-	get_nodes_in_group = tree_ref.get_nodes_in_group
++func _init(node: Node) -> void:
++	_battler_parent = node
+ 
+ 
++## Returns all Battlers existing in the current combat.
+ func get_battlers() -> Array[Battler]:
+ 	var battler_list: Array[Battler] = []
+-	battler_list.assign(get_nodes_in_group.call(Battler.GROUP))
++	battler_list.assign(_battler_parent.find_children("*", "Battler"))
+ 	return battler_list
+ 
+ 
++## Returns all existing player Battlers.
+ func get_player_battlers() -> Array[Battler]:
+ 	return get_battlers().filter(
+ 		func _filter_players(battler: Battler):
+@@ -20,6 +24,7 @@ func get_player_battlers() -> Array[Battler]:
+ 	)
+ 
+ 
++## Returns all existing Battlers that are opposed to the player.
+ func get_enemy_battlers() -> Array[Battler]:
+ 	return get_battlers().filter(
+ 		func _filter_enemies(battler: Battler):
+@@ -27,6 +32,12 @@ func get_enemy_battlers() -> Array[Battler]:
+ 	)
+ 
+ 
++## Filter an array of Battlers to return only whose health points are currently greater than 0.
++func find_live_battlers(battlers: Array[Battler]) -> Array[Battler]:
++	return battlers.filter(func(battler: Battler): return battler.stats.health > 0)
++
++
++## Returns true if all the specified battlers are inactive.
+ func are_battlers_defeated(battlers: Array[Battler]) -> bool:
+ 	for battler in battlers:
+ 		if battler.actor.is_active:
+diff --git a/src/combat/combat.gd b/src/combat/combat.gd
+index a637887..6297d72 100644
+--- a/src/combat/combat.gd
++++ b/src/combat/combat.gd
+@@ -14,11 +14,13 @@ var _active_arena: CombatArena = null
+ # Keep track of what music track was playing previously, and return to it once combat has finished.
+ var _previous_music_track: AudioStream = null
+ 
+-@onready var _combat_container := $CenterContainer as CenterContainer
+-@onready var _transition_delay_timer := $CenterContainer/TransitionDelay as Timer
++@onready var _combat_container: = $CenterContainer as CenterContainer
++@onready var _transition_delay_timer: = $CenterContainer/TransitionDelay as Timer
++@onready var _ui: = $UI as UICombat
+ 
+ 
+ func _ready() -> void:
++	hide()
+ 	FieldEvents.combat_triggered.connect(start)
+ 
+ 
+@@ -29,6 +31,7 @@ func start(arena: PackedScene) -> void:
+ 	assert(_active_arena == null, "Attempting to start a combat while one is ongoing!")
+ 
+ 	await Transition.cover(0.2)
++	show()
+ 
+ 	var new_arena := arena.instantiate()
+ 	assert(
+@@ -38,6 +41,13 @@ func start(arena: PackedScene) -> void:
+ 
+ 	_active_arena = new_arena
+ 	_combat_container.add_child(_active_arena)
++	
++	print("Wait")
++	# Wait a frame for the arena and its children (VFX, Battlers, etc.) to be ready.
++	await get_tree().process_frame
++	print("Battlers: ", _active_arena.turn_queue.battler_roster.get_battlers())
++	
++	_ui.setup(_active_arena.turn_queue.battler_roster)
+ 
+ 	_previous_music_track = Music.get_playing_track()
+ 	Music.play(_active_arena.music)
+@@ -51,21 +61,26 @@ func start(arena: PackedScene) -> void:
+ 	await Transition.finished
+ 	
+ 	# Fade in the combat UI elements.
+-	_active_arena.animation.play("fade_in")
+-	await _active_arena.animation.animation_finished
++	_ui.animation.play("fade_in")
++	await _ui.animation.animation_finished
+ 	
+ 	# Begin the combat logic. The turn queue takes over from here.
+-	_active_arena.start()
++	#_active_arena.turn_queue.start()
+ 	
+ 	# Respond to the turn queue's signal the lets us know when the player has won or lost combat.
+ 	_active_arena.turn_queue.combat_finished.connect(
+ 		func on_combat_finished(is_player_victory: bool):
++			# Fade out the combat UI elements.
++			_ui.animation.play("fade_out")
++			await _ui.animation.animation_finished
++			
+ 			await _display_combat_results_dialog(is_player_victory)
+ 			
+ 			# Wait a short period of time and then fade the screen to black.
+ 			_transition_delay_timer.start()
+ 			await _transition_delay_timer.timeout
+ 			await Transition.cover(0.2)
++			hide()
+ 
+ 			assert(_active_arena != null, "Combat finished but no active arena to clean up!")
+ 			_active_arena.queue_free()
+@@ -83,7 +98,7 @@ func start(arena: PackedScene) -> void:
+ 
+ ## Displays a series of dialogue bubbles using Dialogic with information about the combat's outcome.
+ func _display_combat_results_dialog(is_player_victory: bool):
+-	var player_party_leader_name := _active_arena.turn_queue.battlers.players[0].name
++	var player_party_leader_name: = _active_arena.turn_queue.battler_roster.get_player_battlers()[0].name
+ 
+ 	var timeline_events: Array[String]
+ 	if is_player_victory:
+diff --git a/src/combat/combat_ai_random.gd b/src/combat/combat_ai_random.gd
+index d9adde7..c212b3d 100644
+--- a/src/combat/combat_ai_random.gd
++++ b/src/combat/combat_ai_random.gd
+@@ -9,9 +9,9 @@ var _has_selected_action: = false
+ 
+ ## Connect to the signals of a given [Battler]. The callback randomly chooses an action from the
+ ## Battler's [member Battler.actions] and then randomly chooses a target.
+-func setup(battler: Battler, battler_list: BattlerList) -> void:
++func setup(battler: Battler, battler_roster: BattlerRoster) -> void:
+ 	battler.ready_to_act.connect(
+-		(func _on_battler_ready_to_act(source: Battler, battlers: BattlerList) -> void:
++		(func _on_battler_ready_to_act(source: Battler, battlers: BattlerRoster) -> void:
+ 			if not _has_selected_action:
+ 				# Only a Battler with actions is able to act.
+ 				if source.actions.is_empty():
+@@ -35,7 +35,7 @@ func setup(battler: Battler, battler_list: BattlerList) -> void:
+ 					_has_selected_action = true
+ 					CombatEvents.action_selected.emit(action, source, targets)
+ 				else:
+-					).bind(battler, battler_list)
++					).bind(battler, battler_roster)
+ 	)
+ 	
+ 	battler.action_finished.connect(
+diff --git a/src/combat/combat_arena.gd b/src/combat/combat_arena.gd
+index c037c86..8d6d6cd 100644
+--- a/src/combat/combat_arena.gd
++++ b/src/combat/combat_arena.gd
+@@ -1,3 +1,4 @@
++# TODO: Improve description. Hint at VFX/SFX? 
+ ## An arena is the background for a battle. It is a Control node that contains the battlers and the turn queue.
+ ## It also contains the music that plays during the battle.
+ class_name CombatArena extends Control
+@@ -6,36 +7,4 @@ class_name CombatArena extends Control
+ @export var music: AudioStream
+ 
+ # Keep a reference to the turn queue, which handles combat logic including combat start and end.
+-@onready var turn_queue: = $Battlers as ActiveTurnQueue
+-
+-# UI elements
+-@onready var animation: = $UI/AnimationPlayer as AnimationPlayer
+-@onready var _ui_turn_bar: = $UI/TurnBar as UITurnBar
+-@onready var _ui_effect_label_builder: = $UI/EffectLabelBuilder as UIEffectLabelBuilder
+-@onready var _ui_player_menus: = $UI/PlayerMenus as UICombatMenus
+-
+-
+-func _ready() -> void:
+-	# Setup the different combat UI elements, beginning with the player battler list.
+-	var combat_participant_data: = turn_queue.battlers
+-	_ui_effect_label_builder.setup(combat_participant_data)
+-	_ui_player_menus.setup(combat_participant_data)
+-	_ui_turn_bar.setup(combat_participant_data)
+-	
+-	# TODO: Remove once I've got things figured out.
+-	# The UI elements will automatically fade out once one of the battler teams has lost.
+-	#combat_participant_data.battlers_downed.connect(
+-		#func _on_battlers_downed():
+-			#_ui_player_menus.visible = false
+-			#_ui_turn_bar.fade_out()
+-	#)
+-
+-
+-## Begin combat, setting up the UI before running combat logic.
+-func start() -> void:
+-	# Smoothly fade in the UI elements.
+-	#_ui_animation.play("fade_in")
+-	#await _ui_animation.animation_finished
+-	
+-	# Begin the combat logic.
+-	turn_queue.is_active = true
++@onready var turn_queue: = $Battlers as CombatTurnQueue
+diff --git a/src/combat/combat_arena.tscn b/src/combat/combat_arena.tscn
+index 1fcc870..eb83e29 100644
+--- a/src/combat/combat_arena.tscn
++++ b/src/combat/combat_arena.tscn
+@@ -1,145 +1,7 @@
+-[gd_scene load_steps=17 format=3 uid="uid://b3ciqydkjnkkx"]
++[gd_scene load_steps=3 format=3 uid="uid://b3ciqydkjnkkx"]
+ 
+ [ext_resource type="Script" uid="uid://qqe2l2km3uki" path="res://src/combat/combat_arena.gd" id="1_iqdn5"]
+-[ext_resource type="Script" uid="uid://jfn0daa3i05h" path="res://src/combat/active_turn_queue.gd" id="2_ll0ok"]
+-[ext_resource type="Script" uid="uid://ch0df68krwxr1" path="res://src/combat/ui/effect_labels/ui_effect_label_builder.gd" id="3_33305"]
+-[ext_resource type="PackedScene" uid="uid://bo6hj2mg02uef" path="res://src/combat/ui/effect_labels/ui_damage_label.tscn" id="4_vmu37"]
+-[ext_resource type="PackedScene" uid="uid://dxyw5j7wr56hl" path="res://src/combat/ui/effect_labels/ui_missed_label.tscn" id="5_y3d4p"]
+-[ext_resource type="PackedScene" uid="uid://derqg1tjy74tw" path="res://src/combat/ui/turn_bar/ui_turn_bar.tscn" id="6_yrwb4"]
+-[ext_resource type="PackedScene" uid="uid://cy0jvvqhcopp3" path="res://src/combat/ui/battler_entry/ui_player_battler_list.tscn" id="7_klx1g"]
+-[ext_resource type="PackedScene" uid="uid://b35omff3fdb2g" path="res://src/combat/ui/battler_entry/ui_battler_entry.tscn" id="8_yvvff"]
+-[ext_resource type="PackedScene" uid="uid://bipyuaeqoxmt2" path="res://src/combat/ui/action_menu/ui_action_menu.tscn" id="9_7r1pn"]
+-[ext_resource type="PackedScene" uid="uid://bu56ii26ps128" path="res://src/combat/ui/cursors/ui_battler_target_cursor.tscn" id="10_g5v87"]
+-[ext_resource type="PackedScene" uid="uid://cf6hixtledkyy" path="res://src/combat/ui/action_menu/ui_action_description.tscn" id="12_e06ap"]
+-[ext_resource type="Script" uid="uid://smjuikb83bkc" path="res://src/combat/ui/ui_combat_menus.gd" id="12_mmb61"]
+-
+-[sub_resource type="Animation" id="Animation_wen7t"]
+-length = 0.001
+-tracks/0/type = "value"
+-tracks/0/imported = false
+-tracks/0/enabled = true
+-tracks/0/path = NodePath("EffectLabelBuilder:modulate")
+-tracks/0/interp = 1
+-tracks/0/loop_wrap = true
+-tracks/0/keys = {
+-"times": PackedFloat32Array(0),
+-"transitions": PackedFloat32Array(1),
+-"update": 0,
+-"values": [Color(1, 1, 1, 1)]
+-}
+-tracks/1/type = "value"
+-tracks/1/imported = false
+-tracks/1/enabled = true
+-tracks/1/path = NodePath("TurnBar:modulate")
+-tracks/1/interp = 1
+-tracks/1/loop_wrap = true
+-tracks/1/keys = {
+-"times": PackedFloat32Array(0),
+-"transitions": PackedFloat32Array(1),
+-"update": 0,
+-"values": [Color(1, 1, 1, 1)]
+-}
+-tracks/2/type = "value"
+-tracks/2/imported = false
+-tracks/2/enabled = true
+-tracks/2/path = NodePath("PlayerMenus:modulate")
+-tracks/2/interp = 1
+-tracks/2/loop_wrap = true
+-tracks/2/keys = {
+-"times": PackedFloat32Array(0),
+-"transitions": PackedFloat32Array(1),
+-"update": 0,
+-"values": [Color(1, 1, 1, 1)]
+-}
+-tracks/3/type = "value"
+-tracks/3/imported = false
+-tracks/3/enabled = true
+-tracks/3/path = NodePath("PlayerMenus/PlayerBattlerList:modulate")
+-tracks/3/interp = 1
+-tracks/3/loop_wrap = true
+-tracks/3/keys = {
+-"times": PackedFloat32Array(0),
+-"transitions": PackedFloat32Array(1),
+-"update": 0,
+-"values": [Color(1, 1, 1, 1)]
+-}
+-
+-[sub_resource type="Animation" id="Animation_1kh4k"]
+-resource_name = "fade_in"
+-length = 1.2
+-step = 0.1
+-tracks/0/type = "value"
+-tracks/0/imported = false
+-tracks/0/enabled = true
+-tracks/0/path = NodePath("TurnBar:modulate")
+-tracks/0/interp = 1
+-tracks/0/loop_wrap = true
+-tracks/0/keys = {
+-"times": PackedFloat32Array(0, 0.7),
+-"transitions": PackedFloat32Array(1, 1),
+-"update": 0,
+-"values": [Color(1, 1, 1, 0), Color(1, 1, 1, 1)]
+-}
+-tracks/1/type = "value"
+-tracks/1/imported = false
+-tracks/1/enabled = true
+-tracks/1/path = NodePath("PlayerMenus:modulate")
+-tracks/1/interp = 1
+-tracks/1/loop_wrap = true
+-tracks/1/keys = {
+-"times": PackedFloat32Array(0.2, 0.9),
+-"transitions": PackedFloat32Array(1, 1),
+-"update": 0,
+-"values": [Color(1, 1, 1, 0), Color(1, 1, 1, 1)]
+-}
+-
+-[sub_resource type="Animation" id="Animation_16p0q"]
+-resource_name = "fade_out"
+-length = 0.2
+-step = 0.1
+-tracks/0/type = "value"
+-tracks/0/imported = false
+-tracks/0/enabled = true
+-tracks/0/path = NodePath("EffectLabelBuilder:modulate")
+-tracks/0/interp = 1
+-tracks/0/loop_wrap = true
+-tracks/0/keys = {
+-"times": PackedFloat32Array(0, 0.2),
+-"transitions": PackedFloat32Array(1, 1),
+-"update": 0,
+-"values": [Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
+-}
+-tracks/1/type = "value"
+-tracks/1/imported = false
+-tracks/1/enabled = true
+-tracks/1/path = NodePath("TurnBar:modulate")
+-tracks/1/interp = 1
+-tracks/1/loop_wrap = true
+-tracks/1/keys = {
+-"times": PackedFloat32Array(0, 0.2),
+-"transitions": PackedFloat32Array(1, 1),
+-"update": 0,
+-"values": [Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
+-}
+-tracks/2/type = "value"
+-tracks/2/imported = false
+-tracks/2/enabled = true
+-tracks/2/path = NodePath("PlayerMenus:modulate")
+-tracks/2/interp = 1
+-tracks/2/loop_wrap = true
+-tracks/2/keys = {
+-"times": PackedFloat32Array(0, 0.2),
+-"transitions": PackedFloat32Array(1, 1),
+-"update": 0,
+-"values": [Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
+-}
+-
+-[sub_resource type="AnimationLibrary" id="AnimationLibrary_v7uy0"]
+-_data = {
+-&"RESET": SubResource("Animation_wen7t"),
+-&"fade_in": SubResource("Animation_1kh4k"),
+-&"fade_out": SubResource("Animation_16p0q")
+-}
++[ext_resource type="Script" uid="uid://d4iykhcmgf6ox" path="res://src/combat/actors/combat_turn_queue.gd" id="2_8roha"]
+ 
+ [node name="CombatArena" type="Control"]
+ custom_minimum_size = Vector2(1920, 1080)
+@@ -158,65 +20,9 @@ offset_bottom = 40.0
+ 
+ [node name="Battlers" type="Node2D" parent="."]
+ y_sort_enabled = true
+-script = ExtResource("2_ll0ok")
++script = ExtResource("2_8roha")
+ 
+ [node name="Foreground" type="Control" parent="."]
+ anchors_preset = 0
+ offset_right = 40.0
+ offset_bottom = 40.0
+-
+-[node name="UI" type="CanvasLayer" parent="."]
+-
+-[node name="EffectLabelBuilder" type="Node2D" parent="UI"]
+-script = ExtResource("3_33305")
+-damage_label_scene = ExtResource("4_vmu37")
+-missed_label_scene = ExtResource("5_y3d4p")
+-metadata/_edit_lock_ = true
+-
+-[node name="TurnBar" parent="UI" instance=ExtResource("6_yrwb4")]
+-modulate = Color(1, 1, 1, 1)
+-metadata/_edit_lock_ = true
+-
+-[node name="PlayerMenus" type="Control" parent="UI"]
+-layout_mode = 3
+-anchors_preset = 15
+-anchor_right = 1.0
+-anchor_bottom = 1.0
+-grow_horizontal = 2
+-grow_vertical = 2
+-script = ExtResource("12_mmb61")
+-action_menu_scene = ExtResource("9_7r1pn")
+-target_cursor_scene = ExtResource("10_g5v87")
+-metadata/_edit_group_ = true
+-metadata/_edit_lock_ = true
+-
+-[node name="PlayerBattlerList" parent="UI/PlayerMenus" instance=ExtResource("7_klx1g")]
+-modulate = Color(1, 1, 1, 1)
+-layout_mode = 1
+-entry_scene = ExtResource("8_yvvff")
+-
+-[node name="ActionDescription" parent="UI/PlayerMenus" instance=ExtResource("12_e06ap")]
+-layout_mode = 1
+-anchors_preset = 12
+-anchor_top = 1.0
+-anchor_bottom = 1.0
+-offset_top = -96.0
+-offset_bottom = 0.0
+-grow_vertical = 0
+-theme_override_constants/margin_bottom = 32
+-
+-[node name="ActionMenuAnchor" type="Control" parent="UI/PlayerMenus"]
+-anchors_preset = 0
+-offset_left = 1056.0
+-offset_top = 896.0
+-offset_right = 1056.0
+-offset_bottom = 896.0
+-size_flags_horizontal = 4
+-size_flags_vertical = 0
+-
+-[node name="Timer" type="Timer" parent="UI"]
+-
+-[node name="AnimationPlayer" type="AnimationPlayer" parent="UI"]
+-libraries = {
+-&"": SubResource("AnimationLibrary_v7uy0")
+-}
+diff --git a/src/combat/ui/action_menu/ui_action_description.gd b/src/combat/ui/action_menu/ui_action_description.gd
+index 69d2c7a..1e2ffcd 100644
+--- a/src/combat/ui/action_menu/ui_action_description.gd
++++ b/src/combat/ui/action_menu/ui_action_description.gd
+@@ -2,7 +2,6 @@
+ ##
+ ## This bar is shown to give the player information about actions as they select one from the
+ ## [UIActionMenu].
+-@tool
+ class_name UIActionDescription extends MarginContainer
+ 
+ @export var description: = "":
+diff --git a/src/combat/ui/action_menu/ui_action_menu.gd b/src/combat/ui/action_menu/ui_action_menu.gd
+index 3ebd5b9..abb5b66 100644
+--- a/src/combat/ui/action_menu/ui_action_menu.gd
++++ b/src/combat/ui/action_menu/ui_action_menu.gd
+@@ -33,9 +33,9 @@ signal action_focused(action: BattlerAction)
+ 					entry.disabled = !can_use_action or is_disabled
+ 		)
+ 
+-# Refer to the BattlerList to check whether or not an action is valid when it is selected.
++# Refer to the BattlerRoster to check whether or not an action is valid when it is selected.
+ # This allows us to prevent the player from selecting an invalid action.
+-var _battler_list: BattlerList
++var _battler_roster: BattlerRoster
+ 
+ 
+ func _ready() -> void:
+@@ -57,9 +57,9 @@ func _unhandled_input(event: InputEvent) -> void:
+ ## Create the action menu, creating an entry for each [BattlerAction] (valid or otherwise) available
+ ## to the selected [Battler].
+ ## These actions are validated at run-time as they are selected in the menu.
+-func setup(selected_battler: Battler, battler_list: BattlerList) -> void:
++func setup(selected_battler: Battler, battler_roster: BattlerRoster) -> void:
+ 	_battler = selected_battler
+-	_battler_list = battler_list
++	_battler_roster = battler_roster
+ 	_build_action_menu()
+ 	
+ 	show()
+@@ -92,7 +92,7 @@ func _on_entry_pressed(entry: BaseButton) -> void:
+ 	
+ 	# First of all, check to make sure that the action has valid targets. If it does
+ 	# not, do not allow selection of the action.
+-	if action.get_possible_targets(_battler, _battler_list).is_empty():
++	if action.get_possible_targets(_battler, _battler_roster).is_empty():
+ 		# Normally, the button gives up focus when selected (to stop cycling menu during animation).
+ 		# However, the action is invalid and so the menu needs to keep focus for the player to
+ 		# select another action.
+diff --git a/src/combat/ui/battler_entry/ui_battler_entry.gd b/src/combat/ui/battler_entry/ui_battler_entry.gd
+index 3920d39..8d81638 100644
+--- a/src/combat/ui/battler_entry/ui_battler_entry.gd
++++ b/src/combat/ui/battler_entry/ui_battler_entry.gd
+@@ -1,5 +1,5 @@
+ ## An entry in the [UIPlayerBattlerList] for one of the player's [Battler]s.
+-class_name UIBattlerEntry extends TextureButton
++class_name UIBattlerEntry extends TextureRect
+ 
+ ## Setup the entry UI values and connect to different changes in [BattlerStats] that the UI will
+ ## measure.
+@@ -16,37 +16,14 @@ var battler: Battler:
+ 		battler.stats.energy_changed.connect(
+ 			func _on_battler_energy_changed(): _energy.value = battler.stats.energy)
+ 		battler.stats.health_changed.connect(
+-			func _on_battler_health_changed(): 
+-				_life.target_value = battler.stats.health
+-				disabled = battler.stats.health <= 0
+-				
+-				# If the Battler has been downed, it no longer has a chached action so the preview
+-				# can be removed.
+-				if disabled:
+-					_life.set_action_icon(null)
+-		)
+-		
+-		# Once the player has started to act, remove the action preview icon. The icon only exists
+-		# to help the player with their battlefield strategy.
+-		battler.ready_to_act.connect(
+-			func _on_battler_ready_to_act() -> void:
+-				_life.set_action_icon(null)
+-		)
++			func _on_battler_health_changed(): _life.target_value = battler.stats.health)
+ 
+ @onready var _energy: = $VBoxContainer/CenterContainer/EnergyBar as UIBattlerEnergyBar
+ @onready var _life: = $VBoxContainer/LifeBar as UIBattlerLifeBar
+ 
+ 
+ func _ready() -> void:
+-	# If the player queues an action for this Battler, display the queued action's icon next to the
+-	# Battler name and health points information.
+-	CombatEvents.action_selected.connect(
+-		func _on_battler_action_selected(action: BattlerAction, source: Battler, 
+-				_targets: Array[Battler]) -> void:
+-			if source == battler:
+-				if action:
+-					_life.set_action_icon(action.icon)
+-				
+-				else:
+-					_life.set_action_icon(null)
++	CombatEvents.player_battler_selected.connect(
++		func _on_player_battler_selected(selected: Battler) -> void:
++			_life.is_highlighted = battler == selected
+ 	)
+diff --git a/src/combat/ui/battler_entry/ui_battler_entry.tscn b/src/combat/ui/battler_entry/ui_battler_entry.tscn
+index 0cc489c..2e286a2 100644
+--- a/src/combat/ui/battler_entry/ui_battler_entry.tscn
++++ b/src/combat/ui/battler_entry/ui_battler_entry.tscn
+@@ -5,13 +5,12 @@
+ [ext_resource type="PackedScene" uid="uid://u8ldf4atgqo" path="res://src/combat/ui/battler_entry/ui_life_bar.tscn" id="2_ld6s8"]
+ [ext_resource type="Script" uid="uid://4y5uctrn63ww" path="res://src/combat/ui/battler_entry/ui_energy_bar.gd" id="3_tx6pk"]
+ 
+-[node name="BattlerEntry" type="TextureButton"]
++[node name="BattlerEntry" type="TextureRect"]
+ custom_minimum_size = Vector2(350, 152)
+ offset_right = 350.0
+ offset_bottom = 152.0
+-texture_normal = ExtResource("1_um1qm")
+-ignore_texture_size = true
+-stretch_mode = 0
++texture = ExtResource("1_um1qm")
++expand_mode = 1
+ script = ExtResource("2_82qpa")
+ 
+ [node name="VBoxContainer" type="VBoxContainer" parent="."]
+diff --git a/src/combat/ui/battler_entry/ui_life_bar.gd b/src/combat/ui/battler_entry/ui_life_bar.gd
+index 085332e..e56648b 100644
+--- a/src/combat/ui/battler_entry/ui_life_bar.gd
++++ b/src/combat/ui/battler_entry/ui_life_bar.gd
+@@ -17,7 +17,7 @@ var target_value := 0.0:
+ 		# If the `amount` is lower than the current `target_value`, it means the battler lost 
+ 		# health.
+ 		if target_value > new_value:
+-			_anim.play("damage")
++			_bar_anim.play("damage")
+ 		
+ 		target_value = new_value
+ 		if _tween:
+@@ -29,14 +29,22 @@ var target_value := 0.0:
+ 		_tween.tween_callback(
+ 			func():
+ 				if value < danger_cutoff * max_value:
+-					_anim.play("danger")
++					_bar_anim.play("danger")
+ 		)
+ 
++var is_highlighted: = false:
++	set(value):
++		is_highlighted = value
++		if is_highlighted:
++			_text_anim.play("highlighted")
++		else:
++			_text_anim.play("default")
++
+ var _tween: Tween = null
+ 
+-@onready var _anim: = $AnimationPlayer as AnimationPlayer
++@onready var _bar_anim: = $BarAnimation as AnimationPlayer
+ @onready var _name_label: = $MarginContainer/HBoxContainer/Name as Label
+-@onready var _queued_action_icon: = $MarginContainer/HBoxContainer/QueuedActionIcon as TextureRect
++@onready var _text_anim: = $MarginContainer/HBoxContainer/TextAnimation as AnimationPlayer
+ @onready var _value_label: = $MarginContainer/HBoxContainer/Value as Label
+ 
+ 
+@@ -52,7 +60,3 @@ func setup(battler_name: String, max_hp: int, start_hp: int) -> void:
+ 	
+ 	max_value = max_hp
+ 	value = start_hp
+-
+-
+-func set_action_icon(texture: Texture) -> void:
+-	_queued_action_icon.texture = texture
+diff --git a/src/combat/ui/battler_entry/ui_life_bar.tscn b/src/combat/ui/battler_entry/ui_life_bar.tscn
+index e24100e..da22dd3 100644
+--- a/src/combat/ui/battler_entry/ui_life_bar.tscn
++++ b/src/combat/ui/battler_entry/ui_life_bar.tscn
+@@ -1,4 +1,4 @@
+-[gd_scene load_steps=9 format=3 uid="uid://u8ldf4atgqo"]
++[gd_scene load_steps=13 format=3 uid="uid://u8ldf4atgqo"]
+ 
+ [ext_resource type="Texture2D" uid="uid://b7pj05tm03e1j" path="res://src/combat/ui/battler_entry/life_bar_bg.png" id="1_cgmm4"]
+ [ext_resource type="Theme" uid="uid://dgb8v5sh8ropf" path="res://src/combat/ui/ui_combat.theme" id="1_kcngn"]
+@@ -74,6 +74,97 @@ _data = {
+ &"danger": SubResource("Animation_yd5e2")
+ }
+ 
++[sub_resource type="Animation" id="Animation_72n8n"]
++resource_name = "default"
++length = 0.001
++tracks/0/type = "value"
++tracks/0/imported = false
++tracks/0/enabled = true
++tracks/0/path = NodePath("Name:modulate")
++tracks/0/interp = 1
++tracks/0/loop_wrap = true
++tracks/0/keys = {
++"times": PackedFloat32Array(0),
++"transitions": PackedFloat32Array(1),
++"update": 0,
++"values": [Color(1, 1, 1, 1)]
++}
++tracks/1/type = "value"
++tracks/1/imported = false
++tracks/1/enabled = true
++tracks/1/path = NodePath("Value:modulate")
++tracks/1/interp = 1
++tracks/1/loop_wrap = true
++tracks/1/keys = {
++"times": PackedFloat32Array(0),
++"transitions": PackedFloat32Array(1),
++"update": 0,
++"values": [Color(1, 1, 1, 1)]
++}
++
++[sub_resource type="Animation" id="Animation_w0gjo"]
++length = 0.001
++tracks/0/type = "value"
++tracks/0/imported = false
++tracks/0/enabled = true
++tracks/0/path = NodePath("Name:modulate")
++tracks/0/interp = 1
++tracks/0/loop_wrap = true
++tracks/0/keys = {
++"times": PackedFloat32Array(0),
++"transitions": PackedFloat32Array(1),
++"update": 0,
++"values": [Color(1, 1, 1, 1)]
++}
++tracks/1/type = "value"
++tracks/1/imported = false
++tracks/1/enabled = true
++tracks/1/path = NodePath("Value:modulate")
++tracks/1/interp = 1
++tracks/1/loop_wrap = true
++tracks/1/keys = {
++"times": PackedFloat32Array(0),
++"transitions": PackedFloat32Array(1),
++"update": 0,
++"values": [Color(1, 1, 1, 1)]
++}
++
++[sub_resource type="Animation" id="Animation_62p21"]
++resource_name = "highlighted"
++loop_mode = 1
++step = 0.1
++tracks/0/type = "value"
++tracks/0/imported = false
++tracks/0/enabled = true
++tracks/0/path = NodePath("Value:modulate")
++tracks/0/interp = 2
++tracks/0/loop_wrap = true
++tracks/0/keys = {
++"times": PackedFloat32Array(0, 0.5, 1),
++"transitions": PackedFloat32Array(0.5, 2, 1),
++"update": 0,
++"values": [Color(1, 1, 1, 1), Color(0.85490197, 0.7490196, 0.3882353, 1), Color(1, 1, 1, 1)]
++}
++tracks/1/type = "value"
++tracks/1/imported = false
++tracks/1/enabled = true
++tracks/1/path = NodePath("Name:modulate")
++tracks/1/interp = 2
++tracks/1/loop_wrap = true
++tracks/1/keys = {
++"times": PackedFloat32Array(0, 0.5, 1),
++"transitions": PackedFloat32Array(0.5, 2, 1),
++"update": 0,
++"values": [Color(1, 1, 1, 1), Color(0.85490197, 0.7490196, 0.3882353, 1), Color(1, 1, 1, 1)]
++}
++
++[sub_resource type="AnimationLibrary" id="AnimationLibrary_ilfjy"]
++_data = {
++&"RESET": SubResource("Animation_w0gjo"),
++&"default": SubResource("Animation_72n8n"),
++&"highlighted": SubResource("Animation_62p21")
++}
++
+ [node name="LifeBar" type="TextureProgressBar"]
+ offset_right = 326.0
+ offset_bottom = 21.0
+@@ -83,9 +174,9 @@ texture_under = ExtResource("1_cgmm4")
+ texture_progress = ExtResource("2_ax0cw")
+ script = ExtResource("3_xposf")
+ 
+-[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
++[node name="BarAnimation" type="AnimationPlayer" parent="."]
+ libraries = {
+-"": SubResource("AnimationLibrary_poap1")
++&"": SubResource("AnimationLibrary_poap1")
+ }
+ 
+ [node name="MarginContainer" type="MarginContainer" parent="."]
+@@ -104,10 +195,6 @@ size_flags_vertical = 4
+ theme_override_constants/separation = 24
+ alignment = 2
+ 
+-[node name="QueuedActionIcon" type="TextureRect" parent="MarginContainer/HBoxContainer"]
+-layout_mode = 2
+-stretch_mode = 5
+-
+ [node name="Name" type="Label" parent="MarginContainer/HBoxContainer"]
+ layout_mode = 2
+ size_flags_horizontal = 0
+@@ -121,3 +208,9 @@ size_flags_horizontal = 8
+ size_flags_vertical = 8
+ theme_override_constants/outline_size = 16
+ text = "9999"
++
++[node name="TextAnimation" type="AnimationPlayer" parent="MarginContainer/HBoxContainer"]
++libraries = {
++&"": SubResource("AnimationLibrary_ilfjy")
++}
++autoplay = "default"
+diff --git a/src/combat/ui/battler_entry/ui_player_battler_list.gd b/src/combat/ui/battler_entry/ui_player_battler_list.gd
+index 4e91a6d..44367cd 100644
+--- a/src/combat/ui/battler_entry/ui_player_battler_list.gd
++++ b/src/combat/ui/battler_entry/ui_player_battler_list.gd
+@@ -1,55 +1,40 @@
+ ## The player battler UI displays information for each player-owned [Battler] in a combat.
+ ## These entries may be selected in order to queue actions for the battlers to perform.
+-class_name UIPlayerBattlerList extends UIListMenu
++class_name UIPlayerBattlerList extends VBoxContainer
++
++## The scene that represents the player Battlers in menu form.
++@export var entry_scene: PackedScene
+ 
+ ## The battler list will create individual entries for each [Battler] contained in this array.
+ ## The entries are created when the member is assigned and the list is [signal ready].
+ @export var battlers: Array[Battler]:
+ 	set(value):
+ 		battlers = value
++		print("Battlers for list: ", battlers)
+ 		
+ 		if not is_inside_tree():
+ 			await ready
+ 		
+-		# Free any old entries, if they exist.
+-		for child in get_children():
+-			if child is UIBattlerEntry:
+-				child.queue_free()
++		_clear()
+ 		
+ 		# Create a UI entry for each battler in the party.
+ 		for battler in battlers:
+-			var new_entry = _create_entry() as UIBattlerEntry
++			var new_entry: = entry_scene.instantiate()
++			add_child(new_entry)
++			_entries.append(new_entry)
++			
+ 			new_entry.battler = battler
+-		
+-		_loop_first_and_last_entries()
+-
+ 
+-func _ready() -> void:
+-	# If the player has selected a battler, prevent input from reaching the battler list.
+-	# This is relevant with mouse/touchscreen input.
+-	# If the player has finished navigating the menu, restore input to the battler list.
+-	CombatEvents.player_battler_selected.connect(
+-		func _on_player_battler_selected(battler: Battler):
+-			is_disabled = battler != null
+-			
+-			# Don't re-enable entries that have dead Battlers.
+-			if not is_disabled:
+-				for entry: UIBattlerEntry in _entries:
+-					if entry.battler.stats.health <= 0:
+-						entry.disabled = true
+-	)
++# Track all battler list entries in the following array. 
++var _entries: Array[UIBattlerEntry] = []
+ 
+ 
+-## Create all menu entries needed to track player battlers throughout the combat.
+-func setup(battler_data: BattlerList) -> void:
+-	battlers = battler_data.players
++func _ready() -> void:
++	CombatEvents.combat_finished.connect(_clear)
+ 
+ 
+-# Override the base method to let the combat know which battler was selected.
+-func _on_entry_pressed(entry: BaseButton) -> void:
+-	if not is_disabled:
+-		var battler_entry = entry as UIBattlerEntry
+-		
+-		# Prevent the player from issuing orders to AI-controlled Battlers.
+-		if not battler_entry.battler.ai_scene:
+-			CombatEvents.player_battler_selected.emit(battler_entry.battler)
++# Free any old battler entries, if they exist.
++func _clear() -> void:
++	for old_entry in get_children():
++		old_entry.queue_free()
++	_entries.clear()
+diff --git a/src/combat/ui/battler_entry/ui_player_battler_list.tscn b/src/combat/ui/battler_entry/ui_player_battler_list.tscn
+deleted file mode 100644
+index 09f9616..0000000
+--- a/src/combat/ui/battler_entry/ui_player_battler_list.tscn
++++ /dev/null
+@@ -1,118 +0,0 @@
+-[gd_scene load_steps=7 format=3 uid="uid://cy0jvvqhcopp3"]
+-
+-[ext_resource type="Script" uid="uid://2bkem6rl5jl6" path="res://src/combat/ui/battler_entry/ui_player_battler_list.gd" id="1_gvsvq"]
+-[ext_resource type="PackedScene" uid="uid://cxrn4uvha8g2w" path="res://src/combat/ui/cursors/ui_menu_cursor.tscn" id="2_okk2n"]
+-
+-[sub_resource type="Animation" id="Animation_eofhr"]
+-length = 0.001
+-tracks/0/type = "value"
+-tracks/0/imported = false
+-tracks/0/enabled = true
+-tracks/0/path = NodePath(".:modulate")
+-tracks/0/interp = 1
+-tracks/0/loop_wrap = true
+-tracks/0/keys = {
+-"times": PackedFloat32Array(0),
+-"transitions": PackedFloat32Array(1),
+-"update": 0,
+-"values": [Color(1, 1, 1, 0)]
+-}
+-tracks/1/type = "value"
+-tracks/1/imported = false
+-tracks/1/enabled = true
+-tracks/1/path = NodePath("MenuCursor:modulate")
+-tracks/1/interp = 1
+-tracks/1/loop_wrap = true
+-tracks/1/keys = {
+-"times": PackedFloat32Array(0),
+-"transitions": PackedFloat32Array(1),
+-"update": 0,
+-"values": [Color(1, 1, 1, 0)]
+-}
+-
+-[sub_resource type="Animation" id="Animation_rpy6m"]
+-resource_name = "fade_in"
+-length = 0.7
+-step = 0.1
+-tracks/0/type = "value"
+-tracks/0/imported = false
+-tracks/0/enabled = true
+-tracks/0/path = NodePath(".:modulate")
+-tracks/0/interp = 1
+-tracks/0/loop_wrap = true
+-tracks/0/keys = {
+-"times": PackedFloat32Array(0, 0.7),
+-"transitions": PackedFloat32Array(1, 1),
+-"update": 0,
+-"values": [Color(1, 1, 1, 0), Color(1, 1, 1, 1)]
+-}
+-tracks/1/type = "value"
+-tracks/1/imported = false
+-tracks/1/enabled = true
+-tracks/1/path = NodePath("MenuCursor:modulate")
+-tracks/1/interp = 1
+-tracks/1/loop_wrap = true
+-tracks/1/keys = {
+-"times": PackedFloat32Array(0, 0.7),
+-"transitions": PackedFloat32Array(1, 1),
+-"update": 0,
+-"values": [Color(1, 1, 1, 0), Color(1, 1, 1, 1)]
+-}
+-
+-[sub_resource type="Animation" id="Animation_n07s7"]
+-resource_name = "fade_out"
+-length = 0.3
+-step = 0.1
+-tracks/0/type = "value"
+-tracks/0/imported = false
+-tracks/0/enabled = true
+-tracks/0/path = NodePath(".:modulate")
+-tracks/0/interp = 1
+-tracks/0/loop_wrap = true
+-tracks/0/keys = {
+-"times": PackedFloat32Array(0, 0.3),
+-"transitions": PackedFloat32Array(1, 1),
+-"update": 0,
+-"values": [Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
+-}
+-tracks/1/type = "value"
+-tracks/1/imported = false
+-tracks/1/enabled = true
+-tracks/1/path = NodePath("MenuCursor:modulate")
+-tracks/1/interp = 1
+-tracks/1/loop_wrap = true
+-tracks/1/keys = {
+-"times": PackedFloat32Array(0, 0.3),
+-"transitions": PackedFloat32Array(1, 1),
+-"update": 0,
+-"values": [Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
+-}
+-
+-[sub_resource type="AnimationLibrary" id="AnimationLibrary_25pwl"]
+-_data = {
+-&"RESET": SubResource("Animation_eofhr"),
+-&"fade_in": SubResource("Animation_rpy6m"),
+-&"fade_out": SubResource("Animation_n07s7")
+-}
+-
+-[node name="PlayerBattlerList" type="VBoxContainer"]
+-modulate = Color(1, 1, 1, 0)
+-anchors_preset = 6
+-anchor_left = 1.0
+-anchor_top = 0.5
+-anchor_right = 1.0
+-anchor_bottom = 0.5
+-offset_left = -40.0
+-offset_top = -20.0
+-offset_bottom = 20.0
+-grow_horizontal = 0
+-grow_vertical = 2
+-script = ExtResource("1_gvsvq")
+-
+-[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+-libraries = {
+-&"": SubResource("AnimationLibrary_25pwl")
+-}
+-
+-[node name="MenuCursor" parent="." instance=ExtResource("2_okk2n")]
+-modulate = Color(1, 1, 1, 0)
+diff --git a/src/combat/ui/effect_labels/ui_effect_label_builder.gd b/src/combat/ui/effect_labels/ui_effect_label_builder.gd
+index 4484b4b..afde762 100644
+--- a/src/combat/ui/effect_labels/ui_effect_label_builder.gd
++++ b/src/combat/ui/effect_labels/ui_effect_label_builder.gd
+@@ -8,8 +8,8 @@ class_name UIEffectLabelBuilder extends Node2D
+ @export var missed_label_scene: PackedScene
+ 
+ 
+-func setup(battler_data: BattlerList) -> void:
+-	for battler in battler_data.get_all_battlers():
++func setup(battler_data: BattlerRoster) -> void:
++	for battler in battler_data.get_battlers():
+ 
+ 		battler.hit_missed.connect(func _on_battler_hit_missed() -> void:
+ 			var label: = missed_label_scene.instantiate()
+diff --git a/src/combat/ui/list_menu/ui_list_menu.tscn b/src/combat/ui/list_menu/ui_list_menu.tscn
+index 5615a17..b63a5eb 100644
+--- a/src/combat/ui/list_menu/ui_list_menu.tscn
++++ b/src/combat/ui/list_menu/ui_list_menu.tscn
+@@ -1,64 +1,8 @@
+-[gd_scene load_steps=7 format=3 uid="uid://ux2r727n3476"]
++[gd_scene load_steps=3 format=3 uid="uid://ux2r727n3476"]
+ 
+ [ext_resource type="Script" uid="uid://cc3iboci8fb5l" path="res://src/combat/ui/list_menu/ui_list_menu.gd" id="1_twydf"]
+ [ext_resource type="PackedScene" uid="uid://cxrn4uvha8g2w" path="res://src/combat/ui/cursors/ui_menu_cursor.tscn" id="2_eegdl"]
+ 
+-[sub_resource type="Animation" id="Animation_eofhr"]
+-length = 0.001
+-tracks/0/type = "value"
+-tracks/0/imported = false
+-tracks/0/enabled = true
+-tracks/0/path = NodePath(".:modulate")
+-tracks/0/interp = 1
+-tracks/0/loop_wrap = true
+-tracks/0/keys = {
+-"times": PackedFloat32Array(0),
+-"transitions": PackedFloat32Array(1),
+-"update": 0,
+-"values": [Color(1, 1, 1, 0)]
+-}
+-
+-[sub_resource type="Animation" id="Animation_rpy6m"]
+-resource_name = "fade_in"
+-length = 0.7
+-step = 0.1
+-tracks/0/type = "value"
+-tracks/0/imported = false
+-tracks/0/enabled = true
+-tracks/0/path = NodePath(".:modulate")
+-tracks/0/interp = 1
+-tracks/0/loop_wrap = true
+-tracks/0/keys = {
+-"times": PackedFloat32Array(0, 0.7),
+-"transitions": PackedFloat32Array(1, 1),
+-"update": 0,
+-"values": [Color(1, 1, 1, 0), Color(1, 1, 1, 1)]
+-}
+-
+-[sub_resource type="Animation" id="Animation_n07s7"]
+-resource_name = "fade_out"
+-length = 0.3
+-step = 0.1
+-tracks/0/type = "value"
+-tracks/0/imported = false
+-tracks/0/enabled = true
+-tracks/0/path = NodePath(".:modulate")
+-tracks/0/interp = 1
+-tracks/0/loop_wrap = true
+-tracks/0/keys = {
+-"times": PackedFloat32Array(0, 0.3),
+-"transitions": PackedFloat32Array(1, 1),
+-"update": 0,
+-"values": [Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
+-}
+-
+-[sub_resource type="AnimationLibrary" id="AnimationLibrary_25pwl"]
+-_data = {
+-&"RESET": SubResource("Animation_eofhr"),
+-&"fade_in": SubResource("Animation_rpy6m"),
+-&"fade_out": SubResource("Animation_n07s7")
+-}
+-
+ [node name="ListMenu" type="VBoxContainer"]
+ modulate = Color(1, 1, 1, 0)
+ anchors_preset = 6
+@@ -73,9 +17,4 @@ grow_horizontal = 0
+ grow_vertical = 2
+ script = ExtResource("1_twydf")
+ 
+-[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+-libraries = {
+-"": SubResource("AnimationLibrary_25pwl")
+-}
+-
+ [node name="MenuCursor" parent="." instance=ExtResource("2_eegdl")]
+diff --git a/src/combat/ui/turn_bar/portrait_bg_ally.png b/src/combat/ui/turn_bar/portrait_bg_ally.png
+deleted file mode 100644
+index dcb0c5c7355a1c02a88f64cd19027a72e5f95b85..0000000000000000000000000000000000000000
+GIT binary patch
+literal 0
+HcmV?d00001
+
+literal 9529
+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
+R)UhW(K~_bk0%jWge*j$P?2Z5c
+
+diff --git a/src/combat/ui/turn_bar/portrait_bg_ally.png.import b/src/combat/ui/turn_bar/portrait_bg_ally.png.import
+deleted file mode 100644
+index b7d74a0..0000000
+--- a/src/combat/ui/turn_bar/portrait_bg_ally.png.import
++++ /dev/null
+@@ -1,40 +0,0 @@
+-[remap]
+-
+-importer="texture"
+-type="CompressedTexture2D"
+-uid="uid://bda66befdbudh"
+-path="res://.godot/imported/portrait_bg_ally.png-c4cbdeb48156b9eee64db936ced8e941.ctex"
+-metadata={
+-"vram_texture": false
+-}
+-
+-[deps]
+-
+-source_file="res://src/combat/ui/turn_bar/portrait_bg_ally.png"
+-dest_files=["res://.godot/imported/portrait_bg_ally.png-c4cbdeb48156b9eee64db936ced8e941.ctex"]
+-
+-[params]
+-
+-compress/mode=0
+-compress/high_quality=false
+-compress/lossy_quality=0.7
+-compress/uastc_level=0
+-compress/rdo_quality_loss=0.0
+-compress/hdr_compression=1
+-compress/normal_map=0
+-compress/channel_pack=0
+-mipmaps/generate=false
+-mipmaps/limit=-1
+-roughness/mode=0
+-roughness/src_normal=""
+-process/channel_remap/red=0
+-process/channel_remap/green=1
+-process/channel_remap/blue=2
+-process/channel_remap/alpha=3
+-process/fix_alpha_border=true
+-process/premult_alpha=false
+-process/normal_map_invert_y=false
+-process/hdr_as_srgb=false
+-process/hdr_clamp_exposure=false
+-process/size_limit=0
+-detect_3d/compress_to=1
+diff --git a/src/combat/ui/turn_bar/portrait_bg_enemy.png b/src/combat/ui/turn_bar/portrait_bg_enemy.png
+deleted file mode 100644
+index 21c25bd760357c2a87cd1d64e93b55af75f2bb75..0000000000000000000000000000000000000000
+GIT binary patch
+literal 0
+HcmV?d00001
+
+literal 9672
+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
+U>083!Ei6D;L0!I7&NS$M0KqIlhyVZp
+
+diff --git a/src/combat/ui/turn_bar/portrait_bg_enemy.png.import b/src/combat/ui/turn_bar/portrait_bg_enemy.png.import
+deleted file mode 100644
+index eb2d445..0000000
+--- a/src/combat/ui/turn_bar/portrait_bg_enemy.png.import
++++ /dev/null
+@@ -1,40 +0,0 @@
+-[remap]
+-
+-importer="texture"
+-type="CompressedTexture2D"
+-uid="uid://cx3migkss6sja"
+-path="res://.godot/imported/portrait_bg_enemy.png-b47360190e5adcea6e504f7c5c31a47f.ctex"
+-metadata={
+-"vram_texture": false
+-}
+-
+-[deps]
+-
+-source_file="res://src/combat/ui/turn_bar/portrait_bg_enemy.png"
+-dest_files=["res://.godot/imported/portrait_bg_enemy.png-b47360190e5adcea6e504f7c5c31a47f.ctex"]
+-
+-[params]
+-
+-compress/mode=0
+-compress/high_quality=false
+-compress/lossy_quality=0.7
+-compress/uastc_level=0
+-compress/rdo_quality_loss=0.0
+-compress/hdr_compression=1
+-compress/normal_map=0
+-compress/channel_pack=0
+-mipmaps/generate=false
+-mipmaps/limit=-1
+-roughness/mode=0
+-roughness/src_normal=""
+-process/channel_remap/red=0
+-process/channel_remap/green=1
+-process/channel_remap/blue=2
+-process/channel_remap/alpha=3
+-process/fix_alpha_border=true
+-process/premult_alpha=false
+-process/normal_map_invert_y=false
+-process/hdr_as_srgb=false
+-process/hdr_clamp_exposure=false
+-process/size_limit=0
+-detect_3d/compress_to=1
+diff --git a/src/combat/ui/turn_bar/portrait_bg_player.png b/src/combat/ui/turn_bar/portrait_bg_player.png
+deleted file mode 100644
+index e008e10ca7fcfe7de20f67efcb4e7c55d46bc1af..0000000000000000000000000000000000000000
+GIT binary patch
+literal 0
+HcmV?d00001
+
+literal 10236
+zcmZu%byQVPv_6;amTp11q`L$}q`OPH8_7!u5>nzt8l<~hTDn`hBqT0U((sPI_upIZ
+zk8{sicg>nTvuEbp-~RSQsi`PnV~}G20D!Id`jrOw4hNr)Xei+CiwM~j@P+RBTHgZz
+zaC-kekO7zCci^97o^pDgnl9F!KIZOLfRB$4r=7Edho!lz6{m~4O*&kR8~|tm#aGf=
+zz8S}vK1M_~j{}mL-YHf-b|dt~e8`wNX0iP;gi-BHD?9E{E!jhidv>wEU)aww6xpTN
+z4zCuxC;7xPR{ZgTRY$9psNkxA-Ro}jBz_V3m6n=bbbv`!V7o6i?ztH6-EL~?iP-uC
+z3F&-w1b?|Xwu4?T`TzZVB%WGF+*iF}tj1x;TOSL}#D-c)GpMsSJa@)XUtG65<Pxuz
+zy6&?@L?h@#NbtVZ<`^;avcTi&knEpZ_oEH@6TdKy5aSA10FDmkIuPJ%n{RWdDAO1%
+zw<I0Zr%`fXk%s=xA1Kt3%CIKa3rE1KGfV9WYkQuw;2+6Ub%nzv)+`!|JObc_$=QNU
+z41(hqX8m%Yf0Wczt)(+i%+R46;@`Pyt~atQ03x6id~a<%br9mhtRQ-|wDbX%e42M&
+zlP~5G5q}(!&iRJYJ?~oOtu9cIc*}Zi@6QRKK<EFMM|Ug-wqM^}5dhUd`RgP!%vf#z
+z%k@F!GSn^V9!ZlO99T5!1_0~~bch8%%#8isFjIp}Qlx1Bqd<bCK+pz{-!W`4;&_gI
+zXjJin<Xx)YQQ>?-HeKj9eH$3#b8~3!)(>40(XJeMQ7rEJa+I!L!H;ir7P(Nz$r_jO
+zvB>a=D##s%Ypx<AF0eLfCPYH#1`x~H0IjTBxCR_`qA-UFW!3318HE;*YHhC$o*w)%
+zF|i>~$4GktL5K8&cF+Vq*$$55NlzUy!{!Fa&5Ps20$S3!yZ(ss1G~3H=`&@|aZNV`
+z2;<n5`cUNR#sfufA7>IW=&TuQyz6yHP|fIp*(~8K*v)(z<~{;So3I0Axecc`O7FM7
+zD<wT?*QTQKEX&r>QKC4K?3f0EebwUejK86;g1_}JpuUsA7N)%?&?D>Kw*Y)0Qp(dq
+zvE_ognTV)iC@V8aQZwOumD%?Nbtw|zf6u$-Uu1qyYVj~e@D!P^uE55KH<nas!qz*+
+zhU2=U!Eh+;&Ea&&ugusT`jT3iVSQRav1;77O0btYJ?XAB>1%?|e={)}vxvnO{}lCe
+zWdqP#C3U;sRUB~$y`(;4h+U|PNm(b<=^U9YgT2+_pNjIrzJ)~@5K?9-^1Xx8g+A9;
+zikOrmHCHo=8d3~)IweEI>K8%;y3SWEJz}|S?S~IJUB3Q(*ukFZSeQ*-fIu(nH-`Ro
+zIAeZg0FZNIeZJWp&ToyuU%*;sa<DT_cA<B0N($o(iTHuV!<F%@1gUifxCe4r4(~tB
+zl7w24RV)ed+QvGGdsAIDVC(Ty0eoKC*d>O$Sz5$<%#bd}S<>8z$L79(k}!T?HWRxg
+zsm965D6-NQxMt|fdlBd<(lyQ0wOak~J*#k!@rFP-FsM4PTv}50t+Msl7X)K8EN(t)
+zW9DWmEJ7dZEUR$oWwn`%)8QmFD>oIk=IbyMZP<ERhnIA*Je>;?kgl&poz}cPS&p-6
+z2eBn<hbacznFm<jrXEHd^D?)?J<ZtJ;CIjAhS>JBV!Zkt#rjv65F`Yt^UK+-i;8p0
+z*3j;U0xlZZn7$w);Q7gG>~|GAhFwSEG!hO<!DgNd%doxTx`^bfvSK>~K!4Jbx4-l8
+zI2LEs9<U_^jrqSfH`4TWrvspUjuEpD66fq}N9Twqve*XyS*tL*VuOAFCf%R6^Ld?T
+zFt?Y=;coM<(>8ISQoHN5cGCd$W0xFcRh&3><LygmI4IAW)87!wGoQ_*&zKsJese0e
+zLxJLBK8iW4ls%=c<@)1bG(;<|z7%W~K6!%=8a2w2zq;#D)0tctSl1;_mMVXUD#&*~
+zzGAON0t}Sg*`^zj6b=m2J;Ae0u^hL0p_-k@mW7D~1S;jdJgk^2qNw{U+B>Pv3f%5e
+zuqdZ4>tsyxvl&3Tf~ICV;9P+>u94p4fPws6sp{%WuGR+bvf1iDld=~0K*<n$6)sNu
+z1phu%?~YJOd&#a7^`jS%!`^O^*g7R?w5(+lkYpRyeYxoKT^`&qsKCYW3+-LQGFAS3
+zhWX9E++Eem$WrTH-{;b8Us}<%!cZ6iA@<b`LGSIzHL9gji0vf@c57KW0=;2O<rfO?
+zYMI&cJ05OWf&UZMMFk289=npxvK=k~?IRjcdUju$JO<fZ>Nl{A&BaDZd0IZ+ydKb{
+zL6*jgH7Mz5JX9@urn?PCku_B1mPvF|No+XB&Gplc!2o#dk1?e!vzA3mWDRkmUwja_
+zJPFyXU~K8%-(iiIq&5MkcDaVW?~hGQs|WiNKNH*?>Wctq%`u)Ob98Smwc2AZt&0PI
+zyyWA7(12vSKzx{VK}+MFYSH0%HZ1SK>nhXC_Hb$vrp}-+XR>^w$DC)cjYumm{@0@V
+zd`6VX)3yvHXHH<wZpP#*MP(^-`K|!rVd?ROX_yu2*n4V9L@Rv|sh`Nu{#F4wu#~yN
+z2k}4kg{`lUaZtY0lx)+OxO=Qt+u%zlF_g{iyRWU|sr&D~<M#t6I<eu*m)eTC$-j6~
+zfosXf$|0Q)KJ$5*SVX+VDIl`Z9uQGBE_ktX0x8n|BIoXmdgS*c^bp)t8%Dp&%UsCY
+zDeQ9m9LfRYRFrAtJEP-hYyV=KLXS{q%kpsx3|iL+{l=_QHnkV@$5GE~HqpJlx65;}
+zd$j;ns)5+5sgZb3`%Pd<932a_mGI*FCv|}lin{RyilyH`f}a&3xE*U>6E`m<zDz-r
+z-k{r~?{D4T$g1|2Kz}g}MeX5Ix#NU<#{mpJ7$w$P!C9;nRoFzjH>!`wifYm&^;OjP
+zu-i?71D{}n!;@hJ&B3IAb0N1>;@r2yl=+{ddVCQ%cEf%LMm|n;-&%h!$$iMJzyV4e
+zbhsN7=|0qgL4YM!4{Za#=u(tD8W$eb9Pf6~g2IRQShLiGj<5`oTF_faemo1EskliU
+zv+d+T0%FmE0+N^KCv+3}vcopJV$`1vJQ>HXg>)ASFsD@&3E0^WJ2+aiQ_8AQ5~VGj
+zMelx32K|o{T__Ux@ZqC{{)Pe5@aRe`U@aoq5XO9alGSWNs+w)vg@BJ&w2Fan0)bYR
+zbO;~MeJD!v&=l#%1psg9L(2a4$4mPpri~i*UgG<`v7fc3e@SwD%(+XcqQ57<F!l)R
+zx!qJSMo%krES#Vzs^sKwXh~eMwJk%GvU}!k{7~@GVljh%Jh{sVKnUSH^s$Y>fh!*M
+zxm~8AFyK9&rjY<!*+7niljB%`rJSwid>@LZ-@D{-6MI4P<!=6bsX-h42##BO1;?R8
+zT<4rXy0<PpW?B?P$_tzV`(MT`=W$Ufa$Q|GhB%x#TIU^YN2JwF3!L6YaU~*GdNbZw
+z2LK+%^CxP=R4bonQMcQ;u!U&vE%+(W@UjtUFDjIWN1fPYD5l3}^9Zr#<JlA5ABok%
+z_;>{oM{4`lkK@=RF5)R7)_qLGmY3}#=??>*=jjOODPy}c+EF|4I-L4isq3gaxT(bC
+zR!{>4l`IQ<`HZkZgoWk=F$j$mc(9foqH*9Yvyt0JH7G=QK{aWYNYVkw&|jg7!9o?U
+z<4WXgNDC+GE`MHb8@ypAKrmAZy5D%a+2lgu!7jpCcA``h@mSm+>wytUn^y7tAyY9;
+zLCJ=TYF#5iJ)eE3oh<r5Lm349)QYD!x=90jkRLL8MNPWkWIYy<wvS;bSfGbny^#Kx
+z0?8&7v+p_|B00kpVQU@pSts|ku$L)c5zUn1g8~{iOkIq^?7%g}j*dtU7YQviWN&}S
+zK>KHn)7@pbLocV4S&Mw>0HRhJjo_s@zVkBmsgwt4Y#Z`}KIKvr6P%<9?`E@083Yn;
+z8tcq2U9A92#u^k1t)1^pF4fWXn<Wv*lYX~0c>l2dL*&gn78Gdo_EU%NcGo=C1um9+
+zgLG~)xvqjz`7AMYyik%DMD?I4z({lVLx8rGx&pJU_WO>~8^1R#6(<;oM0&fmK{h5+
+z-K%5|+>hzACm=mO(7|KyCj#Q<>>7mc1YVKqNUZbmejE^II9>8_r{buA0a8|j3n^z3
+zYhR-)37y|^Y#(}*K3crOo{%a1@-{;v?H9VQ#=4c|vyxLmzO$E>w#K+n4VZ~8h#y)Y
+zetcqNPD82gx%r*BD2M7}^LJT2C;LC<{Tylv`J<nylXBNxhd-Anxk8{%6rahSdSU)k
+zB&%SS04VM0=*+l#tka!pr^M8Z3V}qoVw$`2`s;pN{jQJ{z#B5^QqZ>b=EzIg=>xeS
+za!ak@7smJ68tVm?Xi487>^}OPybb#s@RdiAk3s$^_@rgnC^6drlF_@<zT(n9vR3;@
+zVJ+Lf9#vPW6}$Rw+_Ntzl_nPNQrJlKxJl<=8=vd0xO9K1OBMovllk+1&iK?)R^%3C
+zyv#Ga9aP!;IMx4Jr)mbWQD+u>8o$7CkiB^|LvPqgdh8hbiWJ}}Ti_LxSSHsFI*O6;
+z43!odR^D%yw5BpWphbqJ@iM)vT{8%Di0kXp^begFrzsrTEx&{SPJv#52bdng_8j8^
+z5`hWa3?!oLH<AiXB$DY0YJA92ia^XZ;`^FH>gFMvk6n6WSfM}c01KGa&rp}f0dM3m
+zDFFlSo9#by@}vh`a#l9SdZMIeKy#`LA{2~gQA!PaGQ1F|jgyV|@4P>AGXA=}vTco)
+zm1sAG`5Pk(-}E`1qy`b_9#0K|HE~z+rLG4Y3b~Q+F{FAzt)e>uMH??7anGh$YMB$_
+ze)-dUG<;6F`3{xTo!!KA+A6LO&>1j_tMl6Ht%N|O1g5>uLca1N`0p9!Fh5uYn?H7%
+z#Pdj*;}A1F5b({o)ICWg4*i!Zp(wpVs7C36Q7`!vUf%_KV(}h=L!>KU3MOcn9$kBn
+z1n|Af7@P35Ql!7|dybX1?8$>Sha%UX&Xz>3v2_MW(NZ|=JxqMm7Ap~7pRB}=uFZbb
+zSG(`@A;97kAV!i6PoM7VXOLRiT07g0w87|D%L-FDMO^BM_<JK3^ks4?kO<(j&f<C<
+z>}G<Mx3E@Q9)uT_K6T;u;-Nt96x%Lp0n#;U9@`F*VQn$CR5u>yWp;f}S5=eXmY)~G
+zAV#qIMCV&TVgcxxrK!o_(*nifK33Sz=)b~voih7EL3{w;o-qf=XQfkwiNn;KS|~wo
+z8tpLLp@jzYs9P%B2EeMLZRq$p`}rgGQ+r(2$2lHu2=g$rIAjy1g3#^b4SiPI4m4?7
+z57%Tc<dUzL5|zd>nS>xxBcJM%W=VGCy}wxUe4L|8c`no{eC3W0peeL{O1rnaa5s22
+zg&!T{QS-ZQU>x4slz>3@+k-Z!#CIjR2ABj<5O#Le<r=8e%OOlG`w9UNn;y+L6UGx%
+zJ(B3d2hz@GFlPjAX%<-0KjAL~xz+ssO!ln}&cQJD{JUhFo>{oGev)D8Um4e5co7ip
+z@=0s0ird+W^KS+ib;A%TG3%s}d{ugq&tf5`qQ6N<(oIk;bO;=Z@;nofe%1hcYe^6A
+zTSNL7u(ub1lr?Hw!j=dC^GKy`fg=XiA?ttzS}8}$bElb%Kl57|7(ha7@XxV3snKth
+zIfFqy4_5C-RdpdyV6z<TF9^L{)&;j*H{_3!nH88ZVuyWE{g>$B=t%V6qeB@sTeuj0
+zy4Ri{0czUM7XGoI8P;F82q13mxjUlc=)(3!AW|>QZ<`fqGSX1f1Wd-4bDA6PREPLa
+zI}6Dh+dju~3UI?3PR67!$?-yJ%AXA#sPvlcXl7GpW;O(lRV2zKg)ek`_NXXAQAPl~
+zyzHEo3WakcnnDB_SHu7f#7X-DR{oOo-SARY%pJh&H{k})P1sC)sN<dA5`DIQ8+E6i
+zKPMk1pl2o~yWg`XUz3Twa-!dk@G5@A5X{Y*QUxX`fO@Yl(e)MQs%51yE{e_Xp+6X}
+zXJKVCCK)7!i79i4(79wOu8FHSWG`DA0+RGQ6blm}w&_2fOpv#TLRYZZ1(+9^{>4wP
+zS>1!CEpw=ci{ks!Db3;O6+?G+YN--nU+Wq2a59H<5nsczOMo`BW^mxJ-7<t~sX;pN
+zvOhXMBKcaZ*PBM83Nte>;>*g36dd!Tzn9At|ExQlLvE3SG@_dsCpyTxrp1QV@7LPd
+z8HuK7Yg2xEZFQdiNSNn@t6+(%C`r0t$NPNQHVKcK7A9K1qqW*!sQ@t9z{kwnSb=uj
+z({81AZ0}Js6cG5E#mOTO6Nvr#^y?_A`6p6;t#uRp7Jk5km*F1+pKNb#de_l%re)bL
+zj2vO!oG#=Nee|n;bO9Ez5)*?hyOtiK91peiap^Y5QC%^N==<Ga?AT>-)872klLigO
+z=-1u8V<JXQt+kpSGZxd059S@Ly??dYa~~?1)`(V7=xI&ba>v>WYF}s7+NtR2!a4q8
+zX1RL?Y&G1_qRCY0*jFC=eYfmUHjL}5ZY@YRa;)`{#4prk<L7Sv`IF0cxJK5H^Gsj2
+zLUECgseH9M-1ol@+o-&8LF0OO{t#JiJC8{_Wv3RNTHl%Hd55O!*e}qM%<Ao(#{Ca_
+zMHp7FCa|sw1xV7t;6Eq)kNDTy|0Dh*yeFf_vyI||4Z{2Njg=bR$57v@wz^kMP_$Uh
+zcw{p~fU)zaGoWqoTT4vjM;q}Ta$q?4?%qQA-i3<L`IesWPFj8Wtvcb8p;h0B=?g@_
+z)ZWDsF0}St(~vVu-MF0f=6&ZTHj87J#jIuP%v5_nT`S>RdTuOPm(t!A2Drcs`IEVS
+zxibWxq*E|^?vNblavR$%k?~*PTy7w?ZYXwOBLcYH=lbnxbG!sdBXR}%21Dl;h01-M
+z$pPD6JC_w1?b93tOKm-F$GedLbk5<>lHkhQL0b7r<7R8?T3{yhLnyw=W3rl~^<mRW
+z%ZtY*%0LIpy?{3|y1H}pmxgc^4Y6VCetI7(H*a+Zbwi8cYPf9UBb!2O@OIlA(R%De
+zEmr!~Y5)FwXl(2FF;eXm!U<xH!%eNa24Fk-`nLF>p_3t(;-+eK?3jTqFGx*@-QeVP
+zs$uhtg;HY0`pcq&W>fdCe;G{ysrp|<W#~DJ!%WcgH(wjx1t>{dC)P69kVfAnTt3Hq
+zN9aRoAe)+s2~-zEUS+Y|T}nYjDg<{Fk8dPUEf&5mw#5Q~vhw2ZkqL=2F7DXVAb8vX
+zCmt4Qf9b)mCL0BIzu`oJ=vCXOhM)63H@5Fbrzqv;mTI1t((y}6tG$cac^9VJQ{D$3
+z6HdX@-nlVWap`TX14(7M_}}~QFyc4iwrnzYIs(m4*Ny(jU?9tKr}ZvyO}={#OtRX4
+z<Epw^>}F0k1hl-`uhQo}AGuKFX)2Yf1bh~<IGy24R^x-&m_M(%G?p-+zO=;2(;?3_
+z116)(PQ8*_^qe;NXA*y%zHjUp5v8!jDx;{);2Rk}q#2;elY`L%%#wfm`Y5tHGon=D
+z&+5S-cf)S}p=AaMWUK=7KNuyC&kJ?vbP<`Q1=pFckkFn1(NiU3td{XvZeO4BMOpAf
+z&e<K=!8EHrMd2aA#&>2B{w0A@TQ;VGp9-6goOgUxP4^jYCmbHZE^ede2Nypj<!Ic(
+z(ohNTI=y8|pPrN>51V-WYW0oBgcHnrN+nayR*n|t<`~}q?!85Z2PKlP2!UujyDi;U
+zG*Lc!e`b9(Xg#+Km-Y20jQC`z-Gox6>|*0sQ4l}53QtVyu%!w)@eL9FaSTjpVbR#C
+zbg&<eH1%JXwh*L=TDYS-^d%O^kRC2^;o1qj2v7)1{>vBf;HK0E*X#$N9R-^`bDcLG
+z<?Lgc2*nV!`OiToecbuzz*s#Wx;<z3i&(VB?RQBo0!c37J;U|})lOd5xni)XbtJjf
+z58N%TvwAXo-nED<co^><*;b#WSe}E}D@z9{T440fWcYh4bkEcArGgRAQlM;2s&nb(
+zKw<eW^hOylgQKPd_6^fDG@6h)XAKgj5O5-<mp$DKSIffQJ_kA~O;p&%KlBanio=!9
+zkZ=%|69wjH!kkKbaZOLK<dnBgzU-=Ovm}<Kh=bO_xqqr?Bh9kWvlC|z8>L(wV+y9M
+zfw@@PU;_<Nokgb04@FAN%H&~v`TB%_RF$KOQlQ=A?rz42GH}qfDtMuHWyvxNK&#ZX
+zrj$z*Pa8ev-#&jIAR2PaT(a|Pkyu+@a)o=g-7%8>u?ZtF2Gt3^Wv+@YXI%^ZVtFwB
+zVb_kr9!1tKI9ur-KR&lZ4NK1dOs4NrAso*+P5ONeH*nVe4U`GkpBp}kbt)4OEMVe?
+zhUJo8U9as2i5HSX(6r|IUTOB<=z)py3|bl!Z=Fw~zRKAbEjj8A2n=~CJ6Q33PmTL&
+zbBT<Hf)5!Z5vEgMis-@%>WMjiHk2g(gdxU+PsF~#<PGw)6dZ`nd=aBgBcHo!jSG2x
+zijB@uS!oTg933AD%$vrQqvil=;dj1KKPd_=v4K%7Z8=-c!8ZxFoau_wVidfnB%-I+
+zB{J`4<NFg>P?1NH&VFXUVI-vCA&Dbr%X>vkzYP6i^s8<MHn@jK7bZPyV9BlMCM+WO
+z(9jnJnmf8#G!^mSAxWAq#`L&)T<=fI-)`7PCWWqf<T@ak6|xVR8%9_4EsmQAr03W=
+zoKM03Cb{9Fm*&M2lY@a;o$%bFq@bzl$LN~en;7<2(~C+}J3Nwm+@&zogH_ZCnK%C!
+zJ0m6kJOm);o!BYr{LUOVXV>=Dvij0g7#kq1C}g%-=bad_j2oW9=?%<oTSEx_fFJ$M
+zQC?FUW+rZ#D=DoGlNoTs0e4SS+Vy&@pfDB?YDK0&{XYNaK`wyVjmAWg^~1p8uxV7C
+z`do8wa4+GRlez32NN}fD>{e`{N|vve308K7FQY_pCz6mWL26H$St#~2Q$bPIgR2vo
+zp6ic{lH(J|`biBf-6j73RHRSmXZDcsh^*+`FUg&(Plo5Sgq;JhrV)XWm+!nrr|1vu
+z&K;2&pI3lKmEiZN9L}7&f;-tK``5D4|G4tw&mDSQRU5#zBTFL*<f=q@>fZX{-aqao
+zCr|*LqLR_4t)0E$_@^?gl^aeOuC&I#jcz6Q80Wj+%M6SIokHg>Hh|E41`9zKg^<j=
+z4uRkKJZe4CxeJM)84RbwiKZPTD)#p}FO|~CVvcsy6=D-7=$JH^zZFt`G-UNY_eNft
+zCZ)eziRm$%CY9$5761U!_Qulvk%cU-yW<!F*S!|J_M@3a5|u_LHNG7a9bWPs{W6vi
+zX(Yv{A8^f#>*>U$R*#}#Y^O^AO{a*l)G~-OdECHppsBHL<3Ci>6Oy663FA2ve)mI;
+z*fJ%0RaiB4K4~SoUfF}*)7aM{HgJ<LTb=Dm02R>7Y^=PVY@<+$3(!K#A(MjKcGWjj
+zm46~5&9NO7s(M$S#!$xc=z*T}G9@;6Fp5~8^^i-BbiKn(&35jU*J%8Q#=4ZH^YV8D
+z9b;&0WszY8bDNQ|(v{L&NxS%;AIWMaEw(P)K;?L-?7Jp;@4gq;II>iAY)8khNy$eY
+z&p(-m`?93aj>}d789Mt>p)!V>`xs)Ax?KV!mij*#n{QI13=Tf$VS#e7nyprX0u2Xv
+ztm^jkm)?M@TcCqG(NKc(BoS|gax)iJh<*|*&sm+p=T8q54?AlWIpPRaXwR;s^;et6
+zN6u^;t*XPO1iw69{4SIkZ>U11#0n%HJajnsKv`+SP2758M94v8ocuO`;VZ2oZ`8tD
+z-B8+R*es{~5siKTQl9!Zka)<HJPoUhMK!zzF`*&j$VUCyrK|)B8xcd4qQ7itMIn+O
+zBt!bmFs6s9g9EGc=?~I}>$2^P?4=GUts()|jM3vAN&1;&Fe4!))`xvdL;=m_%|mnO
+zHwocZbu-2`Rx(Ncue7g2z|%^hSJ*+vU(+aSs8Qu;?XVTZQ4JPjqKOToMvpR&!6>Ly
+z`VCAI!W0<LtJ;~u91A56uz`bv>DGGXkfPZpkOz#m#b9$6v-Uo<?c5FotIFMtPVTvU
+zRMw`J#)U62mA2vOOw_r(#*a@Yc$>iRRN1G7s3WXSkD0spT2~ZAMeDPD8cb!rU6aIt
+z%DkXyeWgN#e){_OtX4yOgX;29)~(5ymb<JLtej^nqh?7v2!-V-=HW6%J`(jhd`sd=
+zeEn>o7uTp_a<i~m_;d#OeLQ^<npN?&2I}P`Q0v9kB(@wVs{KR&+k+kK5-#sNG>#Gb
+z9rVt2*u(hey>7;RqOR~qvO><BZ-}TL@?V@@vF6S+JM3DDfk~JX&uk2SUu_pCfTp%c
+z?enck3oTLcqYwDqSFR_g{h5EV9uB467ULne2g@w_czz4?_3UL8;vQQK<y40R*iIPT
+z(&jHO734C#nF->wqgM-mrHjU4(lbYQc<{^)((7;7lMIg<(US8HO^vRlmWX?NQz#30
+z%Xn3ht=eGPyhZ}DEDHA~`g-8vGKId$#?cVp!B!K1yPIoV>P9hAHHSR|u@d&?#oGyz
+zIBJSlYJ7nM7R4p#PJL>9&JrpJi_FHyiwS4TK9+th?ajf%gF6{a5tRkfi<$qrjQ+Jx
+z^-l-@e5%xt;PTVI4kpqJ4P4b;gLs~-=Q|D#nOrn7$8K#kI(G@B{GS{vcG?`70g^^g
+zeDk$>qLObjdb(Z9pK>rkLy+1xq|i=vsTA`9odC?Z@(1ZIDV_IB;>eyK-|jnH`e;jV
+zG&|%si=0K$E4e(eg0bqUjaYU}k+b2_lqUjI@IdXbS#39I{#Ge*by#$tt;O-@@$U;?
+z1=Uzd?=mze%lVe}lJva{09BT!S>Yl`Q%?#L0RT_~|J?-$MufPA5HkX9+SgZt<<uBS
+z>7QKB4&`}fH7t3wFyqN8k>muKEBohGI?_8n&k$C{`}iGHAR|c=h_lEnCkLKBB=0>0
+zA^PA%cguO-X(K|=prUlFKvL<<Q@b;-hx+F(?_cH4B(giFb}>VBt7v$a*d^!<O(%s{
+zJ79Te#aQ4-|5XCR;%EAL4nYlEqxatZ@uX7R03s?HH2oz%@Z$^Jy3yxxgXx|Wk<lY(
+z9<8J;b(lmDeDd%B6tBM`MXMh+wzf#z!3jdYy#~u6J4efSYv3AHAd_XAK90;jk;OG3
+ztwa|=azl`ix-wt!18#joRdw$|9J=e0l#g|IW*3$ElZfJL&u~b~bOnYe>NscDYl`lY
+zd(Uh#2b}NC$fT!;z`~A)<h_HhPxNFXvB{n4*^I>cH>wB;DjQY)Nhr|#xdfS(_32?m
+zOMjBaHmkrB;~zD9fW?=z;aQLF*hYTiE|b&L<ZMc<amA9JAtJdcuX1knE>V3vr-V7W
+zx-ZuTBTG-!=b|~iv)cD5*#CxhoFD&u{;a}k9)#ox$>e*R39hbgH5BKed+4+j62eAh
+zy8*BTDpp1{m_bHeb=9Z2qpv_xrcLD`yp#jR%jx`zit>iknyxQ7Ld<;pRy$+wS=#-a
+zU}F#4udh-%^%SQAvOsg5eW$@>3w&!v;eTiLy#h+wi2$u<atfT{5^%y^w=am?zuQ%O
+z_|-xHEO|rV)eh5>ht-dJCJwur0wzWx^nwmHqXUBYJyLh!rQE@`rNMfEIYaULVm9fi
+z<gp9n?YX%=D-OYFKV*!y950-0(<eXdA;Il`#gu?{@y4S)Rm@2_e1j9!yk&Rx**U9D
+z)BE#l+%9f;(%T)oVo~xzDZpqW8q)hUh3aW5^da<ezJ9PLj978h2~kI6f#ET$%*DAG
+zJ-WXf6Wh-!rUxuHk%Shqr2ocTF;sFFk(W48oYs#ye&Kj`Lassks}3|9c<1dnv>9kj
+zlKa3OR8a#jE^OTT@qvlyJ8FXgVh(}SrIRQbK)x>pP!h3|_J3#pwN4_>>F3A5NEDwZ
+z2NJ+VB}&oepY`DM-gkhP5_-vC>|{QYoC5#KC&~eLg9gKI-=X~Ptr1YU7V}gOpTDcS
+z*6vBPqy(f4O{v^&RI}Phtzu9z%oRFOCR+2l0i>?JOZ0uuo>Ic~jFzyNPdwdU?O!Vw
+zpJ0=uSFReaeQ$slf4~;sIS<#CQQ#bqDJzar39_H|c8ZZfbk-@}Z=ad+A!i326_9P_
+zX>UFk<w9^wB6%D@L6R=O3}5Igq=0iA%h`%HH|>+#TYP?+-d)qchIg2&*>Xc5u4<&l
+zj!E#LKI^|4P5rY!4(;FnrqZQV>{tHc3l{~Gw;Fhj|HvG6{P)UA7T(q-EOJt4H!70r
+z38#R_&=0#j#SXId`QU=POe4o1&JszAG+9BhHY^PQbXar!#U7Y+Ey&rnxx27*x~alB
+z5T(QL(Q>GwK}AT*$Frv9(sXle@<Ys+(~4nhx#-gJe=VM&LBqDPj2)Rng!e2w=-743
+z5*$KIyj)lWZWi|$v8`#L{$4e1=lEYmKQ-lr)AJg3KC6sQz77cS%r`rW%yn2=F&xhr
+z99#;TfOCZD1nOX|h0_B<h}Df}IMruMK3lxgqbrC2k?!`(X_GXXDZ1`RR48r|L;IR2
+z+=17!`&F-ZV{eC=kHnEdf8$PnYhF`p6X`+ROI9m*!|~yxjz3E|&I-jy56&HVGWij2
+zxVpG^O-bBC$?QtsXX2K(^@ykl5SZ1@X=j1Wv5`-Q<cc9mXhaW|IT3pATl4MCp84&H
+zlTL;kYfB&p?l|}*)`@Lfq<)7&B7D{-wW8wWr9V)tC}yG#mS%}pNc=x5gn>c50~|)I
+zj%IS5Pp`+>{_{E8Y%&zPtj#g<H~+RNCs2O0CobG`{DtdD`RqClpp6&ydt8DujeFaU
+zp!%TyHlp7mX3PG^*k8_5S$U?N-K#cA=u)4ZymaN&r1P7q&g<mY;v|#5{Mm;>iRT!p
+zdMA$f_HgYb9^Wh!@Y}WMh2F`0;_Bzy|AU;q)NVy<%ZvcI813sPE#sC*L)fRef`#Pd
+zVjxZOlBB24n*LivSu(U78%_b>cHv+1Vnm3id(Ec4o+<2Y2Ju_G@SM7sPyed!LgF|5
+z0im?7VOD9w@qv$5_gp4Jp;7;NY{_yj^9Sk%hSX8xC9g{);{+w`>uE}0IVoEmD-=4#
+zn`HHMK02XFAobsX_NBkl#o7z93zHbw2=oXm^LZ!HNGHg2G-N(oUmC{%^yI6GG439B
+zzT;+hVi2}9VIhgXmI98|UfX|G8P@J=$t7M35(5i}VdnM?*bV9nlD_bYtzLhZ9GZV)
+zq0U#5S3rlvLd;O$l%yxv*S1_`8My!3jV-tVL|m^>WL)>42qZPLVQp`THX-2<UsoHn
+uJX_$Us~JFv<c_r|)cgP3fqN)^LZ$lRmc>&VObOoH0~F;{URBDNh5iqn%7D`V
+
+diff --git a/src/combat/ui/turn_bar/portrait_bg_player.png.import b/src/combat/ui/turn_bar/portrait_bg_player.png.import
+deleted file mode 100644
+index ad841eb..0000000
+--- a/src/combat/ui/turn_bar/portrait_bg_player.png.import
++++ /dev/null
+@@ -1,40 +0,0 @@
+-[remap]
+-
+-importer="texture"
+-type="CompressedTexture2D"
+-uid="uid://bt4jp5jwumaxr"
+-path="res://.godot/imported/portrait_bg_player.png-a0e1f8422c2822b299fa3af05ff4f1b2.ctex"
+-metadata={
+-"vram_texture": false
+-}
+-
+-[deps]
+-
+-source_file="res://src/combat/ui/turn_bar/portrait_bg_player.png"
+-dest_files=["res://.godot/imported/portrait_bg_player.png-a0e1f8422c2822b299fa3af05ff4f1b2.ctex"]
+-
+-[params]
+-
+-compress/mode=0
+-compress/high_quality=false
+-compress/lossy_quality=0.7
+-compress/uastc_level=0
+-compress/rdo_quality_loss=0.0
+-compress/hdr_compression=1
+-compress/normal_map=0
+-compress/channel_pack=0
+-mipmaps/generate=false
+-mipmaps/limit=-1
+-roughness/mode=0
+-roughness/src_normal=""
+-process/channel_remap/red=0
+-process/channel_remap/green=1
+-process/channel_remap/blue=2
+-process/channel_remap/alpha=3
+-process/fix_alpha_border=true
+-process/premult_alpha=false
+-process/normal_map_invert_y=false
+-process/hdr_as_srgb=false
+-process/hdr_clamp_exposure=false
+-process/size_limit=0
+-detect_3d/compress_to=1
+diff --git a/src/combat/ui/turn_bar/ui_battler_icon.gd b/src/combat/ui/turn_bar/ui_battler_icon.gd
+deleted file mode 100644
+index 4f3aa16..0000000
+--- a/src/combat/ui/turn_bar/ui_battler_icon.gd
++++ /dev/null
+@@ -1,49 +0,0 @@
+-@tool
+-class_name UIBattlerIcon extends TextureRect
+-
+-## Describe the type of Battler represented by the icon:
+-##<br> - Allies are friendly battlers that are not controlled by the player.
+-##<br> - Player battlers are almost always player-controlled (unless asleep/berzerked, for example).
+-##<br> - Enemy battlers act against the player and must be defeated.
+-enum Types { ALLY, PLAYER, ENEMY }
+-
+-const PORTRAIT_BACKS: = {
+-	Types.ALLY: preload("portrait_bg_ally.png"),
+-	Types.PLAYER: preload("portrait_bg_player.png"),
+-	Types.ENEMY: preload("portrait_bg_enemy.png"),
+-}
+-
+-@export var battler_type: Types:
+-	set(value):
+-		battler_type = value
+-		texture = PORTRAIT_BACKS.get(battler_type)
+-
+-@export var icon: Texture:
+-	set(value):
+-		icon = value
+-		
+-		if not is_inside_tree():
+-			await ready
+-		_icon.texture = icon
+-
+-## The upper and lower bounds describing the UIBattlerIcon's movement along the x-axis.
+-## The icon moves along the turn bar, whose size is used to determine where and how far the icon
+-## may move.
+-@export var position_range := Vector2.ZERO:
+-	set(value):
+-		position_range = value
+-		position.x = lerpf(position_range.x, position_range.y, progress)
+-
+-## Determines where on the turn bar the icon is currently located. The value is clamped between 0
+-## and 1.
+-@export var progress: = 0.0:
+-	set(value):
+-		progress = clampf(value, 0.0, 1.0)
+-		position.x = lerpf(position_range.x, position_range.y, progress)
+-
+-@onready var _anim: = $AnimationPlayer as AnimationPlayer
+-@onready var _icon: = $Icon as TextureRect
+-
+-
+-func fade_out() -> void:
+-	_anim.play("fade_out")
+diff --git a/src/combat/ui/turn_bar/ui_battler_icon.gd.uid b/src/combat/ui/turn_bar/ui_battler_icon.gd.uid
+deleted file mode 100644
+index 72c9795..0000000
+--- a/src/combat/ui/turn_bar/ui_battler_icon.gd.uid
++++ /dev/null
+@@ -1 +0,0 @@
+-uid://dckveflvxdyse
+diff --git a/src/combat/ui/turn_bar/ui_battler_icon.tscn b/src/combat/ui/turn_bar/ui_battler_icon.tscn
+deleted file mode 100644
+index ddb0964..0000000
+--- a/src/combat/ui/turn_bar/ui_battler_icon.tscn
++++ /dev/null
+@@ -1,88 +0,0 @@
+-[gd_scene load_steps=7 format=3 uid="uid://c8ikc817ccjtv"]
+-
+-[ext_resource type="Texture2D" uid="uid://bt4jp5jwumaxr" path="res://src/combat/ui/turn_bar/portrait_bg_player.png" id="1_ba558"]
+-[ext_resource type="Script" uid="uid://dckveflvxdyse" path="res://src/combat/ui/turn_bar/ui_battler_icon.gd" id="2_471d1"]
+-[ext_resource type="Texture2D" uid="uid://pkp6t20skjpe" path="res://combat/battlers/bear/bear.png" id="2_qfsow"]
+-
+-[sub_resource type="Animation" id="Animation_ih8oe"]
+-length = 0.001
+-tracks/0/type = "value"
+-tracks/0/imported = false
+-tracks/0/enabled = true
+-tracks/0/path = NodePath(".:modulate")
+-tracks/0/interp = 1
+-tracks/0/loop_wrap = true
+-tracks/0/keys = {
+-"times": PackedFloat32Array(0),
+-"transitions": PackedFloat32Array(1),
+-"update": 0,
+-"values": [Color(1, 1, 1, 1)]
+-}
+-
+-[sub_resource type="Animation" id="Animation_p1hyi"]
+-resource_name = "fade_out"
+-length = 0.4
+-step = 0.1
+-tracks/0/type = "value"
+-tracks/0/imported = false
+-tracks/0/enabled = true
+-tracks/0/path = NodePath(".:modulate")
+-tracks/0/interp = 1
+-tracks/0/loop_wrap = true
+-tracks/0/keys = {
+-"times": PackedFloat32Array(0, 0.4),
+-"transitions": PackedFloat32Array(1, 1),
+-"update": 0,
+-"values": [Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
+-}
+-tracks/1/type = "method"
+-tracks/1/imported = false
+-tracks/1/enabled = true
+-tracks/1/path = NodePath(".")
+-tracks/1/interp = 1
+-tracks/1/loop_wrap = true
+-tracks/1/keys = {
+-"times": PackedFloat32Array(0.4),
+-"transitions": PackedFloat32Array(1),
+-"values": [{
+-"args": [],
+-"method": &"queue_free"
+-}]
+-}
+-
+-[sub_resource type="AnimationLibrary" id="AnimationLibrary_vp71b"]
+-_data = {
+-&"RESET": SubResource("Animation_ih8oe"),
+-&"fade_out": SubResource("Animation_p1hyi")
+-}
+-
+-[node name="UIBattlerIcon" type="TextureRect"]
+-texture_filter = 2
+-offset_left = -66.0
+-offset_top = -68.0
+-offset_right = 66.0
+-offset_bottom = 68.0
+-texture = ExtResource("1_ba558")
+-stretch_mode = 3
+-script = ExtResource("2_471d1")
+-battler_type = 1
+-
+-[node name="Icon" type="TextureRect" parent="."]
+-layout_mode = 1
+-anchors_preset = 15
+-anchor_right = 1.0
+-anchor_bottom = 1.0
+-offset_left = -2.0
+-offset_top = 32.0
+-offset_right = 2.0
+-offset_bottom = -32.0
+-grow_horizontal = 2
+-grow_vertical = 2
+-texture = ExtResource("2_qfsow")
+-expand_mode = 2
+-stretch_mode = 5
+-
+-[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+-libraries = {
+-"": SubResource("AnimationLibrary_vp71b")
+-}
+diff --git a/src/combat/ui/turn_bar/ui_turn_bar.gd b/src/combat/ui/turn_bar/ui_turn_bar.gd
+deleted file mode 100644
+index 5f7b853..0000000
+--- a/src/combat/ui/turn_bar/ui_turn_bar.gd
++++ /dev/null
+@@ -1,36 +0,0 @@
+-## Displays the timeline representing the turn order of all battlers in the arena.
+-## Battler icons move along the timeline in real-time as their readiness updates.
+-class_name UITurnBar extends Control
+-
+-const ICON_SCENE: = preload("ui_battler_icon.tscn")
+-
+-@onready var _background: = $Background as TextureRect
+-@onready var _icons: = $Background/Icons as Control
+-
+-
+-## Initialize the turn bar, passing in all the battlers that we want to display.
+-func setup(battler_data: BattlerList) -> void:
+-	for battler in battler_data.get_all_battlers():
+-		# Connect a handful of signals to the icon so that it may respond to changes in the
+-		# Battler's readiness and fade out if the Battler falls in combat.
+-		var icon: UIBattlerIcon = ICON_SCENE.instantiate()
+-		icon.icon = battler.anim.battler_icon
+-		icon.battler_type = (
+-			UIBattlerIcon.Types.PLAYER if battler.is_player else UIBattlerIcon.Types.ENEMY
+-		)
+-		icon.position_range = Vector2(
+-			-icon.size.x / 2.0,
+-			_background.size.x -icon.size.x / 2.0
+-		)
+-
+-		battler.health_depleted.connect(icon.fade_out)
+-		battler.readiness_changed.connect(
+-			# There is an edge case where a player Battler has managed to deplete their own hp.
+-			# In this case, the UIBattlerIcon is probably already freed when the Battler's readiness
+-			# changes after the action has finished.
+-			# Thus, we need to make sure that the icon is valid before updating it.
+-			func(readiness: float):
+-				if is_instance_valid(icon):
+-					icon.progress = readiness / 100.0)
+-		
+-		_icons.add_child(icon)
+diff --git a/src/combat/ui/turn_bar/ui_turn_bar.gd.uid b/src/combat/ui/turn_bar/ui_turn_bar.gd.uid
+deleted file mode 100644
+index 91ae890..0000000
+--- a/src/combat/ui/turn_bar/ui_turn_bar.gd.uid
++++ /dev/null
+@@ -1 +0,0 @@
+-uid://bavqbneuu0ke1
+diff --git a/src/combat/ui/turn_bar/ui_turn_bar.tscn b/src/combat/ui/turn_bar/ui_turn_bar.tscn
+deleted file mode 100644
+index 61c6386..0000000
+--- a/src/combat/ui/turn_bar/ui_turn_bar.tscn
++++ /dev/null
+@@ -1,39 +0,0 @@
+-[gd_scene load_steps=3 format=3 uid="uid://derqg1tjy74tw"]
+-
+-[ext_resource type="Script" uid="uid://bavqbneuu0ke1" path="res://src/combat/ui/turn_bar/ui_turn_bar.gd" id="1_pm8tv"]
+-[ext_resource type="Texture2D" uid="uid://lro5tk1vopp4" path="res://assets/gui/combat/turn_bar_bg.png" id="2_u17t0"]
+-
+-[node name="TurnBar" type="Control"]
+-modulate = Color(1, 1, 1, 0)
+-layout_mode = 3
+-anchors_preset = 5
+-anchor_left = 0.5
+-anchor_right = 0.5
+-offset_bottom = 96.0
+-grow_horizontal = 2
+-script = ExtResource("1_pm8tv")
+-
+-[node name="Background" type="TextureRect" parent="."]
+-layout_mode = 1
+-anchors_preset = 8
+-anchor_left = 0.5
+-anchor_top = 0.5
+-anchor_right = 0.5
+-anchor_bottom = 0.5
+-offset_left = -680.0
+-offset_top = -20.0
+-offset_right = 680.0
+-offset_bottom = 20.0
+-grow_horizontal = 2
+-grow_vertical = 2
+-texture = ExtResource("2_u17t0")
+-stretch_mode = 6
+-
+-[node name="Icons" type="Control" parent="Background"]
+-layout_mode = 1
+-anchors_preset = 14
+-anchor_top = 0.5
+-anchor_right = 1.0
+-anchor_bottom = 0.5
+-grow_horizontal = 2
+-grow_vertical = 2
+diff --git a/src/combat/ui/ui_combat_menus.gd b/src/combat/ui/ui_combat.gd
+similarity index 88%
+rename from src/combat/ui/ui_combat_menus.gd
+rename to src/combat/ui/ui_combat.gd
+index 1d92ccb..be26056 100644
+--- a/src/combat/ui/ui_combat_menus.gd
++++ b/src/combat/ui/ui_combat.gd
+@@ -1,4 +1,4 @@
+-## The player combat menus coordinate all player input during the combat game-state.
++## The combat UI coordinates player input during the combat game-state.
+ ##
+ ## The menus are largely signal driven, which are emitted according to player input. The player is
+ ## responsible for issuing [BattlerAction]s to their respective [Battler]s, which are acted out in
+@@ -11,7 +11,7 @@
+ ## The player may traverse the menus, going backwards and forwards through the menus as needed.
+ ## Once the player has picked an action and targets, it is assigned to the queue by means of the
+ ## [signal CombatEvents.action_selected] global signal.
+-class_name UICombatMenus extends Control
++class_name UICombat extends Control
+ 
+ ## The action menu scene that will be created whenever the player needs to select an action.
+ @export var action_menu_scene: PackedScene
+@@ -21,7 +21,7 @@ class_name UICombatMenus extends Control
+ 
+ # The action menu/targeting cursor are created/freed dynamically. We'll track the combat participant
+ # data so that it can be fed into the action menu and targeting cursor on creation.
+-var _battlers: BattlerList
++var _battlers: BattlerRoster
+ 
+ # The UI is responsible for relaying player input to the combat systems. In this case, we want to
+ # track which battler and action are currently selected, so that we may queue orders for player
+@@ -42,15 +42,21 @@ var _selected_action: BattlerAction = null
+ # This allows the cursor targets to be updated in real-time as Battler states change.
+ var _cursor: UIBattlerTargetingCursor = null
+ 
+-@onready var _action_description: = $ActionDescription as UIActionDescription
+-@onready var _action_menu_anchor: = $ActionMenuAnchor as Control
+-@onready var _battler_list: = $PlayerBattlerList as UIPlayerBattlerList
++# UI elements - display
++@onready var animation: = $AnimationPlayer as AnimationPlayer
++@onready var _effect_label_builder: = $EffectLabelBuilder as UIEffectLabelBuilder
++
++# UI elements - player menus
++@onready var _action_description: = $PlayerMenus/ActionDescription as UIActionDescription
++@onready var _action_menu_anchor: = $PlayerMenus/ActionMenuAnchor as Control
++@onready var _battler_list: = $PlayerMenus/PlayerBattlerList as UIPlayerBattlerList
+ 
+ 
+ ## Prepare the menus for use by assigning appropriate [Battler] data.
+-func setup(battler_data: BattlerList) -> void:
++func setup(battler_data: BattlerRoster) -> void:
+ 	_battlers = battler_data
+-	_battler_list.setup(_battlers)
++	_effect_label_builder.setup(_battlers)
++	_battler_list.battlers = _battlers.get_player_battlers()
+ 	
+ 	# If a player battler has been selected, the action menu should open so that the player may
+ 	# choose an action.
+@@ -75,12 +81,12 @@ func setup(battler_data: BattlerList) -> void:
+ 	
+ 	# If there is a change in Battler states (for now, only consider a change in health points),
+ 	# re-evaluate the targeting cursor's target list, if the cursor is currently active.
+-	for battler in battler_data.get_all_battlers():
++	for battler in _battlers.get_battlers():
+ 		battler.stats.health_changed.connect(_on_battler_health_changed)
+ 	
+ 	# If a player Battler dies while the player is selecting an action or choosing targets, signal
+ 	# that the targeting cursor/menu should close.
+-	for battler in battler_data.players:
++	for battler in _battlers.get_player_battlers():
+ 		battler.health_depleted.connect(
+ 			(func _on_player_battler_health_depleted(downed_battler: Battler):
+ 				if downed_battler == _selected_battler:
+diff --git a/src/combat/ui/ui_combat_menus.gd.uid b/src/combat/ui/ui_combat.gd.uid
+similarity index 100%
+rename from src/combat/ui/ui_combat_menus.gd.uid
+rename to src/combat/ui/ui_combat.gd.uid
+diff --git a/src/combat/ui/ui_combat.tscn b/src/combat/ui/ui_combat.tscn
+new file mode 100644
+index 0000000..c00d51c
+--- /dev/null
++++ b/src/combat/ui/ui_combat.tscn
+@@ -0,0 +1,179 @@
++[gd_scene load_steps=12 format=3 uid="uid://ic0pyjko2i46"]
++
++[ext_resource type="Script" uid="uid://ch0df68krwxr1" path="res://src/combat/ui/effect_labels/ui_effect_label_builder.gd" id="1_0i21q"]
++[ext_resource type="PackedScene" uid="uid://bo6hj2mg02uef" path="res://src/combat/ui/effect_labels/ui_damage_label.tscn" id="2_0cqaj"]
++[ext_resource type="PackedScene" uid="uid://dxyw5j7wr56hl" path="res://src/combat/ui/effect_labels/ui_missed_label.tscn" id="3_36thh"]
++[ext_resource type="Script" uid="uid://smjuikb83bkc" path="res://src/combat/ui/ui_combat.gd" id="5_lubpu"]
++[ext_resource type="Script" uid="uid://2bkem6rl5jl6" path="res://src/combat/ui/battler_entry/ui_player_battler_list.gd" id="6_nv24v"]
++[ext_resource type="PackedScene" uid="uid://b35omff3fdb2g" path="res://src/combat/ui/battler_entry/ui_battler_entry.tscn" id="9_yx5l6"]
++[ext_resource type="PackedScene" uid="uid://cf6hixtledkyy" path="res://src/combat/ui/action_menu/ui_action_description.tscn" id="10_farde"]
++
++[sub_resource type="Animation" id="Animation_wen7t"]
++length = 0.001
++tracks/0/type = "value"
++tracks/0/imported = false
++tracks/0/enabled = true
++tracks/0/path = NodePath("EffectLabelBuilder:modulate")
++tracks/0/interp = 1
++tracks/0/loop_wrap = true
++tracks/0/keys = {
++"times": PackedFloat32Array(0),
++"transitions": PackedFloat32Array(1),
++"update": 0,
++"values": [Color(1, 1, 1, 1)]
++}
++tracks/1/type = "value"
++tracks/1/imported = false
++tracks/1/enabled = true
++tracks/1/path = NodePath("PlayerMenus:modulate")
++tracks/1/interp = 1
++tracks/1/loop_wrap = true
++tracks/1/keys = {
++"times": PackedFloat32Array(0),
++"transitions": PackedFloat32Array(1),
++"update": 0,
++"values": [Color(1, 1, 1, 1)]
++}
++tracks/2/type = "value"
++tracks/2/imported = false
++tracks/2/enabled = true
++tracks/2/path = NodePath("PlayerMenus/PlayerBattlerList:modulate")
++tracks/2/interp = 1
++tracks/2/loop_wrap = true
++tracks/2/keys = {
++"times": PackedFloat32Array(0),
++"transitions": PackedFloat32Array(1),
++"update": 0,
++"values": [Color(1, 1, 1, 1)]
++}
++
++[sub_resource type="Animation" id="Animation_1kh4k"]
++resource_name = "fade_in"
++length = 1.2
++step = 0.1
++tracks/0/type = "value"
++tracks/0/imported = false
++tracks/0/enabled = true
++tracks/0/path = NodePath("PlayerMenus:modulate")
++tracks/0/interp = 1
++tracks/0/loop_wrap = true
++tracks/0/keys = {
++"times": PackedFloat32Array(0.2, 0.9),
++"transitions": PackedFloat32Array(1, 1),
++"update": 0,
++"values": [Color(1, 1, 1, 0), Color(1, 1, 1, 1)]
++}
++tracks/1/type = "value"
++tracks/1/imported = false
++tracks/1/enabled = true
++tracks/1/path = NodePath("EffectLabelBuilder:modulate")
++tracks/1/interp = 1
++tracks/1/loop_wrap = true
++tracks/1/keys = {
++"times": PackedFloat32Array(0),
++"transitions": PackedFloat32Array(1),
++"update": 0,
++"values": [Color(1, 1, 1, 1)]
++}
++
++[sub_resource type="Animation" id="Animation_16p0q"]
++resource_name = "fade_out"
++length = 0.2
++step = 0.1
++tracks/0/type = "value"
++tracks/0/imported = false
++tracks/0/enabled = true
++tracks/0/path = NodePath("EffectLabelBuilder:modulate")
++tracks/0/interp = 1
++tracks/0/loop_wrap = true
++tracks/0/keys = {
++"times": PackedFloat32Array(0, 0.2),
++"transitions": PackedFloat32Array(1, 1),
++"update": 0,
++"values": [Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
++}
++tracks/1/type = "value"
++tracks/1/imported = false
++tracks/1/enabled = true
++tracks/1/path = NodePath("PlayerMenus:modulate")
++tracks/1/interp = 1
++tracks/1/loop_wrap = true
++tracks/1/keys = {
++"times": PackedFloat32Array(0, 0.2),
++"transitions": PackedFloat32Array(1, 1),
++"update": 0,
++"values": [Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
++}
++
++[sub_resource type="AnimationLibrary" id="AnimationLibrary_v7uy0"]
++_data = {
++&"RESET": SubResource("Animation_wen7t"),
++&"fade_in": SubResource("Animation_1kh4k"),
++&"fade_out": SubResource("Animation_16p0q")
++}
++
++[node name="CombatUI" type="Control"]
++layout_mode = 3
++anchors_preset = 15
++anchor_right = 1.0
++anchor_bottom = 1.0
++grow_horizontal = 2
++grow_vertical = 2
++script = ExtResource("5_lubpu")
++
++[node name="EffectLabelBuilder" type="Node2D" parent="."]
++script = ExtResource("1_0i21q")
++damage_label_scene = ExtResource("2_0cqaj")
++missed_label_scene = ExtResource("3_36thh")
++metadata/_edit_lock_ = true
++
++[node name="PlayerMenus" type="Control" parent="."]
++layout_mode = 1
++anchors_preset = 15
++anchor_right = 1.0
++anchor_bottom = 1.0
++grow_horizontal = 2
++grow_vertical = 2
++metadata/_edit_group_ = true
++metadata/_edit_lock_ = true
++
++[node name="PlayerBattlerList" type="VBoxContainer" parent="PlayerMenus"]
++layout_mode = 1
++anchors_preset = 6
++anchor_left = 1.0
++anchor_top = 0.5
++anchor_right = 1.0
++anchor_bottom = 0.5
++offset_left = -40.0
++offset_top = -20.0
++offset_bottom = 20.0
++grow_horizontal = 0
++grow_vertical = 2
++script = ExtResource("6_nv24v")
++entry_scene = ExtResource("9_yx5l6")
++
++[node name="ActionDescription" parent="PlayerMenus" instance=ExtResource("10_farde")]
++layout_mode = 1
++anchors_preset = 12
++anchor_top = 1.0
++anchor_bottom = 1.0
++offset_top = -96.0
++offset_bottom = 0.0
++grow_vertical = 0
++theme_override_constants/margin_bottom = 32
++
++[node name="ActionMenuAnchor" type="Control" parent="PlayerMenus"]
++anchors_preset = 0
++offset_left = 1056.0
++offset_top = 896.0
++offset_right = 1056.0
++offset_bottom = 896.0
++size_flags_horizontal = 4
++size_flags_vertical = 0
++
++[node name="Timer" type="Timer" parent="."]
++
++[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
++libraries = {
++&"": SubResource("AnimationLibrary_v7uy0")
++}
+diff --git a/src/main.tscn b/src/main.tscn
+index c52a5ff..ea6ace4 100644
+--- a/src/main.tscn
++++ b/src/main.tscn
+@@ -1,4 +1,4 @@
+-[gd_scene load_steps=89 format=4 uid="uid://p01fb6nvi144"]
++[gd_scene load_steps=90 format=4 uid="uid://p01fb6nvi144"]
+ 
+ [ext_resource type="Script" uid="uid://m3oktjc6gmsb" path="res://src/field/field.gd" id="2_bkxev"]
+ [ext_resource type="PackedScene" uid="uid://d2lj4blu56fte" path="res://src/field/gamepieces/controllers/player_controller.tscn" id="2_esa52"]
+@@ -76,6 +76,7 @@
+ [ext_resource type="AudioStream" uid="uid://dwcre3fjf3cj8" path="res://addons/dialogic/Example Assets/sound-effects/typing5.wav" id="58_br2ni"]
+ [ext_resource type="TileSet" uid="uid://dhda7bse8tu6l" path="res://src/field/gameboard/debug/tileset_debug_pathfinder_map.tres" id="59_nl04t"]
+ [ext_resource type="Script" uid="uid://yukpiyvqb6m3" path="res://src/field/gameboard/debug/debug_pathfinder_map.gd" id="60_a8sfs"]
++[ext_resource type="PackedScene" uid="uid://ic0pyjko2i46" path="res://src/combat/ui/ui_combat.tscn" id="66_mo8tx"]
+ [ext_resource type="Resource" uid="uid://bwjallq2c71rq" path="res://overworld/maps/opening_cutscene.dtl" id="68_jcriq"]
+ [ext_resource type="Script" uid="uid://i6j3l72wljdc" path="res://src/combat/combat.gd" id="69_meyff"]
+ 
+@@ -325,7 +326,7 @@ script = ExtResource("2_la2p5")
+ gameboard_properties = ExtResource("3_esa52")
+ 
+ [node name="Player" parent="Field/Map" instance=ExtResource("11_yntrj")]
+-position = Vector2(24.0001, 216)
++position = Vector2(199, 231)
+ animation_scene = ExtResource("12_oablq")
+ move_speed = 96.0
+ metadata/_edit_group_ = true
+@@ -794,6 +795,8 @@ metadata/_edit_lock_ = true
+ wait_time = 0.5
+ one_shot = true
+ 
++[node name="UI" parent="Combat" instance=ExtResource("66_mo8tx")]
++
+ [node name="UI" type="CanvasLayer" parent="."]
+ 
+ [node name="Inventory" type="HBoxContainer" parent="UI"]

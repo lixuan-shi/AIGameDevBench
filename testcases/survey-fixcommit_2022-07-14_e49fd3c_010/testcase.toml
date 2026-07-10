@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-07-14_e49fd3c_010"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "c4b40bf39c2d4df93d02b2da571cf00e7e6e970c"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\tabletop-club"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: game/Scenes/Game/UI/GameUI.tscn, game/Scripts/Game/UI/GameUI.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-07-14_e49fd3c_010"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

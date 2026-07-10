@@ -1,0 +1,174 @@
+diff --git a/Scenes/Prefabs/Entities/Enemies/Icicle.tscn b/Scenes/Prefabs/Entities/Enemies/Icicle.tscn
+index fe160ab..e7f7c32 100644
+--- a/Scenes/Prefabs/Entities/Enemies/Icicle.tscn
++++ b/Scenes/Prefabs/Entities/Enemies/Icicle.tscn
+@@ -8,36 +8,36 @@
+ [sub_resource type="RectangleShape2D" id="RectangleShape2D_dnx1i"]
+ size = Vector2(10, 8)
+ 
+-[sub_resource type="Animation" id="Animation_dnx1i"]
+-resource_name = "Shake"
+-length = 0.2
+-loop_mode = 1
++[sub_resource type="Animation" id="Animation_5y583"]
++length = 0.001
+ tracks/0/type = "value"
+ tracks/0/imported = false
+ tracks/0/enabled = true
+ tracks/0/path = NodePath("Sprite:offset")
+-tracks/0/interp = 2
++tracks/0/interp = 1
+ tracks/0/loop_wrap = true
+ tracks/0/keys = {
+-"times": PackedFloat32Array(0, 0.10000001),
+-"transitions": PackedFloat32Array(1, 1),
++"times": PackedFloat32Array(0),
++"transitions": PackedFloat32Array(1),
+ "update": 0,
+-"values": [Vector2(-1, 0), Vector2(1, 0)]
++"values": [Vector2(0, 0)]
+ }
+ 
+-[sub_resource type="Animation" id="Animation_5y583"]
+-length = 0.001
++[sub_resource type="Animation" id="Animation_dnx1i"]
++resource_name = "Shake"
++length = 0.2
++loop_mode = 1
+ tracks/0/type = "value"
+ tracks/0/imported = false
+ tracks/0/enabled = true
+ tracks/0/path = NodePath("Sprite:offset")
+-tracks/0/interp = 1
++tracks/0/interp = 2
+ tracks/0/loop_wrap = true
+ tracks/0/keys = {
+-"times": PackedFloat32Array(0),
+-"transitions": PackedFloat32Array(1),
++"times": PackedFloat32Array(0, 0.10000001),
++"transitions": PackedFloat32Array(1, 1),
+ "update": 0,
+-"values": [Vector2(0, 0)]
++"values": [Vector2(-1, 0), Vector2(1, 0)]
+ }
+ 
+ [sub_resource type="AnimationLibrary" id="AnimationLibrary_2sios"]
+diff --git a/Scenes/Prefabs/UI/BasePauseMenu.tscn b/Scenes/Prefabs/UI/BasePauseMenu.tscn
+index fe5129f..32e95ae 100644
+--- a/Scenes/Prefabs/UI/BasePauseMenu.tscn
++++ b/Scenes/Prefabs/UI/BasePauseMenu.tscn
+@@ -105,6 +105,7 @@ visible = true
+ [node name="LabelFontChanger" parent="SettingsMenu" index="1" node_paths=PackedStringArray("labels")]
+ labels = [NodePath("../PanelContainer/MarginContainer/VBoxContainer/Title"), NodePath("../PanelContainer/MarginContainer/VBoxContainer/CategorySelect/HBoxContainer/Category"), null, null, null, null, null, null, null, NodePath("../PanelContainer/MarginContainer/VBoxContainer/Audio/SelectableOptionNode/Value"), null, NodePath("../PanelContainer/MarginContainer/VBoxContainer/Audio/SelectableOptionNode2/Value"), null, NodePath("../PanelContainer/MarginContainer/VBoxContainer/Audio/SelectableOptionNode3/Value"), NodePath("../PanelContainer/MarginContainer/VBoxContainer/Difficulty/Description/AutoScrollContainer/MarginContainer/Desc")]
+ 
++[connection signal="closed" from="." to="SettingsMenu" method="close"]
+ [connection signal="option_3_selected" from="." to="." method="open_settings"]
+ 
+ [editable path="SettingsMenu"]
+diff --git a/Scenes/Prefabs/UI/LevelSelectNew.tscn b/Scenes/Prefabs/UI/LevelSelectNew.tscn
+index 5548d8a..4aaf70e 100644
+--- a/Scenes/Prefabs/UI/LevelSelectNew.tscn
++++ b/Scenes/Prefabs/UI/LevelSelectNew.tscn
+@@ -221,12 +221,14 @@ metadata/_custom_type_script = "uid://364rywt44hy6"
+ [node name="6" type="Sprite2D" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer/ScrollContainer/SlotContainer/Slot1/ChallengeModeBits"]
+ position = Vector2(41, 4)
+ texture = ExtResource("11_sk22j")
+-region_enabled = true
++hframes = 3
++vframes = 2
+ region_rect = Rect2(0, 0, 8, 8)
+ script = ExtResource("6_x05vu")
+ metadata/_custom_type_script = "uid://364rywt44hy6"
+ 
+ [node name="Full" type="Sprite2D" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer/ScrollContainer/SlotContainer/Slot1/ChallengeModeBits/6"]
++visible = false
+ texture = ExtResource("11_sk22j")
+ region_enabled = true
+ region_rect = Rect2(8, 0, 8, 8)
+@@ -417,14 +419,16 @@ metadata/_custom_type_script = "uid://364rywt44hy6"
+ [node name="6" type="Sprite2D" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer/ScrollContainer/SlotContainer/Slot2/ChallengeModeBits"]
+ position = Vector2(41, 4)
+ texture = ExtResource("11_sk22j")
+-region_enabled = true
++hframes = 3
++vframes = 2
+ region_rect = Rect2(0, 0, 8, 8)
+ script = ExtResource("6_x05vu")
+ metadata/_custom_type_script = "uid://364rywt44hy6"
+ 
+ [node name="Full" type="Sprite2D" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer/ScrollContainer/SlotContainer/Slot2/ChallengeModeBits/6"]
+ texture = ExtResource("11_sk22j")
+-region_enabled = true
++hframes = 3
++vframes = 2
+ region_rect = Rect2(16, 0, 8, 8)
+ script = ExtResource("6_x05vu")
+ metadata/_custom_type_script = "uid://364rywt44hy6"
+@@ -613,14 +617,16 @@ metadata/_custom_type_script = "uid://364rywt44hy6"
+ [node name="6" type="Sprite2D" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer/ScrollContainer/SlotContainer/Slot3/ChallengeModeBits"]
+ position = Vector2(41, 4)
+ texture = ExtResource("11_sk22j")
+-region_enabled = true
++hframes = 3
++vframes = 2
+ region_rect = Rect2(0, 0, 8, 8)
+ script = ExtResource("6_x05vu")
+ metadata/_custom_type_script = "uid://364rywt44hy6"
+ 
+ [node name="Full" type="Sprite2D" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer/ScrollContainer/SlotContainer/Slot3/ChallengeModeBits/6"]
+ texture = ExtResource("11_sk22j")
+-region_enabled = true
++hframes = 3
++vframes = 2
+ region_rect = Rect2(0, 8, 8, 8)
+ script = ExtResource("6_x05vu")
+ metadata/_custom_type_script = "uid://364rywt44hy6"
+@@ -809,14 +815,16 @@ metadata/_custom_type_script = "uid://364rywt44hy6"
+ [node name="6" type="Sprite2D" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer/ScrollContainer/SlotContainer/Slot4/ChallengeModeBits"]
+ position = Vector2(41, 4)
+ texture = ExtResource("11_sk22j")
+-region_enabled = true
++hframes = 3
++vframes = 2
+ region_rect = Rect2(0, 0, 8, 8)
+ script = ExtResource("6_x05vu")
+ metadata/_custom_type_script = "uid://364rywt44hy6"
+ 
+ [node name="Full" type="Sprite2D" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer/ScrollContainer/SlotContainer/Slot4/ChallengeModeBits/6"]
+ texture = ExtResource("11_sk22j")
+-region_enabled = true
++hframes = 3
++vframes = 2
+ region_rect = Rect2(8, 8, 8, 8)
+ script = ExtResource("6_x05vu")
+ metadata/_custom_type_script = "uid://364rywt44hy6"
+diff --git a/Scripts/UI/StoryPause.gd b/Scripts/UI/StoryPause.gd
+index b48843c..7f2c597 100644
+--- a/Scripts/UI/StoryPause.gd
++++ b/Scripts/UI/StoryPause.gd
+@@ -14,6 +14,8 @@ signal option_2_selected
+ signal option_3_selected
+ signal option_4_selected
+ 
++signal closed
++
+ func _process(_delta: float) -> void:
+ 	if active:
+ 		handle_inputs()
+@@ -28,6 +30,8 @@ func handle_inputs() -> void:
+ 	selected_index = clamp(selected_index, 0, options.size() - 1)
+ 	if Input.is_action_just_pressed("ui_accept"):
+ 		option_selected()
++	elif Input.is_action_just_pressed("pause") or Input.is_action_just_pressed("ui_back"):
++		close()
+ 
+ func option_selected() -> void:
+ 	emit_signal("option_" + str(selected_index + 1) + "_selected")
+@@ -51,6 +55,7 @@ func close() -> void:
+ 	active = false
+ 	selected_index = 0
+ 	hide()
++	closed.emit()
+ 	for i in 2:
+ 		await get_tree().physics_frame
+ 	Global.game_paused = false

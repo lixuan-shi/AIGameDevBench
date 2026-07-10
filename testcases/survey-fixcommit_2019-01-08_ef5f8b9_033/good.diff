@@ -1,0 +1,10 @@
+diff --git a/godot/local_map/pawns/actions/CompleteQuestAction.gd b/godot/local_map/pawns/actions/CompleteQuestAction.gd
+index 3e6eb28..337c7f2 100644
+--- a/godot/local_map/pawns/actions/CompleteQuestAction.gd
++++ b/godot/local_map/pawns/actions/CompleteQuestAction.gd
+@@ -23,4 +23,5 @@ func interact() -> void:
+ 		emit_signal("finished")
+ 		return
+ 	QuestSystem.deliver(quest)
++	active = false
+ 	emit_signal("finished")

@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-07-07_7a74789_001"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "6d4f954db6fb38cf01463b4e0ee5a498c1be8279"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\tabletop-club"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: game/Scripts/Game/Pieces/Stack.gd, game/Scripts/PieceBuilder.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-07-07_7a74789_001"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

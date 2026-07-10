@@ -1,0 +1,15 @@
+diff --git a/scripts/combat.gd b/scripts/combat.gd
+index 7ea8303..9199881 100644
+--- a/scripts/combat.gd
++++ b/scripts/combat.gd
+@@ -1,6 +1,8 @@
+ extends Node
+ class_name Combat
+
+ func compute_damage(attack: int, defense: int, is_crit: bool) -> int:
+-	# TODO: implement the formula above.
+-	return 0
++	var raw: int = attack - defense
++	if is_crit:
++		raw *= 2
++	return max(1, raw)

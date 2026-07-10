@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-04-02_738ecfd_032"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "8ddb36cd05eb8d23fe2c45ddfccc5baf0911a7e9"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rts"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: source/match/Match.tscn, tests/manual/TestAllUnits.tscn, tests/manual/TestOneUnit.tscn, tests/manual/TestUnitsFightingEachOther.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-04-02_738ecfd_032"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-02_05bca14_064"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "f088c9b606f26b045901a24a25e0694365de3123"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Levels/SMB1/World2/2-2.tscn, Scenes/Prefabs/LevelBG.tscn, Scenes/Prefabs/LevelObjects/WindArea.tscn, Scripts/Classes/Entities/Player.gd, Scripts/Parts/GravityInverter.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-02_05bca14_064"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

@@ -1,0 +1,59 @@
+diff --git a/Scenes/Levels/CustomLevelMenu.tscn b/Scenes/Levels/CustomLevelMenu.tscn
+index 193ae72..6c81978 100644
+--- a/Scenes/Levels/CustomLevelMenu.tscn
++++ b/Scenes/Levels/CustomLevelMenu.tscn
+@@ -362,11 +362,11 @@ layout_mode = 2
+ focus_mode = 0
+ 
+ [node name="ScrollContainer" parent="BG/Border/Levels/VBoxContainer/LevelInfo/SelectedLevel/MarginContainer/HBoxContainer/HSplitContainer/LeftHalf/LevelInfo" index="0"]
+-scroll_horizontal = 270
++scroll_horizontal = 145
+ is_active = true
+ 
+ [node name="ScrollContainer2" parent="BG/Border/Levels/VBoxContainer/LevelInfo/SelectedLevel/MarginContainer/HBoxContainer/HSplitContainer/LeftHalf/LevelInfo" index="1"]
+-scroll_horizontal = 49
++scroll_horizontal = 63
+ is_active = true
+ 
+ [node name="Panel" type="PanelContainer" parent="BG/Border/Levels/VBoxContainer/LevelInfo"]
+@@ -377,6 +377,7 @@ theme_override_styles/panel = ExtResource("8_psbt7")
+ [node name="AutoScrollContainer" type="ScrollContainer" parent="BG/Border/Levels/VBoxContainer/LevelInfo/Panel"]
+ layout_mode = 2
+ mouse_filter = 2
++scroll_vertical = 71
+ horizontal_scroll_mode = 3
+ vertical_scroll_mode = 3
+ script = ExtResource("24_wf6nb")
+@@ -564,10 +565,12 @@ layout_mode = 2
+ focus_mode = 0
+ 
+ [node name="ScrollContainer" parent="BG/Border/Levels/VBoxContainer/LSSLevelInfo/SelectedOnlineLevel/MarginContainer/HBoxContainer/HSplitContainer/LeftHalf/LevelInfo" index="0"]
++scroll_horizontal = 31
+ is_active = true
+ auto_connect_focus = false
+ 
+ [node name="ScrollContainer2" parent="BG/Border/Levels/VBoxContainer/LSSLevelInfo/SelectedOnlineLevel/MarginContainer/HBoxContainer/HSplitContainer/LeftHalf/LevelInfo" index="1"]
++scroll_horizontal = 63
+ is_active = true
+ auto_connect_focus = false
+ 
+@@ -580,6 +583,7 @@ theme_override_styles/panel = ExtResource("8_psbt7")
+ [node name="AutoScrollContainer" type="ScrollContainer" parent="BG/Border/Levels/VBoxContainer/LSSLevelInfo/Panel"]
+ layout_mode = 2
+ mouse_filter = 0
++scroll_vertical = 71
+ horizontal_scroll_mode = 3
+ script = ExtResource("24_wf6nb")
+ direction = 1
+diff --git a/Scenes/Prefabs/Blocks/Fan.tscn b/Scenes/Prefabs/Blocks/Fan.tscn
+index 189dda8..34e92ec 100644
+--- a/Scenes/Prefabs/Blocks/Fan.tscn
++++ b/Scenes/Prefabs/Blocks/Fan.tscn
+@@ -119,6 +119,7 @@ metadata/_custom_type_script = "uid://cbal8ms2oe1ik"
+ shape = SubResource("RectangleShape2D_wvrj8")
+ 
+ [node name="Hitbox" type="Area2D" parent="."]
++monitorable = false
+ 
+ [node name="Shape" type="CollisionShape2D" parent="Hitbox"]
+ position = Vector2(128, 0)

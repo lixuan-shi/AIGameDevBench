@@ -1,0 +1,164 @@
+diff --git a/data/maps/town/runner.dtl b/data/maps/town/runner.dtl
+index 7bfb5cb..788c2fd 100644
+--- a/data/maps/town/runner.dtl
++++ b/data/maps/town/runner.dtl
+@@ -1,4 +1,4 @@
+ join runner 1
+-runner (Default): Emerald? Ruby? Sapphire?
+-runner (Default): How did that go again?
++runner (Default): Does your mom tell you to stop and look carefully at things?
++runner (Default): *My* mom always tells me I never notice anything unless I look twice!
+ [end_timeline]
+diff --git a/src/field/cutscenes/InteractionPopup.tscn b/src/field/cutscenes/popups/InteractionPopup.tscn
+similarity index 89%
+rename from src/field/cutscenes/InteractionPopup.tscn
+rename to src/field/cutscenes/popups/InteractionPopup.tscn
+index 07336f4..5a60081 100644
+--- a/src/field/cutscenes/InteractionPopup.tscn
++++ b/src/field/cutscenes/popups/InteractionPopup.tscn
+@@ -1,7 +1,7 @@
+ [gd_scene load_steps=4 format=3 uid="uid://cubp81mykng3h"]
+ 
+ [ext_resource type="PackedScene" uid="uid://dnd03as5e37he" path="res://src/field/ui/popups/UIPopup.tscn" id="1_582ge"]
+-[ext_resource type="Script" path="res://src/field/cutscenes/interaction_popup.gd" id="2_2fot7"]
++[ext_resource type="Script" path="res://src/field/cutscenes/popups/interaction_popup.gd" id="2_2fot7"]
+ 
+ [sub_resource type="CircleShape2D" id="CircleShape2D_cbdy6"]
+ radius = 32.0
+diff --git a/src/field/cutscenes/interaction_popup.gd b/src/field/cutscenes/popups/interaction_popup.gd
+similarity index 94%
+rename from src/field/cutscenes/interaction_popup.gd
+rename to src/field/cutscenes/popups/interaction_popup.gd
+index 1e27693..b086f54 100644
+--- a/src/field/cutscenes/interaction_popup.gd
++++ b/src/field/cutscenes/popups/interaction_popup.gd
+@@ -1,5 +1,5 @@
+ @tool
+-extends UIPopup
++class_name InteractionPopup extends UIPopup
+ 
+ @export var radius: = 32:
+ 	set(value):
+diff --git a/src/field/cutscenes/popups/moving_interaction_popup.gd b/src/field/cutscenes/popups/moving_interaction_popup.gd
+new file mode 100644
+index 0000000..a8aac8a
+--- /dev/null
++++ b/src/field/cutscenes/popups/moving_interaction_popup.gd
+@@ -0,0 +1,31 @@
++@tool
++## An [InteractionPopup] that follows a moving [GamepieceAnimation].
++##
++## This [code]Popup[/code] must be a child of a [GamepieceAnimation] to function.
++##
++## Note that other popup types will jump to the occupied cell of the ancestor [Gamepiece], whereas
++## MovingInteractionPopups sync their position to that of the gamepiece's graphical representation.
++extends InteractionPopup
++
++@onready var _gp_animation: = get_parent() as GamepieceAnimation
++
++
++func _ready() -> void:
++	super._ready()
++	
++	# Do not follow anything in editor or if this object's parent is not of the correct type.
++	if Engine.is_editor_hint() or not _gp_animation:
++		set_process(false)
++
++
++func _get_configuration_warnings() -> PackedStringArray:
++	if not get_parent() is GamepieceAnimation:
++		return ["This popup must be a child of a GamepieceAnimation node!"]
++	return []
++
++
++# Every process frame the popup sets its position to that of the graphical representation of the
++# gamepiece, appearing to follow the gamepiece around the field while still playing nicely with the
++# physics/interaction system.
++func _process(_delta: float) -> void:
++	position = _gp_animation.get_gfx_position()
+diff --git a/src/field/gamepieces/animation/gamepiece_animation.gd b/src/field/gamepieces/animation/gamepiece_animation.gd
+index fd598bd..6a4fb93 100644
+--- a/src/field/gamepieces/animation/gamepiece_animation.gd
++++ b/src/field/gamepieces/animation/gamepiece_animation.gd
+@@ -123,6 +123,10 @@ func set_direction(value: Directions.Points) -> void:
+ 		_swap_animation(current_sequence_id, true)
+ 
+ 
++func get_gfx_position() -> Vector2:
++	return _gfx.position
++
++
+ # Transition to the next animation sequence, accounting for the RESET track and current animation
+ # elapsed time.
+ func _swap_animation(next_sequence: String, keep_position: bool) -> void:
+diff --git a/src/field/gamepieces/controllers/gamepiece_controller.gd b/src/field/gamepieces/controllers/gamepiece_controller.gd
+index 8a680ac..140a7cb 100644
+--- a/src/field/gamepieces/controllers/gamepiece_controller.gd
++++ b/src/field/gamepieces/controllers/gamepiece_controller.gd
+@@ -128,7 +128,7 @@ func is_cell_blocked(cell: Vector2i) -> bool:
+ 	for collision in collisions:
+ 		var blocks_movement = true
+ 		if collision.collider.owner.get(BLOCKING_PROPERTY):
+-			blocks_movement = false
++			blocks_movement = collision.collider.owner.get(BLOCKING_PROPERTY) as bool
+ 		
+ 		if blocks_movement:
+ 			return true
+@@ -146,7 +146,6 @@ func get_collisions(cell: Vector2i) -> Array:
+ 
+ 
+ func set_is_paused(paused: bool) -> void:
+-	print("Running setter")
+ 	is_paused = paused
+ 		
+ 	if is_inside_tree() and not _waypoints.is_empty():
+diff --git a/src/field/gamepieces/controllers/path_loop_ai_controller.gd b/src/field/gamepieces/controllers/path_loop_ai_controller.gd
+index 2de099a..8b897c7 100644
+--- a/src/field/gamepieces/controllers/path_loop_ai_controller.gd
++++ b/src/field/gamepieces/controllers/path_loop_ai_controller.gd
+@@ -34,8 +34,8 @@ func set_is_paused(paused: bool) -> void:
+ 	
+ 	# Otherwise, if the gamepiece is in transit, pick up where it had left off.
+ 	if not paused:
+-		if _current_waypoint_index > 0 and _current_waypoint_index < _waypoints.size() - 1:
+-			_current_waypoint_index += 1
++		if _current_waypoint_index > 0 and _current_waypoint_index < _waypoints.size() - 1 and \
++				not is_cell_blocked(_waypoints[_current_waypoint_index]):
+ 			_gamepiece.travel_to_cell(_waypoints[_current_waypoint_index])
+ 
+ 
+diff --git a/src/main.tscn b/src/main.tscn
+index 5a5f863..56089ab 100644
+--- a/src/main.tscn
++++ b/src/main.tscn
+@@ -1,4 +1,4 @@
+-[gd_scene load_steps=53 format=3 uid="uid://p01fb6nvi144"]
++[gd_scene load_steps=54 format=3 uid="uid://p01fb6nvi144"]
+ 
+ [ext_resource type="Script" path="res://src/field/field.gd" id="2_bkxev"]
+ [ext_resource type="Script" path="res://src/field/field_cursor.gd" id="5_3guor"]
+@@ -19,6 +19,7 @@
+ [ext_resource type="PackedScene" uid="uid://dqdk6eehxsrmn" path="res://data/field/characters/monk_gfx.tscn" id="17_qgtho"]
+ [ext_resource type="PackedScene" uid="uid://kiwma43jc3n6" path="res://data/field/characters/lady_gfx.tscn" id="17_sieyv"]
+ [ext_resource type="PackedScene" uid="uid://bvtk5qllej4b8" path="res://data/field/characters/smith_gfx.tscn" id="18_2msel"]
++[ext_resource type="Script" path="res://src/field/cutscenes/popups/moving_interaction_popup.gd" id="18_8igsj"]
+ [ext_resource type="Script" path="res://src/field/gameboard/debug_map_boundaries.gd" id="18_cqtg7"]
+ [ext_resource type="PackedScene" uid="uid://ccm8tsjysf8b5" path="res://data/field/characters/wizard_gfx.tscn" id="19_ius2d"]
+ [ext_resource type="Script" path="res://addons/dialogic/Modules/Text/node_name_label.gd" id="19_lpxfg"]
+@@ -39,7 +40,7 @@
+ [ext_resource type="Script" path="res://data/maps/town/strange_tree_interaction.gd" id="31_y2el4"]
+ [ext_resource type="Resource" path="res://data/maps/town/strange_tree.dtl" id="32_m0jee"]
+ [ext_resource type="Texture2D" uid="uid://d2qfi5sncf72b" path="res://assets/terrain/town_tilemap.png" id="33_ofo2l"]
+-[ext_resource type="PackedScene" uid="uid://cubp81mykng3h" path="res://src/field/cutscenes/InteractionPopup.tscn" id="34_qs25x"]
++[ext_resource type="PackedScene" uid="uid://cubp81mykng3h" path="res://src/field/cutscenes/popups/InteractionPopup.tscn" id="34_qs25x"]
+ [ext_resource type="Script" path="res://src/field/ui/inventory/ui_inventory.gd" id="34_tk01t"]
+ [ext_resource type="Resource" path="res://data/maps/town/sign.dtl" id="35_gv62s"]
+ 
+@@ -223,6 +224,7 @@ metadata/_edit_group_ = true
+ [node name="GenericCharacterAnimation" parent="Terrain/Gamepieces/Runner" instance=ExtResource("12_n5rm1")]
+ 
+ [node name="InteractionPopup" parent="Terrain/Gamepieces/Runner/GenericCharacterAnimation" instance=ExtResource("34_qs25x")]
++script = ExtResource("18_8igsj")
+ 
+ [node name="Interaction" parent="Terrain/Gamepieces/Runner" instance=ExtResource("19_sa6jd")]
+ script = ExtResource("14_b3y71")

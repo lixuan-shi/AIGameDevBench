@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-08-09_44f2ae0_048"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "98151aa6f2c368146744c0db5d7b33cddde5d393"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\a-little-game-called-mario"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: scenes/title/levelselect/LevelList.gd, scenes/title/levelselect/LevelList.tscn, scenes/title/levelselect/LevelSelect.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-08-09_44f2ae0_048"
+bad_case_type = "A2"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2020-02-01_a911cbe_039"
+category = "precise_edit"
+source_kind = "git"
+baseline_ref = "2ff2c29114370f0c8e9b104183d5a43148a5cdc3"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: godot/src/combat/interface/bars/lifebar/LifeBar.gd, godot/src/combat/interface/bars/manabar/ManaBar.gd, godot/src/combat/interface/turn_order/CombatPortrait.gd, godot/src/combat/interface/turn_order/TurnOrder.gd, godot/src/combat/turn_queue/TurnQueue.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2020-02-01_a911cbe_039"
+bad_case_type = "C2"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

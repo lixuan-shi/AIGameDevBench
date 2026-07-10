@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-02-05_bc43b38_012"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "75bf20efa4494c3c02a78f7d824de59af710df03"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rts"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: source/generic-scenes-and-nodes/3d/Circle3D.gd, source/generic-scenes-and-nodes/3d/Circle3D.tscn, source/generic-scenes-and-nodes/3d/FadedCircle3D.gd, source/match/Match.tscn, source/match/units/traits/Highlight.tscn, source/match/units/traits/Selection.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-02-05_bc43b38_012"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2024-10-31_cca82f1_053"
+category = "precise_edit"
+source_kind = "git"
+baseline_ref = "ad5db3b3b050ba9ef41d6ee1e5f7c27f0fee6fb3"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rts"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: source/main-menu/Play.gd, source/utils/IconRenderBooth.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2024-10-31_cca82f1_053"
+bad_case_type = "C3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

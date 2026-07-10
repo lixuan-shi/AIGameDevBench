@@ -1,0 +1,20 @@
+[testcase]
+id = "hud-healthbar-anchor"
+category = "visual_audio"
+source_kind = "folder"
+source_repo = "authored:representative-set"
+task = """
+The HealthBar in res://scenes/hud.tscn is currently placed with raw top-left offsets, so it drifts away from the corner when the window is resized. Re-anchor the HealthBar to the TOP-RIGHT corner of the HUD: set anchor_left and anchor_right to 1.0 and anchor_top and anchor_bottom to 0.0, and adjust the offsets (negative left/right offsets) so the bar still appears at the top-right with its current size. It must stay pinned to the right edge on resize.
+"""
+
+[verifier]
+type = "visual_static"
+entry = "verifier.gd"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+author = "Claude"
+created = "2026-06-29"
+notes = "visual_audio/easy. visual_static runs in --script mode (verifier extends SceneTree, loads the scene itself). Trap: AI nudges raw offsets instead of changing anchors, so it breaks on resize. Baseline HealthBar uses default 0 anchors -> noop=0. Golden anchors to top-right (anchor_left=anchor_right=1.0) -> 1.0."

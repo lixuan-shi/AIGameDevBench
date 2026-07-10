@@ -1,0 +1,22 @@
+[testcase]
+id = "platformer-jump-retune"
+category = "intent_translation"
+source_kind = "folder"
+source_repo = "authored:representative-set"
+task = """
+The platformer player tuning lives in res://data/player_tuning.json (move_speed, gravity, jump_velocity).
+Jump apex height is jump_velocity^2 / (2*gravity); hang time is 2*jump_velocity/gravity.
+Design wants the jump to reach DOUBLE the current apex height while keeping the SAME hang time. Update the tuning values accordingly. Do not change move_speed.
+"""
+
+[verifier]
+type = "py_config"
+entry = "expected.json"
+
+[scoring]
+mode = "fields"
+
+[provenance]
+author = "Claude"
+created = "2026-06-29"
+notes = "intent_translation/med. Coupled-constant trap: doubling apex height at constant hang time requires BOTH jump_velocity (600->1200) and gravity (1000->2000). Changing only jump_velocity leaves gravity stale -> 1/2 = 0.5 partial. noop=0."

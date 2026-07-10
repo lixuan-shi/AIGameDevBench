@@ -1,0 +1,27 @@
+diff --git a/godot/combat/battlers/Battler.gd b/godot/combat/battlers/Battler.gd
+index 0e31b92..864ce22 100644
+--- a/godot/combat/battlers/Battler.gd
++++ b/godot/combat/battlers/Battler.gd
+@@ -36,6 +36,7 @@ func _ready() -> void:
+ func initialize():
+ 	skin.initialize()
+ 	actions.initialize(skills.get_children())
++	stats = stats.copy()
+ 	stats.connect("health_depleted", self, "_on_health_depleted")
+ 
+ func is_able_to_play() -> bool:
+diff --git a/godot/party/PartyMember.gd b/godot/party/PartyMember.gd
+index 264e705..0c028c9 100644
+--- a/godot/party/PartyMember.gd
++++ b/godot/party/PartyMember.gd
+@@ -41,9 +41,7 @@ func get_battler_copy():
+ 	Returns a copy of the battler to add to the CombatArena
+ 	at the start of a battle
+ 	"""
+-	var copy : Battler = battler.duplicate()
+-	copy.stats = stats.copy()
+-	return copy
++	return battler.duplicate()
+ 
+ func get_pawn_anim():
+ 	"""

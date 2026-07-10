@@ -1,0 +1,180 @@
+diff --git a/scripts/components/networking/statssynchronizercomponent/StatsSynchronizerComponent.gd b/scripts/components/networking/statssynchronizercomponent/StatsSynchronizerComponent.gd
+index cae1a12..70e2cbf 100644
+--- a/scripts/components/networking/statssynchronizercomponent/StatsSynchronizerComponent.gd
++++ b/scripts/components/networking/statssynchronizercomponent/StatsSynchronizerComponent.gd
+@@ -235,7 +235,7 @@ func check_server_buffer():
+ 	for i in range(server_buffer.size() - 1, -1, -1):
+ 		var entry: Dictionary = server_buffer[i]
+ 		if entry["timestamp"] <= G.clock:
+-			assert(entry["type"] in TYPE, "This is not a valid type")
++			assert(entry["type"] in TYPE.values(), "This is not a valid type")
+ 			#Bonus detected
+ 			if entry.get("special","") == "bonus":
+ 				match entry["type"]:
+diff --git a/scripts/components/networking/statuseffectcomponent/StatusEffectComponent.tscn b/scripts/components/networking/statuseffectcomponent/StatusEffectComponent.tscn
+new file mode 100644
+index 0000000..29fad88
+--- /dev/null
++++ b/scripts/components/networking/statuseffectcomponent/StatusEffectComponent.tscn
+@@ -0,0 +1,6 @@
++[gd_scene load_steps=2 format=3 uid="uid://cjkhsifuk2une"]
++
++[ext_resource type="Script" path="res://scripts/components/networking/statuseffectcomponent/statuseffectcomponent.gd" id="1_xeko7"]
++
++[node name="StatusEffectComponent" type="Node2D"]
++script = ExtResource("1_xeko7")
+diff --git a/scripts/components/networking/statuseffectcomponent/StatusEffectResource.gd b/scripts/components/networking/statuseffectcomponent/StatusEffectResource.gd
+index 813e6fe..f8d6b5a 100644
+--- a/scripts/components/networking/statuseffectcomponent/StatusEffectResource.gd
++++ b/scripts/components/networking/statuseffectcomponent/StatusEffectResource.gd
+@@ -42,7 +42,7 @@ enum Properties {
+ @export var default_stacks: int = 1
+ @export var default_duration: float = 1.0
+ 
+-## [param _json_data] contains a "owner" (Node), "stacks" (int), "duration" (float) entries.
++## [param _json_data] contains a "applier" (String), "stacks" (int), "duration" (float) entries.
+ func effect_applied(target: Node, json_data: Dictionary):
+ 	_effect_applied(target, json_data)
+ 	
+diff --git a/scripts/components/networking/statuseffectcomponent/statuseffectcomponent.gd b/scripts/components/networking/statuseffectcomponent/statuseffectcomponent.gd
+index a9e12db..03527e3 100644
+--- a/scripts/components/networking/statuseffectcomponent/statuseffectcomponent.gd
++++ b/scripts/components/networking/statuseffectcomponent/statuseffectcomponent.gd
+@@ -3,7 +3,7 @@ class_name StatusEffectComponent
+ 
+ const COMPONENT_NAME: String = "status_effect_component"
+ 
+-const TICK_INTERVAL:float = 0.1
++const TICK_INTERVAL:float = 0.2
+ const NUMBER_FONT: Font = preload("res://assets/fonts/fenwick-woodtype/FenwickWoodtype.ttf")
+ 
+ @export_group("Node References")
+@@ -29,12 +29,17 @@ var status_tick_timer := Timer.new()
+ func _ready():
+ 	if user.get("component_list") != null:
+ 		user.component_list[COMPONENT_NAME] = self
+-		
++	
++	
+ 	status_tick_timer = Timer.new()
+ 	status_tick_timer.name = "TickTimer"
+ 	status_tick_timer.wait_time = TICK_INTERVAL
+ 	status_tick_timer.autostart = true
+-	status_tick_timer.timeout.connect(process_statuses)
++	# If it is the server, use the timer to process statuses, otherwise use it for drawing.
++	if G.is_server():
++		status_tick_timer.timeout.connect(process_statuses)
++	else:
++		status_tick_timer.timeout.connect(queue_redraw)
+ 	add_child(status_tick_timer)
+ 
+ func _draw() -> void:
+@@ -61,7 +66,7 @@ func draw_status(status_class: String, pos: Vector2):
+ 		false
+ 		)
+ 	
+-	draw_char(
++	draw_string(
+ 		NUMBER_FONT, 
+ 		pos + (Vector2(drawing_icon_size) / 2), 
+ 		str(get_stacks(status_class))
+@@ -91,7 +96,8 @@ func process_statuses():
+ 		else:
+ 			remove_status(status)
+ 			
+-	queue_redraw()
++		sync_effect(user.peer_id, status)
++	
+ 
+ ## Server only
+ func add_status_effect(status_class: String, applier: Node, stack_override: int = -1, duration_override: float = -1.0):
+@@ -201,7 +207,7 @@ func sync_all_response(data: Dictionary):
+ func sync_effect(id: int, status_class: String):
+ 	assert(G.is_server())
+ 	assert(has_status_effect(status_class))
+-	G.sync_rpc.statuseffectcomponent_sync_add_effect_response.rpc_id(id, status_class, get_status_effect_data(status_class))
++	G.sync_rpc.statuseffectcomponent_sync_effect_response.rpc_id(id, user.get_name(), status_class, get_status_effect_data(status_class))
+ 
+ 
+ func sync_effect_response(status_class: String, status_json: Dictionary):
+diff --git a/scripts/components/player/skillcomponent/Skills/DebugPoisonSelf.tres b/scripts/components/player/skillcomponent/Skills/DebugPoisonSelf.tres
+index acacdcd..ee5656c 100644
+--- a/scripts/components/player/skillcomponent/Skills/DebugPoisonSelf.tres
++++ b/scripts/components/player/skillcomponent/Skills/DebugPoisonSelf.tres
+@@ -3,7 +3,30 @@
+ [sub_resource type="GDScript" id="GDScript_o0v0b"]
+ script/source = "extends SkillComponentResource
+ 
+-func _effect(information: SkillUseInfo):"
++var status: String = \"Poison\"
++
++func _effect(information: SkillUseInfo):
++	var statusComp: StatusEffectComponent = information.get_entity_component(information.user, StatusEffectComponent.COMPONENT_NAME)
++	if not statusComp is StatusEffectComponent:
++		return
++		
++
++	statusComp.add_status_effect(status, information.user)
++	statusComp.set_stacks(status, 100)
++"
+ 
+ [resource]
+ script = SubResource("GDScript_o0v0b")
++skill_class = "PoisonSelf"
++displayed_name = "Do drugs"
++energy_usage = 0
++collision_mask = 0
++valid_entities = Array[int]([])
++cooldown = 0.0
++cast_on_select = true
++damage = 0
++hitbox_shape = [Vector2(50, 0)]
++hitbox_hits_user = false
++hitbox_rotate_shape = false
++hit_range = 1.0
++description = "All the cool kids you say?"
+diff --git a/scripts/network/rpcs/gameserver/sync.gd b/scripts/network/rpcs/gameserver/sync.gd
+index b88ab29..fd59bd1 100644
+--- a/scripts/network/rpcs/gameserver/sync.gd
++++ b/scripts/network/rpcs/gameserver/sync.gd
+@@ -591,7 +591,7 @@ func statuseffectcomponent_sync_effect_response(n: String, s: String, j: Diction
+ 
+ 
+ @rpc("call_remote", "any_peer", "reliable")
+-func statuseffectcomponent_sync_all(n: String, d: Dictionary):
++func statuseffectcomponent_sync_all(n: String):
+ 	assert(not G.is_server(), "This method is only intended for client use")
+ 	if not G.is_server():
+ 		return
+diff --git a/scripts/singletons/jdungeon.gd b/scripts/singletons/jdungeon.gd
+index 6138cf8..ac79068 100644
+--- a/scripts/singletons/jdungeon.gd
++++ b/scripts/singletons/jdungeon.gd
+@@ -24,7 +24,7 @@ var map_scenes: Dictionary = {}
+ var skill_resources: Dictionary = {}
+ var charclass_resources: Dictionary = {}
+ var dialogue_resources: Dictionary = {}
+-var status_effect_resources
++var status_effect_resources: Dictionary = {}
+ 
+ var uuid_util: UuidUtil
+ 
+@@ -48,6 +48,7 @@ func register_scenes():
+ 	register_maps()
+ 	register_character_classes()
+ 	register_dialogues()
++	register_status_effects()
+ 
+ 
+ func register_enemies():
+@@ -159,6 +160,10 @@ func register_dialogues():
+ 	J.register_dialogue_resource("FALLBACK", "res://scenes/ui/dialogue/Dialogues/FALLBACK.tres")
+ 
+ 
++func register_status_effects():
++	J.register_status_effect_resource("Poison", "res://scripts/components/networking/statuseffectcomponent/StatusEffects/Poison.tres")
++
++
+ func register_player_scene(player_scene_path: String):
+ 	player_scene = load(player_scene_path)
+ 

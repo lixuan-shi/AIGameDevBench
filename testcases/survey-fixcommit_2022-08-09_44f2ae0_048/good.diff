@@ -1,0 +1,35 @@
+diff --git a/scenes/title/levelselect/LevelList.gd b/scenes/title/levelselect/LevelList.gd
+index 58a175e..b2d1d59 100644
+--- a/scenes/title/levelselect/LevelList.gd
++++ b/scenes/title/levelselect/LevelList.gd
+@@ -62,3 +62,9 @@ func _on_focus_entered():
+ func unselect_active_item():
+ 	self.unselect(last_item_selected)
+ 	self.set_item_icon(last_item_selected, null)
++
++
++func _on_empty_space_selected():
++	var idx: int = self.get_item_at_position(get_local_mouse_position())
++	self.select(idx)
++	self.emit_signal("item_selected", idx)
+diff --git a/scenes/title/levelselect/LevelList.tscn b/scenes/title/levelselect/LevelList.tscn
+index d82bc26..8978136 100644
+--- a/scenes/title/levelselect/LevelList.tscn
++++ b/scenes/title/levelselect/LevelList.tscn
+@@ -18,3 +18,4 @@ tag_colors = {
+ 
+ [connection signal="focus_entered" from="." to="." method="_on_focus_entered"]
+ [connection signal="item_selected" from="." to="." method="_on_item_selected"]
++[connection signal="nothing_selected" from="." to="." method="_on_empty_space_selected"]
+diff --git a/scenes/title/levelselect/LevelSelect.gd b/scenes/title/levelselect/LevelSelect.gd
+index cb2b622..b2bb2ea 100644
+--- a/scenes/title/levelselect/LevelSelect.gd
++++ b/scenes/title/levelselect/LevelSelect.gd
+@@ -14,6 +14,7 @@ var main_scene = null
+ func _ready():
+ 	EventBus.connect("hub_entered", self, "_exit_to_menu")
+ 	level_list.grab_focus()
++	level_list.connect("tree_entered", level_list, "grab_focus")
+ 
+ 
+ func _on_StartButton_pressed():

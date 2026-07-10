@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-09-19_394d8fa_013"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "561a3239f9c907233df5d19df021e436c15f8042"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scripts/Classes/Editor/LevelEditor.gd, Scripts/Parts/LevelLoader.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-09-19_394d8fa_013"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

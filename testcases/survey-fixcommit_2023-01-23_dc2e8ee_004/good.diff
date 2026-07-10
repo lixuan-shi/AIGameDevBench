@@ -1,0 +1,26 @@
+diff --git a/source/match/FogOfWar.gd b/source/match/FogOfWar.gd
+index bc1a80d..cefa4fa 100644
+--- a/source/match/FogOfWar.gd
++++ b/source/match/FogOfWar.gd
+@@ -51,7 +51,7 @@ func _map_unit_to_new_circles(unit):
+ 
+ func _sync_circles_to_unit(unit):
+ 	var unit_pos_3d = unit.global_transform.origin
+-	var unit_pos_2d = Vector2(unit_pos_3d.x, unit_pos_3d.z) * 2.0
++	var unit_pos_2d = Vector2(unit_pos_3d.x, unit_pos_3d.z) * TEXTURE_UNITS_PER_WORLD_UNIT
+ 	_unit_to_circles_mapping[unit][0].position = unit_pos_2d
+ 	_unit_to_circles_mapping[unit][1].position = unit_pos_2d
+ 
+diff --git a/source/shaders/3d/simple_fog_of_war.gdshader b/source/shaders/3d/simple_fog_of_war.gdshader
+index 437ff1a..ec4987c 100644
+--- a/source/shaders/3d/simple_fog_of_war.gdshader
++++ b/source/shaders/3d/simple_fog_of_war.gdshader
+@@ -2,7 +2,7 @@ shader_type spatial;
+ render_mode unshaded;
+ 
+ uniform vec4 color : source_color = vec4(vec3(0.0), 1.0);
+-uniform sampler2D world_visibility_texture : hint_default_white;
++uniform sampler2D world_visibility_texture : hint_default_white, filter_linear, repeat_disable;
+ uniform int texture_units_per_world_unit = 2;
+ uniform bool debug_texture_view = false;
+ uniform sampler2D depth_texture : hint_depth_texture;

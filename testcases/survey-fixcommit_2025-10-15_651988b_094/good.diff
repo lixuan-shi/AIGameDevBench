@@ -1,0 +1,30 @@
+diff --git a/Scripts/Classes/Singletons/SettingsManager.gd b/Scripts/Classes/Singletons/SettingsManager.gd
+index c028bdb..13d5293 100644
+--- a/Scripts/Classes/Singletons/SettingsManager.gd
++++ b/Scripts/Classes/Singletons/SettingsManager.gd
+@@ -112,6 +112,12 @@ func load_settings() -> void:
+ 	for section in cfg_file.get_sections():
+ 		for key in cfg_file.get_section_keys(section):
+ 			file[section][key] = cfg_file.get_value(section, key)
++	fix_broken_settings()
++
++func fix_broken_settings() -> void:
++	# Fix any "permanently-enabled" resource packs from 1.0.2 snapshots after portable mode was added, but before this bug was fixed
++	for i in range(file.visuals.resource_packs.size()):
++		file.visuals.resource_packs[i] = str(file.visuals.resource_packs[i]).trim_prefix("/")
+ 
+ func apply_settings() -> void:
+ 	for i in file.video.keys():
+diff --git a/Scripts/Parts/ResourcePackLoader.gd b/Scripts/Parts/ResourcePackLoader.gd
+index ede06e0..6521046 100644
+--- a/Scripts/Parts/ResourcePackLoader.gd
++++ b/Scripts/Parts/ResourcePackLoader.gd
+@@ -36,7 +36,7 @@ func create_container(resource_pack := "") -> void:
+ 		container.icon = ImageTexture.create_from_image(image)
+ 	elif FileAccess.file_exists(resource_pack + "/icon.gif"):
+ 		container.icon = GifManager.animated_texture_from_file(resource_pack + "/icon.gif")
+-	container.pack_name = resource_pack.replace(Global.config_path.path_join("resource_packs"), "")
++	container.pack_name = resource_pack.replace(Global.config_path.path_join("resource_packs"), "").trim_prefix("/")
+ 	$"../ScrollContainer/VBoxContainer".add_child(container)
+ 	containers.append(container)
+ 	container.add_to_group("Options")

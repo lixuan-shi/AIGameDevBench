@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-17_80faead_097"
+category = "precise_edit"
+source_kind = "git"
+baseline_ref = "77b91b3840177185be22daf3e5f8c1bd5728147d"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scripts/Classes/Components/ResourceSetterNew.gd, Scripts/Classes/Entities/PipeArea.gd, Scripts/Classes/States/Player/Normal.gd, Scripts/Parts/FontUpdater.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-17_80faead_097"
+bad_case_type = "C2"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

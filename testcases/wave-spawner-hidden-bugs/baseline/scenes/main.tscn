@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://cvgi6ad0t5uqp"]
+
+[ext_resource type="Script" uid="uid://dxul416xup6md" path="res://scripts/wave_spawner.gd" id="1_ws"]
+
+[node name="Main" type="Node2D" unique_id=1523726111]
+
+[node name="WaveSpawner" type="Node" parent="." unique_id=515191534]
+script = ExtResource("1_ws")

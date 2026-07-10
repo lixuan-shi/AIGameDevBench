@@ -1,0 +1,84 @@
+diff --git a/godot/combat/battlers/stats/GrowthStats.gd b/godot/combat/battlers/stats/GrowthStats.gd
+index 0756331..8984e46 100644
+--- a/godot/combat/battlers/stats/GrowthStats.gd
++++ b/godot/combat/battlers/stats/GrowthStats.gd
+@@ -42,25 +42,25 @@ func _get_interpolated_level(value : int = 0) -> float:
+ 	
+ func _get_max_health(experience : int)-> int:
+ 	assert max_health_curve != null
+-	var level : int = _get_interpolated_level(experience)
++	var level : float = _get_interpolated_level(experience)
+ 	return int(max_health_curve.interpolate_baked(level))
+ 
+ func _get_max_mana(experience : int)-> int:
+ 	assert max_mana_curve != null
+-	var level : int = _get_interpolated_level(experience)
++	var level : float = _get_interpolated_level(experience)
+ 	return int(max_mana_curve.interpolate_baked(level))
+ 
+ func _get_strength(experience : int)-> int:
+ 	assert strength_curve != null
+-	var level : int = _get_interpolated_level(experience)
++	var level : float = _get_interpolated_level(experience)
+ 	return int(strength_curve.interpolate_baked(level))
+ 
+ func _get_defense(experience : int)-> int:
+ 	assert defense_curve != null
+-	var level : int = _get_interpolated_level(experience)
++	var level : float = _get_interpolated_level(experience)
+ 	return int(defense_curve.interpolate_baked(level))
+ 
+ func _get_speed(experience : int)-> int:
+ 	assert speed_curve != null
+-	var level : int = _get_interpolated_level(experience)
++	var level : float = _get_interpolated_level(experience)
+ 	return int(speed_curve.interpolate_baked(level))
+diff --git a/godot/party/PartyMember.gd b/godot/party/PartyMember.gd
+index 2fb2588..25681cc 100644
+--- a/godot/party/PartyMember.gd
++++ b/godot/party/PartyMember.gd
+@@ -24,15 +24,15 @@ func _ready():
+ 	stats = growth.create_stats(experience)
+ 	battler.stats = stats
+ 
+-func update_stats(stats : CharacterStats):
++func update_stats(before_stats : CharacterStats):
+ 	"""
+ 	Update this character's stats to match select changes
+ 	that occurred during combat or through menu actions
+ 	"""
+-	var before_level = stats.level
++	var before_level = before_stats.level
+ 	var after_level = growth.get_level(experience)
+ 	if before_level != after_level:
+-		stats.reset()
++		stats = growth.create_stats(experience)
+ 		emit_signal("level_changed", after_level, before_level)
+ 	battler.stats = stats
+ 
+@@ -54,6 +54,8 @@ func _set_experience(value : int):
+ 	if value == null:
+ 		return
+ 	experience = max(0, value)
++	if stats:
++		update_stats(stats)
+ 
+ func save(save_game : Resource):
+ 	save_game.data[SAVE_KEY] = {
+diff --git a/godot/quest_system/QuestSystem.gd b/godot/quest_system/QuestSystem.gd
+index c0ced48..134cdc6 100644
+--- a/godot/quest_system/QuestSystem.gd
++++ b/godot/quest_system/QuestSystem.gd
+@@ -56,12 +56,8 @@ func deliver(quest : Quest):
+ 	var rewards = quest.get_rewards()
+ 	for item in rewards['items']:
+ 		party.inventory.add(item.item, item.amount)
+-	# TODO: Simplify the stats API on PartyMember. party_member.experience += value
+-	# should level up the character and update the stats automatically
+-	# so that all the code stays in PartyMember.gd
+ 	for party_member in party.get_active_members():
+ 		party_member.experience += rewards['experience']
+-		party_member.update_stats(party_member.battler.stats)
+ 
+ 	assert quest.get_parent() == completed_quests
+ 	completed_quests.remove_child(quest)

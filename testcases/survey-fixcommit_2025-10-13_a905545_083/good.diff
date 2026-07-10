@@ -1,0 +1,86 @@
+diff --git a/Assets/Sprites/Items/FireFlowerSpecial.png.import b/Assets/Sprites/Items/FireFlowerSpecial.png.import
+new file mode 100644
+index 0000000..05f4e44
+--- /dev/null
++++ b/Assets/Sprites/Items/FireFlowerSpecial.png.import
+@@ -0,0 +1,40 @@
++[remap]
++
++importer="texture"
++type="CompressedTexture2D"
++uid="uid://dgdag7jgwnjm5"
++path="res://.godot/imported/FireFlowerSpecial.png-3ae8e78d22e3e202bc4dce18fa8aa0eb.ctex"
++metadata={
++"vram_texture": false
++}
++
++[deps]
++
++source_file="res://Assets/Sprites/Items/FireFlowerSpecial.png"
++dest_files=["res://.godot/imported/FireFlowerSpecial.png-3ae8e78d22e3e202bc4dce18fa8aa0eb.ctex"]
++
++[params]
++
++compress/mode=0
++compress/high_quality=false
++compress/lossy_quality=0.7
++compress/uastc_level=0
++compress/rdo_quality_loss=0.0
++compress/hdr_compression=1
++compress/normal_map=0
++compress/channel_pack=0
++mipmaps/generate=false
++mipmaps/limit=-1
++roughness/mode=0
++roughness/src_normal=""
++process/channel_remap/red=0
++process/channel_remap/green=1
++process/channel_remap/blue=2
++process/channel_remap/alpha=3
++process/fix_alpha_border=true
++process/premult_alpha=false
++process/normal_map_invert_y=false
++process/hdr_as_srgb=false
++process/hdr_clamp_exposure=false
++process/size_limit=0
++detect_3d/compress_to=1
+diff --git a/Scripts/Classes/Entities/PipeArea.gd b/Scripts/Classes/Entities/PipeArea.gd
+index a16d6f7..f738c2a 100644
+--- a/Scripts/Classes/Entities/PipeArea.gd
++++ b/Scripts/Classes/Entities/PipeArea.gd
+@@ -65,7 +65,6 @@ func update_visuals() -> void:
+ 
+ func exit_pipe() -> void:
+ 	pipe_exited.emit()
+-	await get_tree().physics_frame
+ 	for i in get_tree().get_nodes_in_group("Players"):
+ 		i.go_to_exit_pipe(self)
+ 	for i in get_tree().get_nodes_in_group("Players"):
+diff --git a/Scripts/Classes/Entities/Player.gd b/Scripts/Classes/Entities/Player.gd
+index 1ef54d4..73a3d93 100644
+--- a/Scripts/Classes/Entities/Player.gd
++++ b/Scripts/Classes/Entities/Player.gd
+@@ -796,7 +796,7 @@ func hide_pipe_animation() -> void:
+ func go_to_exit_pipe(pipe: PipeArea) -> void:
+ 	Global.can_time_tick = false
+ 	pipe_enter_direction = Vector2.ZERO
+-	state_machine.transition_to("Pipe")
++	state_machine.transition_to("Freeze")
+ 	global_position = pipe.global_position + (pipe.get_vector(pipe.enter_direction) * 32)
+ 	if pipe.enter_direction == 1:
+ 		global_position = pipe.global_position + Vector2(0, -8)
+diff --git a/Scripts/Classes/PowerStates/Fire.gd b/Scripts/Classes/PowerStates/Fire.gd
+index e5c8e69..ecbc542 100644
+--- a/Scripts/Classes/PowerStates/Fire.gd
++++ b/Scripts/Classes/PowerStates/Fire.gd
+@@ -2,8 +2,8 @@ extends PowerUpState
+ 
+ var fireball_amount := 0
+ const FIREBALL = preload("res://Scenes/Prefabs/Entities/Items/Fireball.tscn")
+-func update(_delta: float) -> void:
+-	if Global.player_action_just_pressed("action", player.player_id) and fireball_amount < 2 and player.state_machine.state.name == "Normal":
++func update(delta: float) -> void:
++	if Global.player_action_just_pressed("action", player.player_id) and fireball_amount < 2 and player.state_machine.state.name == "Normal" and delta > 0:
+ 		throw_fireball()
+ 
+ func throw_fireball() -> void:

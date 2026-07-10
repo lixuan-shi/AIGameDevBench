@@ -1,0 +1,13 @@
+diff --git a/source/match/IsometricCamera3D.gd b/source/match/IsometricCamera3D.gd
+index 93d7b4a..2f90cb5 100644
+--- a/source/match/IsometricCamera3D.gd
++++ b/source/match/IsometricCamera3D.gd
+@@ -9,7 +9,7 @@ const EXPECTED_PROJECTION = PROJECTION_ORTHOGONAL
+ @export var size_min = 1
+ @export var size_max = 20
+ @export_group("Movement")
+-@export var screen_margin_for_movement = 1
++@export var screen_margin_for_movement = 2
+ @export var movement_speed = 1.1
+ @export var bounding_planes: Array[Plane] = []
+ @export_group("Rotation")

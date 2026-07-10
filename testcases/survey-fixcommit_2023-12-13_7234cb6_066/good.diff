@@ -1,0 +1,426 @@
+diff --git a/project.godot b/project.godot
+index d8420e5..42f1137 100644
+--- a/project.godot
++++ b/project.godot
+@@ -24,6 +24,8 @@ G="*res://scripts/singletons/gameserver.gd"
+ C="*res://scripts/singletons/clientgateway.gd"
+ S="*res://scripts/singletons/servergateway.gd"
+ JUI="*res://scripts/singletons/jui.gd"
++BeehaveGlobalMetrics="*res://addons/beehave/metrics/beehave_global_metrics.gd"
++BeehaveGlobalDebugger="*res://addons/beehave/debug/global_debugger.gd"
+ 
+ [debug]
+ 
+@@ -41,7 +43,7 @@ project/assembly_name="Jdungeon"
+ 
+ [editor_plugins]
+ 
+-enabled=PackedStringArray("res://addons/logger/plugin.cfg")
++enabled=PackedStringArray("res://addons/beehave/plugin.cfg", "res://addons/logger/plugin.cfg")
+ 
+ [gui]
+ 
+@@ -152,7 +154,7 @@ j_toggle_class_menu={
+ j_continue={
+ "deadzone": 0.5,
+ "events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":32,"key_label":0,"unicode":32,"echo":false,"script":null)
+-, Object(InputEventMouseButton,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"button_mask":1,"position":Vector2(125, 12),"global_position":Vector2(129, 53),"factor":1.0,"button_index":1,"canceled":false,"pressed":true,"double_click":false,"script":null)
++, Object(InputEventMouseButton,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"button_mask":1,"position":Vector2(133, 6),"global_position":Vector2(137, 47),"factor":1.0,"button_index":1,"canceled":false,"pressed":true,"double_click":false,"script":null)
+ ]
+ }
+ 
+diff --git a/scenes/npcs/milklady/Milklady.gd b/scenes/npcs/milklady/Milklady.gd
+index a52945d..964c986 100644
+--- a/scenes/npcs/milklady/Milklady.gd
++++ b/scenes/npcs/milklady/Milklady.gd
+@@ -31,5 +31,9 @@ func interact(player: Player):
+ 	if player.get("peer_id") == null:
+ 		GodotLogger.error("player node does not have the peer_id variable")
+ 		return
+-
+-	shop.open_shop(player.peer_id)
++	
++	player.dialogue.sync_invoke(player.peer_id, "MilkLady")
++	player.dialogue.dialogue_system_instance.dialogue_finished.connect(_on_dialogue_finished.bind(player.peer_id))
++	
++func _on_dialogue_finished(peerID: int):
++	shop.open_shop(peerID)
+diff --git a/scenes/player/Player.gd b/scenes/player/Player.gd
+index 0314033..5041ac4 100644
+--- a/scenes/player/Player.gd
++++ b/scenes/player/Player.gd
+@@ -23,6 +23,7 @@ var network_view_synchronizer: NetworkViewSynchronizerComponent = $NetworkViewSy
+ @onready var player_unstuck: PlayerUnstuckComponent = $PlayerUnstuckComponent
+ @onready var update_face: UpdateFaceComponent = $UpdateFaceComponent
+ @onready var skeleton: Node2D = $Skeleton
++@onready var dialogue: DialogueSynhcronizerComponent = $DialogueSynchronizerComponent
+ @onready var original_scale: Vector2 = skeleton.scale
+ @onready var ui_control: Control = $Camera2D/UILayer/GUI
+ 
+diff --git a/scenes/ui/dialogue/DialogueResource.gd b/scenes/ui/dialogue/DialogueResource.gd
+index ad3c9ac..0ae97a1 100644
+--- a/scenes/ui/dialogue/DialogueResource.gd
++++ b/scenes/ui/dialogue/DialogueResource.gd
+@@ -23,13 +23,12 @@ func _init() -> void:
+ 	if speaker_portraits.size() != speaker_names.size():
+ 		GodotLogger.warn("Dialogue Array size mismatch")
+ 
+-## Format of a dialogue snippet is as follows:
+-var snippets: Dictionary
+-
+-func get_speaker_name(id: int):
++func get_speaker_name(id: int) -> String:
+ 	if abs(id) >= speaker_names.size():
+ 		GodotLogger.warn("Speaker ID {0} out of range. There's {1} speakers in this dialogue.").format([str(id), str(speaker_names.size())])
+-		return
++		return ""
++	else:
++		return speaker_names[id]
+ 
+ func get_speaker_portrait(id: int, portraitID: int) -> Texture:
+ 	if abs(id) >= speaker_portraits.size():
+@@ -56,7 +55,7 @@ func get_speaker_portrait(id: int, portraitID: int) -> Texture:
+ func get_snippets_to_show(trueConditions: Dictionary) -> Array[DialogueSnippetResource]:
+ 	var output: Array[DialogueSnippetResource] = []
+ 	
+-	for snippet: DialogueSnippetResource in snippets:
++	for snippet: DialogueSnippetResource in dialogue_snippets:
+ 
+ 		if should_snippet_be_shown(snippet, trueConditions):
+ 			output.append(snippet)
+diff --git a/scenes/ui/dialogue/DialogueSynchronizerComponent.tscn b/scenes/ui/dialogue/DialogueSynchronizerComponent.tscn
+new file mode 100644
+index 0000000..a51d802
+--- /dev/null
++++ b/scenes/ui/dialogue/DialogueSynchronizerComponent.tscn
+@@ -0,0 +1,6 @@
++[gd_scene load_steps=2 format=3 uid="uid://cim5re1jlv1ma"]
++
++[ext_resource type="Script" path="res://scripts/components/dialoguesynhcronizercomponent/DialogueSynchronizerComponent.gd" id="1_jixy1"]
++
++[node name="DialogueSynchronizerComponent" type="Node"]
++script = ExtResource("1_jixy1")
+diff --git a/scenes/ui/dialogue/DialogueSystem.gd b/scenes/ui/dialogue/DialogueSystem.gd
+index 6ac8445..eb1f3de 100644
+--- a/scenes/ui/dialogue/DialogueSystem.gd
++++ b/scenes/ui/dialogue/DialogueSystem.gd
+@@ -4,6 +4,7 @@ class_name DialogueSystem
+ ## Use [method DialogueSystem.create_dialogue_box] to get an instance of the DialogueBox.tscn scene ready for use.
+ 
+ const FALLBACK_DIALOGUE_IDENTIFIER: String = "FALLBACK"
++const DEFAULT_THEME: Theme = preload("res://assets/themes/LoginPanelTheme.tres")
+ 
+ signal snippet_finished(snippet: DialogueSnippetResource)
+ 
+@@ -18,7 +19,9 @@ signal dialogue_portrait_changed(newPortrait: Texture)
+ @export var rich_label_dialogue: RichTextLabel
+ 
+ ## Used to set the time required for the text to finish appearing, if you want to modify the speed of individual text snippets. Modify [member DialogueSnippetResource.text_speed_multiplier]
+-@export var letters_per_second: int = 12
++@export var letters_per_second: int = 24
++
++@export var font_size: int = 42
+ 
+ @export var accept_input: bool = false:
+ 	set(val):
+@@ -37,7 +40,6 @@ var dialogueIndexProgress: int:
+ 		
+ 		dialogueIndexProgress = val
+ 		
+-		
+ var dialogueSize: int
+ var currentTextTween: Tween
+ 
+@@ -50,7 +52,7 @@ func load_flags(flags: Dictionary):
+ 	assert(flags.is_empty() or flags[flags.keys()[0]] is bool, "The first element of the flags is not a String:bool pair.")
+ 	dialogue_flags = flags
+ 
+-func create_dialogue_box() -> Control:
++func create_dialogue_box(theme: Theme = DEFAULT_THEME, backgroundOpacity: float = 0.5) -> Control:
+ 	#Due to the tscn file constantly getting corrupted for no reason, i am making the scene manually
+ 	var dialogueBox := Control.new()
+ 	dialogueBox.anchors_preset = 15
+@@ -58,29 +60,43 @@ func create_dialogue_box() -> Control:
+ 	dialogueBox.anchor_bottom = 1.0
+ 	dialogueBox.grow_horizontal = Control.GROW_DIRECTION_BOTH
+ 	dialogueBox.grow_vertical = Control.GROW_DIRECTION_BOTH
++	dialogueBox.theme = theme
++	
++	if backgroundOpacity > 0:
++		var panel := Panel.new()
++		panel.modulate.a = backgroundOpacity
++		panel.set_anchors_preset(Control.PRESET_FULL_RECT)
++		dialogueBox.add_child(panel)
+ 	
+ 	var portrait := TextureRect.new()
+ 	portrait.anchors_preset = -1
+-	portrait.anchor_right = 0.2
+-	portrait.anchor_bottom = 0.2
++	portrait.anchor_bottom = 0.3
++	portrait.custom_minimum_size = Vector2(80,80)
+ 	portrait.expand_mode = TextureRect.EXPAND_FIT_WIDTH
+-	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
++	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
+ 	
+ 	var speaker := Label.new()
+ 	speaker.anchor_left = 0.2
+ 	speaker.anchors_preset = -1
+ 	speaker.anchor_right = 1.0
+-	speaker.anchor_bottom = 0.2
++	speaker.anchor_bottom = 0.3
+ 	speaker.grow_horizontal = Control.GROW_DIRECTION_BOTH
+ 	speaker.grow_vertical = Control.GROW_DIRECTION_BEGIN
+ 	speaker.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+ 	speaker.autowrap_mode = TextServer.AUTOWRAP_WORD
++	speaker.add_theme_font_size_override("font_size", font_size + 8)
+ 	
+ 	var box := RichTextLabel.new()
+ 	box.anchors_preset = -1
+-	box.anchor_top = 0.2
++	box.anchor_top = 0.3
+ 	box.anchor_right = 1.0
+ 	box.anchor_bottom = 1.0
++	box.add_theme_font_size_override("normal_font_size", font_size)
++	box.add_theme_font_size_override("bold_font_size", font_size)
++	box.add_theme_font_size_override("italics_font_size", font_size)
++	box.add_theme_font_size_override("bold_italics_font_size", font_size)
++	box.add_theme_font_size_override("mono_font_size", font_size)
++	
+ 	
+ 	dialogueBox.add_child(portrait)
+ 	dialogueBox.add_child(box)
+@@ -97,15 +113,32 @@ static func get_system_from_dialogue_box(dialogueBox: Control) -> DialogueSystem
+ 	return dialogueBox.get_node("DialogueSystem")
+ 
+ func load_dialogue(dialogueRes: DialogueResource):
++	unload_dialogue()
++	
+ 	dialogueIndexProgress = 0
+ 	current_dialogue = dialogueRes
+ 	current_snippets = current_dialogue.get_snippets_to_show(dialogue_flags)
++	if Global.debug_mode:
++		GodotLogger.info(
++			"Loaded dialogue '{0}' with {1} snippets".format([ current_dialogue.dialogue_identifier, str(current_dialogue.dialogue_snippets.size()) ])
++		)
+ 
+ func unload_dialogue():
++	var finishedDialogue: bool = current_dialogue != null
++	var finishedIdentifier: String
++	if finishedDialogue:
++		finishedIdentifier = current_dialogue.dialogue_identifier
++		
+ 	dialogueIndexProgress = 0
+ 	current_dialogue = null
+ 	current_snippets.clear()
+-	dialogue_finished.emit()
++	
++	if finishedDialogue:
++		if Global.debug_mode:
++			GodotLogger.info(
++				"Dialogue '{0}' finished.".format([finishedIdentifier])
++			)
++		dialogue_finished.emit()
+ 
+ func show_next_snippet():
+ 	#Stop if there's nothing to show.
+@@ -143,12 +176,11 @@ func display_snipet(dialogueResource: DialogueResource, snippet: DialogueSnippet
+ 	rich_label_dialogue.bbcode_enabled = snippet.enableBBCode
+ 	
+ 	#Load text
+-	if rich_label_dialogue.bbcode_enabled:
+-		rich_label_dialogue.parse_bbcode(snippet.text)
+-	else:
+-		rich_label_dialogue.text = snippet.text
++	rich_label_dialogue.text = snippet.text
++
+ 	dialogueSize = rich_label_dialogue.text.length()
+ 	
++	
+ 	#Emit the change in name and portrait
+ 	dialogue_portrait_changed.emit(dialogueResource.get_speaker_portrait(snippet.speaker_id, snippet.portrait_id))
+ 	dialogue_speaker_changed.emit(dialogueResource.get_speaker_name(snippet.speaker_id))
+@@ -159,23 +191,33 @@ func display_snipet(dialogueResource: DialogueResource, snippet: DialogueSnippet
+ 	else:
+ 		rich_label_dialogue.visible_characters = 0
+ 		text_tween_start(snippet.text_speed_modifier)
++		
++	if Global.debug_mode:
++		GodotLogger.info(
++			"Displayed snippet with text '{0}'. Expected time for tween to finish at normal speed: {1}".format([ snippet.text, str(dialogueSize / letters_per_second) ])
++		)
+ 
+ func text_tween_start(speedModifier: float):
++	if not rich_label_dialogue:
++		GodotLogger.warn("Aborted dialogue text tweening due to missing RichTextLabel")
++		return
++		
+ 	text_tween_stop()
+ 	
+-	currentTextTween = create_tween()
++	currentTextTween = rich_label_dialogue.create_tween()
++	assert(currentTextTween is Tween)
+ 	currentTextTween.tween_property(
+ 		rich_label_dialogue, 
+ 		"visible_characters", 
+ 		dialogueSize, 
+ 		(dialogueSize / letters_per_second) * speedModifier
+ 		)
++		
+ 	currentTextTween.play()
+ 
+ func text_tween_stop():
+-	if currentTextTween != null:
++	if currentTextTween and currentTextTween.is_valid():
+ 		currentTextTween.kill()
+-		currentTextTween = null
+ 	
+ func is_text_scrolling() -> bool:
+ 	return currentTextTween.is_running()
+diff --git a/scenes/ui/dialogue/Dialogues/MilkLady.tres b/scenes/ui/dialogue/Dialogues/MilkLady.tres
+index 2cc75e1..e9bb2d4 100644
+--- a/scenes/ui/dialogue/Dialogues/MilkLady.tres
++++ b/scenes/ui/dialogue/Dialogues/MilkLady.tres
+@@ -5,7 +5,7 @@
+ 
+ [sub_resource type="Resource" id="Resource_vfg0g"]
+ script = ExtResource("1_05atd")
+-text = "Welcome dear. It must have taken some effort to get all the way out here."
++text = "Welcome dear. It must have taken quite some effort to get all the way here."
+ enableBBCode = true
+ speaker_id = 0
+ portrait_id = 0
+diff --git a/scripts/components/dialoguesynhcronizercomponent/DialogueSynchronizerComponent.gd b/scripts/components/dialoguesynhcronizercomponent/DialogueSynchronizerComponent.gd
+index 1e04f89..d2095fd 100644
+--- a/scripts/components/dialoguesynhcronizercomponent/DialogueSynchronizerComponent.gd
++++ b/scripts/components/dialoguesynhcronizercomponent/DialogueSynchronizerComponent.gd
+@@ -2,8 +2,10 @@ extends Node
+ class_name DialogueSynhcronizerComponent
+ ## This component is merely an intermediary for the [DialogueSystem] class
+ ## Unlike other components, dialogues are invoked autonomously by the server when the player triggers one.
++## All methods in this component are client-only unless stated otherwise
+ 
+ @export var dialogue_box_top_anchor: float = 0.65
++@export var dialogue_box_opacity: float = 0.6
+ 
+ @export var user: Player
+ 
+@@ -16,34 +18,36 @@ var accepting_input: bool = false:
+ ## The node that will display the dialogue
+ var dialogueBox: Control
+ 
+-## The DialogueSystem that will be used, part of the dialogueBox scene
+-var systemInstance := DialogueSystem.new()
++## The DialogueSystem that will be used
++var dialogue_system_instance := DialogueSystem.new()
+ 
+ func _ready() -> void:
+-	if not G.is_server():
++	if user.get("component_list") != null:
++		user.component_list["dialogue_component"] = self
++	
++	if G.is_server():
+ 		return
+ 		
+-	dialogueBox = systemInstance.create_dialogue_box()
++	dialogueBox = dialogue_system_instance.create_dialogue_box( DialogueSystem.DEFAULT_THEME, dialogue_box_opacity)
++	assert(dialogueBox is Control)
+ 	dialogueBox.anchor_top = dialogue_box_top_anchor
+-	systemInstance.dialogue_finished.connect(_on_dialogue_finished)
++	dialogue_system_instance.dialogue_finished.connect(_on_dialogue_finished)
+ 	
+ 	
+ func _input(event: InputEvent) -> void:
+-	if event.is_action_pressed("continue"):
+-		systemInstance.show_next_snippet()
++	if event.is_action_pressed("j_continue"):
++		dialogue_system_instance.show_next_snippet()
+ 	
+ 	
+-#Called on server only
++#Called by and on server only
+ func sync_invoke(id: int, dialogueIdentifier: String):
+ 	assert(G.is_server(), "Only the server can invoke dialogue.")
+-	G.sync_rpc.dialoguesynchronizer_sync_invoke_response.rpc_id(id, dialogueIdentifier)
++	G.sync_rpc.dialoguesynchronizer_sync_invoke_response.rpc_id(id, user.get_name(), dialogueIdentifier)
+ 
+ 
+-#Called on client only
+ func sync_invoke_response(dialogueIdentifier: String):
+ 	assert(dialogueBox.get_parent() == null or dialogueBox.get_parent() == user.ui_control)
+ 	
+-	show_dialogue()
+ 	var dialogueRes: DialogueResource = J.dialogue_resources.get(dialogueIdentifier, null).duplicate()
+ 	
+ 	if dialogueRes == null:
+@@ -52,13 +56,17 @@ func sync_invoke_response(dialogueIdentifier: String):
+ 		)
+ 		return
+ 	
+-	systemInstance.load_dialogue(dialogueRes)
+-	systemInstance.show_next_snippet()
++	dialogue_system_instance.load_dialogue(dialogueRes)
++	
++	show_dialogue()
++	dialogue_system_instance.show_next_snippet()
+ 	
+ 	
+ func show_dialogue():
+ 	if not dialogueBox.is_inside_tree():
+ 		user.ui_control.add_child(dialogueBox)
++		
++	assert(dialogueBox.get_parent() == user.ui_control)
+ 	
+ 	dialogueBox.anchor_top = dialogue_box_top_anchor
+ 	accepting_input = true
+@@ -73,3 +81,4 @@ func hide_dialogue():
+ 
+ func _on_dialogue_finished():
+ 	hide_dialogue()
++	G.sync_rpc.dialoguesynchronizer_sync_dialogue_finished.rpc_id(1, user.get_name())
+diff --git a/scripts/network/rpcs/gameserver/sync.gd b/scripts/network/rpcs/gameserver/sync.gd
+index fccb546..6250468 100644
+--- a/scripts/network/rpcs/gameserver/sync.gd
++++ b/scripts/network/rpcs/gameserver/sync.gd
+@@ -485,4 +485,28 @@ func dialoguesynchronizer_sync_invoke_response(n: String, d: String):
+ 		return
+ 
+ 	if entity.component_list.has("class_component"):
+-		entity.component_list["class_component"].sync_response(d)
++		entity.component_list["dialogue_component"].sync_invoke_response(d)
++
++#Only client can make this RPC, runs on server
++@rpc("call_remote", "any_peer", "reliable")
++func dialoguesynchronizer_sync_dialogue_finished(n: String):
++	if not G.is_server():
++		return
++
++	var id: int = multiplayer.get_remote_sender_id()
++
++	# Only allow logged in players
++	if not G.is_user_logged_in(id):
++		return
++
++	var entity: Node = G.world.get_entity_by_name(n)
++
++	if entity == null:
++		return
++
++	if entity.get("component_list") == null:
++		return
++
++	if entity.component_list.has("dialogue_component"):
++
++		entity.component_list["dialogue_component"].dialogue_system_instance.dialogue_finished.emit()
+diff --git a/scripts/singletons/jdungeon.gd b/scripts/singletons/jdungeon.gd
+index 5b610fb..9f4aa81 100644
+--- a/scripts/singletons/jdungeon.gd
++++ b/scripts/singletons/jdungeon.gd
+@@ -183,7 +183,7 @@ func register_dialogue_all(dialogue_folder: String):
+ 		if file.get_extension() != "tres":
+ 			continue
+ 		
+-		var res: Resource = load(file)
++		var res: Resource = load(dialogue_folder + file)
+ 		
+ 		#Ignore non dialogues, if they happened to be in the folder
+ 		if not res is DialogueResource:

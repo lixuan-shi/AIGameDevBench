@@ -1,0 +1,214 @@
+diff --git a/scenes/npcs/milklady/Milklady.tscn b/scenes/npcs/milklady/Milklady.tscn
+index 5ec79c4..9a21ac7 100644
+--- a/scenes/npcs/milklady/Milklady.tscn
++++ b/scenes/npcs/milklady/Milklady.tscn
+@@ -1,4 +1,4 @@
+-[gd_scene load_steps=22 format=3 uid="uid://dj1mpx8a8yeko"]
++[gd_scene load_steps=23 format=3 uid="uid://dj1mpx8a8yeko"]
+ 
+ [ext_resource type="Script" path="res://scenes/npcs/milklady/Milklady.gd" id="1_i2k6g"]
+ [ext_resource type="PackedScene" uid="uid://c5tliladmodux" path="res://scripts/components/positionsynchronizercomponent/PositionSynchronizerComponent.tscn" id="2_444i3"]
+@@ -9,10 +9,11 @@
+ [ext_resource type="Texture2D" uid="uid://sqhyjw8sxa2g" path="res://assets/images/npcs/milklady/milklady_head.png" id="4_0w10x"]
+ [ext_resource type="PackedScene" uid="uid://dtmpwn0ids6rv" path="res://scripts/components/wanderbehaviorcomponent/WanderBehaviorCopmonent.tscn" id="4_jq4vr"]
+ [ext_resource type="Texture2D" uid="uid://dc103ysnnxwm6" path="res://assets/images/npcs/milklady/milklady_left_arm.png" id="5_1mf1y"]
++[ext_resource type="PackedScene" uid="uid://dfkcs65b1vpi3" path="res://scripts/components/updatefacecomponent/UpdateFaceComponent.tscn" id="6_7nn8c"]
+ [ext_resource type="Texture2D" uid="uid://6ok6m1nqugg4" path="res://assets/images/npcs/milklady/milklady_left_foot.png" id="6_ba0nm"]
+-[ext_resource type="PackedScene" uid="uid://bo2y25xscje6x" path="res://scripts/components/animationsynchronizercomponent/AnimationSynchronizerComponent.tscn" id="6_fddr0"]
+ [ext_resource type="PackedScene" uid="uid://b70bia1uuoud4" path="res://scripts/components/shopsynchronizercomponent/ShopSynchronizerComponent.tscn" id="7_b43t0"]
+ [ext_resource type="Texture2D" uid="uid://bvhajaa34ilol" path="res://assets/images/npcs/milklady/milklady_right_arm.png" id="7_f60ad"]
++[ext_resource type="PackedScene" uid="uid://c0p6pnjudl1v" path="res://scripts/components/animationcomponent/AnimationComponent.tscn" id="7_kfsbv"]
+ [ext_resource type="Texture2D" uid="uid://dlyuyp8sjr4qj" path="res://assets/images/npcs/milklady/milklady_right_foot.png" id="8_xp8pl"]
+ [ext_resource type="PackedScene" uid="uid://chhiamhxxhm3v" path="res://scripts/components/interfacecomponent/InterfaceComponent.tscn" id="9_3kap7"]
+ [ext_resource type="PackedScene" uid="uid://dv6a22n6h5bly" path="res://scripts/components/avoidancerayscomponent/AvoidanceRaysComponent.tscn" id="11_y6h07"]
+@@ -486,16 +487,18 @@ watcher_synchronizer = NodePath("../WatcherSynchronizerComponent")
+ watcher_synchronizer = NodePath("../WatcherSynchronizerComponent")
+ movement_speed = 125.0
+ 
+-[node name="WanderBehaviorCopmonent" parent="." node_paths=PackedStringArray("stats_component", "avoidance_rays_component", "animation_synchronizer") instance=ExtResource("4_jq4vr")]
++[node name="WanderBehaviorCopmonent" parent="." node_paths=PackedStringArray("stats_component", "avoidance_rays_component") instance=ExtResource("4_jq4vr")]
+ stats_component = NodePath("../StatsSynchronizerComponent")
+ avoidance_rays_component = NodePath("../AvoidanceRaysComponent")
+-animation_synchronizer = NodePath("../AnimationSynchronizerComponent")
++
++[node name="UpdateFaceComponent" parent="." node_paths=PackedStringArray("skeleton") instance=ExtResource("6_7nn8c")]
++skeleton = NodePath("../Skeleton")
+ 
+ [node name="AvoidanceRaysComponent" parent="." instance=ExtResource("11_y6h07")]
+ 
+-[node name="AnimationSynchronizerComponent" parent="." node_paths=PackedStringArray("watcher_synchronizer", "animation_player") instance=ExtResource("6_fddr0")]
+-watcher_synchronizer = NodePath("../WatcherSynchronizerComponent")
++[node name="AnimationComponent" parent="." node_paths=PackedStringArray("animation_player", "stats") instance=ExtResource("7_kfsbv")]
+ animation_player = NodePath("../AnimationPlayer")
++stats = NodePath("../StatsSynchronizerComponent")
+ 
+ [node name="ShopSynchronizerComponent" parent="." instance=ExtResource("7_b43t0")]
+ 
+diff --git a/scripts/components/animationsynchronizercomponent/AnimationSynchronizerComponent.gd b/scripts/components/animationsynchronizercomponent/AnimationSynchronizerComponent.gd
+deleted file mode 100644
+index 81d38d2..0000000
+--- a/scripts/components/animationsynchronizercomponent/AnimationSynchronizerComponent.gd
++++ /dev/null
+@@ -1,122 +0,0 @@
+-extends Node
+-
+-class_name AnimationSynchronizerComponent
+-
+-enum TYPE { LOOP, ACTION }
+-
+-signal loop_animation_changed(animation: String)
+-signal action_animation_changed(animation: String)
+-
+-@export var watcher_synchronizer: WatcherSynchronizerComponent
+-@export var animation_player: AnimationPlayer
+-
+-var target_node: Node
+-
+-var current_loop_animation: String = "Idle"
+-var get_loop_animation_timer: Timer
+-var server_buffer: Array[Dictionary] = []
+-
+-
+-func _physics_process(_delta):
+-	check_server_buffer()
+-
+-
+-func _ready():
+-	target_node = get_parent()
+-
+-	if not J.is_server():
+-		# This timer is needed to give the client some time to setup its multiplayer connection
+-		get_loop_animation_timer = Timer.new()
+-		get_loop_animation_timer.name = "GetLoopAnimationTimer"
+-		get_loop_animation_timer.wait_time = 0.1
+-		get_loop_animation_timer.autostart = false
+-		get_loop_animation_timer.one_shot = true
+-		get_loop_animation_timer.timeout.connect(_on_get_loop_animation_timer_timeout)
+-		add_child(get_loop_animation_timer)
+-
+-		loop_animation_changed.connect(_on_loop_animation_changed)
+-		action_animation_changed.connect(_on_action_animation_changed)
+-
+-		get_loop_animation_timer.start()
+-
+-		animation_player.animation_finished.connect(_on_animation_finished)
+-
+-
+-func check_server_buffer():
+-	for i in range(server_buffer.size() - 1, -1, -1):
+-		var entry = server_buffer[i]
+-		if entry["timestamp"] <= J.client.clock:
+-			match entry["type"]:
+-				TYPE.LOOP:
+-					current_loop_animation = entry["animation"]
+-					loop_animation_changed.emit(entry["animation"])
+-				TYPE.ACTION:
+-					action_animation_changed.emit(entry["animation"])
+-			server_buffer.remove_at(i)
+-
+-
+-func send_new_loop_animation(animation: String):
+-	if current_loop_animation != animation:
+-		current_loop_animation = animation
+-		sync_loop_animation(current_loop_animation)
+-
+-
+-func send_new_action_animation(animation: String):
+-	var timestamp: float = Time.get_unix_time_from_system()
+-
+-	for watcher in watcher_synchronizer.watchers:
+-		action_animation.rpc_id(watcher.peer_id, timestamp, animation)
+-
+-	action_animation_changed.emit(animation)
+-
+-
+-func sync_loop_animation(animation: String):
+-	var timestamp: float = Time.get_unix_time_from_system()
+-
+-	for watcher in watcher_synchronizer.watchers:
+-		loop_animation.rpc_id(watcher.peer_id, timestamp, animation)
+-
+-	loop_animation_changed.emit(animation)
+-
+-
+-func _on_loop_animation_changed(animation: String):
+-	if animation_player.has_animation(animation):
+-		animation_player.play(animation)
+-
+-
+-func _on_action_animation_changed(animation: String):
+-	animation_player.stop()
+-	animation_player.play(animation)
+-
+-
+-func _on_get_loop_animation_timer_timeout():
+-	get_loop_animation.rpc_id(1)
+-
+-
+-func _on_animation_finished(_anim_name: String):
+-	animation_player.play(current_loop_animation)
+-
+-
+-@rpc("call_remote", "authority", "reliable")
+-func loop_animation(timestamp: float, animation: String):
+-	server_buffer.append({"timestamp": timestamp, "type": TYPE.LOOP, "animation": animation})
+-
+-
+-@rpc("call_remote", "authority", "reliable")
+-func action_animation(timestamp: float, animation: String):
+-	server_buffer.append({"timestamp": timestamp, "type": TYPE.ACTION, "animation": animation})
+-
+-
+-@rpc("call_remote", "any_peer", "reliable") func get_loop_animation():
+-	if not J.is_server():
+-		return
+-
+-	var id = multiplayer.get_remote_sender_id()
+-
+-	# Only allow logged in players
+-	if not J.server.is_user_logged_in(id):
+-		return
+-
+-	var timestamp: float = Time.get_unix_time_from_system()
+-
+-	loop_animation.rpc_id(id, timestamp, current_loop_animation)
+diff --git a/scripts/components/animationsynchronizercomponent/AnimationSynchronizerComponent.tscn b/scripts/components/animationsynchronizercomponent/AnimationSynchronizerComponent.tscn
+deleted file mode 100644
+index f75c4aa..0000000
+--- a/scripts/components/animationsynchronizercomponent/AnimationSynchronizerComponent.tscn
++++ /dev/null
+@@ -1,6 +0,0 @@
+-[gd_scene load_steps=2 format=3 uid="uid://bo2y25xscje6x"]
+-
+-[ext_resource type="Script" path="res://scripts/components/animationsynchronizercomponent/AnimationSynchronizerComponent.gd" id="1_3cqd0"]
+-
+-[node name="AnimationSynchronizerComponent" type="Node"]
+-script = ExtResource("1_3cqd0")
+diff --git a/scripts/components/wanderbehaviorcomponent/WanderBehaviorCopmonent.gd b/scripts/components/wanderbehaviorcomponent/WanderBehaviorCopmonent.gd
+index 57b0b2e..df3667d 100644
+--- a/scripts/components/wanderbehaviorcomponent/WanderBehaviorCopmonent.gd
++++ b/scripts/components/wanderbehaviorcomponent/WanderBehaviorCopmonent.gd
+@@ -8,7 +8,6 @@ const MAX_COLLIDING_TIME = 1.0
+ 
+ @export var stats_component: StatsSynchronizerComponent
+ @export var avoidance_rays_component: AvoidanceRaysComponent
+-@export var animation_synchronizer: AnimationSynchronizerComponent
+ @export var max_wander_distance: float = 256.0
+ @export var min_idle_time: int = 3
+ @export var max_idle_time: int = 10
+@@ -72,15 +71,10 @@ func _physics_process(_delta: float):
+ 			else:
+ 				if !colliding_timer.is_stopped():
+ 					colliding_timer.stop()
+-			if animation_synchronizer:
+-				animation_synchronizer.send_new_loop_animation("Move")
+ 		elif idle_timer.is_stopped():
+ 			idle_timer.start(randi_range(min_idle_time, max_idle_time))
+ 			target_node.velocity = Vector2.ZERO
+ 
+-			if animation_synchronizer:
+-				animation_synchronizer.send_new_loop_animation("Idle")
+-
+ 
+ func find_random_spot(origin: Vector2, distance: float) -> Vector2:
+ 	return Vector2(

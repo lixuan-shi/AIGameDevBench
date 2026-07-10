@@ -1,0 +1,287 @@
+diff --git a/source/Constants.gd b/source/Constants.gd
+index ed5d232..eeec0d7 100644
+--- a/source/Constants.gd
++++ b/source/Constants.gd
+@@ -1,5 +1,12 @@
+ extends Node
+ 
++enum PlayerController {
++	NONE,
++	HUMAN,
++	SIMPLE_CLAIRVOYANT_AI,
++	DETECT_FROM_SCENE,
++}
++
+ const Match = preload("res://source/match/MatchConstants.gd")
+ 
+ # gdlint: ignore=class-variable-name
+diff --git a/source/match/Match.gd b/source/match/Match.gd
+index db96f95..5053a26 100644
+--- a/source/match/Match.gd
++++ b/source/match/Match.gd
+@@ -81,36 +81,38 @@ func _create_players():
+ 		players.append(player)
+ 
+ 
++# TODO: refa
+ func _create_and_setup_player_controllers():
+ 	var existing_player_controllers = _players.get_children()
+ 	for player_id in range(players.size()):
+-		if player_id >= existing_player_controllers.size():
+-			var player_type = settings.players[player_id].type
+-			if player_type == settings.players[player_id].PlayerType.NONE:
++		if player_id < existing_player_controllers.size():
++			var existing_player_controller = existing_player_controllers[player_id]
++			if not existing_player_controller.name.begins_with("Placeholder"):
++				if "player" in existing_player_controller:
++					existing_player_controller.player = players[player_id]
+ 				continue
+-			assert(
+-				player_type != settings.players[player_id].PlayerType.DETECT_FROM_SCENE,
+-				"cannot detect existing player controller"
+-			)
+-			var controller_scene = {
+-				settings.players[player_id].PlayerType.HUMAN:
+-				preload("res://source/match/players/human/Human.tscn"),
+-				settings.players[player_id].PlayerType.SIMPLE_CLAIRVOYANT_AI:
+-				preload(
+-					"res://source/match/players/simple-clairvoyant-ai/SimpleClairvoyantAI.tscn"
+-				),
+-			}[player_type]
+-			var controller = controller_scene.instantiate()
+-			if "player" in controller:
+-				controller.player = players[player_id]
+-			_players.add_child(controller)
+-		else:
+-			assert(false, "not implemented")
++		var player_controller = settings.players[player_id].controller
++		if player_controller == Constants.PlayerController.NONE:
++			continue
++		assert(
++			player_controller != Constants.PlayerController.DETECT_FROM_SCENE,
++			"cannot detect existing player controller"
++		)
++		var controller_scene = {
++			Constants.PlayerController.HUMAN:
++			preload("res://source/match/players/human/Human.tscn"),
++			Constants.PlayerController.SIMPLE_CLAIRVOYANT_AI:
++			preload("res://source/match/players/simple-clairvoyant-ai/SimpleClairvoyantAI.tscn"),
++		}[player_controller]
++		var controller_node = controller_scene.instantiate()
++		if "player" in controller_node:
++			controller_node.player = players[player_id]
++		_players.add_child(controller_node)
+ 
+ 
+ func _choose_controlled_player():
+ 	for player_id in range(players.size()):
+-		if settings.players[player_id].type == settings.players[player_id].PlayerType.HUMAN:
++		if settings.players[player_id].controller == Constants.PlayerController.HUMAN:
+ 			assert(controlled_player == null, "more than one human player in settings")
+ 			controlled_player = players[player_id]
+ 
+diff --git a/source/match/Match.tscn b/source/match/Match.tscn
+index 822cacb..b47a2c7 100644
+--- a/source/match/Match.tscn
++++ b/source/match/Match.tscn
+@@ -25,29 +25,29 @@
+ [ext_resource type="PackedScene" uid="uid://bocb7hjilvri5" path="res://source/match/handlers/SelectionHandler.tscn" id="20_tw1wp"]
+ [ext_resource type="PackedScene" uid="uid://c0uxy26e4qs4w" path="res://source/match/handlers/MouseClickAnimationsHandler.tscn" id="22_438pb"]
+ 
+-[sub_resource type="Resource" id="Resource_aehri"]
++[sub_resource type="Resource" id="Resource_hfc6q"]
+ script = ExtResource("2_issh2")
+ color = Color(0.4, 0.694118, 1, 1)
+-type = 2
++controller = 1
+ 
+-[sub_resource type="Resource" id="Resource_ohrdq"]
++[sub_resource type="Resource" id="Resource_6k4u7"]
+ script = ExtResource("2_issh2")
+ color = Color(1, 0.360784, 0.45098, 1)
+-type = 2
++controller = 2
+ 
+ [sub_resource type="Resource" id="Resource_8ui6d"]
+ script = ExtResource("2_issh2")
+ color = Color(0.647059, 1, 0.6, 1)
+-type = 2
++controller = 2
+ 
+ [sub_resource type="Resource" id="Resource_qphv2"]
+ script = ExtResource("2_issh2")
+ color = Color(0.929412, 0.521569, 1, 1)
+-type = 2
++controller = 2
+ 
+ [sub_resource type="Resource" id="Resource_frabv"]
+ script = ExtResource("3_k87ed")
+-players = Array[Resource]([SubResource("Resource_aehri"), SubResource("Resource_ohrdq"), SubResource("Resource_8ui6d"), SubResource("Resource_qphv2")])
++players = Array[Resource]([SubResource("Resource_hfc6q"), SubResource("Resource_6k4u7"), SubResource("Resource_8ui6d"), SubResource("Resource_qphv2")])
+ controlled_player = 0
+ visibility = 1
+ visible_player = 0
+diff --git a/source/model/PlayerSettings.gd b/source/model/PlayerSettings.gd
+index be3ea7c..db295bf 100644
+--- a/source/model/PlayerSettings.gd
++++ b/source/model/PlayerSettings.gd
+@@ -1,12 +1,4 @@
+ extends Resource
+ 
+-# TODO: rename to PlayerController and extract
+-enum PlayerType {
+-	NONE,
+-	HUMAN,
+-	SIMPLE_CLAIRVOYANT_AI,
+-	DETECT_FROM_SCENE,
+-}
+-
+ @export var color = Color.BLUE
+-@export var type = PlayerType.SIMPLE_CLAIRVOYANT_AI
++@export var controller = Constants.PlayerController.SIMPLE_CLAIRVOYANT_AI
+diff --git a/tests/manual/TestAllUnits.tscn b/tests/manual/TestAllUnits.tscn
+index 0aa1ef1..010900e 100644
+--- a/tests/manual/TestAllUnits.tscn
++++ b/tests/manual/TestAllUnits.tscn
+@@ -1,18 +1,32 @@
+-[gd_scene load_steps=16 format=3 uid="uid://b65yuqx0iw62f"]
++[gd_scene load_steps=20 format=3 uid="uid://b65yuqx0iw62f"]
+ 
+ [ext_resource type="PackedScene" uid="uid://c84syrhfooaf0" path="res://source/match/Match.tscn" id="1_oiu0k"]
+ [ext_resource type="Script" path="res://tests/manual/Match.gd" id="2_ghr3h"]
+ [ext_resource type="PackedScene" uid="uid://ct0ejt0trkhrf" path="res://source/match/units/CommandCenter.tscn" id="2_rm00b"]
+ [ext_resource type="PackedScene" uid="uid://e7tko4kpeiau" path="res://source/match/units/Helicopter.tscn" id="3_0s0q8"]
++[ext_resource type="Script" path="res://source/model/PlayerSettings.gd" id="3_ml8xc"]
+ [ext_resource type="PackedScene" uid="uid://cxilu6668nda6" path="res://source/match/units/AircraftFactory.tscn" id="3_rq1vh"]
+ [ext_resource type="PackedScene" uid="uid://0gow0ughqu8u" path="res://source/match/units/Drone.tscn" id="4_3o35x"]
+ [ext_resource type="PackedScene" uid="uid://h5lqor1xl2sf" path="res://source/match/units/VehicleFactory.tscn" id="4_m1xri"]
++[ext_resource type="Script" path="res://source/model/MatchSettings.gd" id="4_qiwvm"]
+ [ext_resource type="Shader" path="res://source/shaders/3d/simple_fog_of_war.gdshader" id="5_f2ny6"]
+ [ext_resource type="PackedScene" uid="uid://b8pckq1xn44ss" path="res://source/match/units/AntiGroundTurret.tscn" id="5_g67iu"]
+ [ext_resource type="PackedScene" uid="uid://cfa8cpnpk5pcb" path="res://source/match/units/AntiAirTurret.tscn" id="6_lglnp"]
+ [ext_resource type="PackedScene" uid="uid://i58ffvwxbbwm" path="res://source/match/units/Tank.tscn" id="9_csgr3"]
+ [ext_resource type="PackedScene" uid="uid://bf0r3fovbvf1m" path="res://source/match/units/Worker.tscn" id="10_c3eov"]
+ 
++[sub_resource type="Resource" id="Resource_e1xtl"]
++script = ExtResource("3_ml8xc")
++color = Color(0.4, 0.694118, 1, 1)
++controller = 1
++
++[sub_resource type="Resource" id="Resource_rpdec"]
++script = ExtResource("4_qiwvm")
++players = Array[Resource]([SubResource("Resource_e1xtl")])
++controlled_player = 0
++visibility = 1
++visible_player = 0
++
+ [sub_resource type="ViewportTexture" id="ViewportTexture_v46ss"]
+ viewport_path = NodePath("FogOfWar/CombinedViewport")
+ 
+@@ -32,6 +46,7 @@ viewport_path = NodePath("FogOfWar/CombinedViewport")
+ [node name="Match" instance=ExtResource("1_oiu0k")]
+ script = ExtResource("2_ghr3h")
+ allow_resources_deficit_spending = true
++settings = SubResource("Resource_rpdec")
+ 
+ [node name="CommandCenter" parent="Map/Units/Player0" index="0" instance=ExtResource("2_rm00b")]
+ transform = Transform3D(-0.996198, 0, -0.087121, 0, 1, 0, 0.087121, 0, -0.996198, 12.2249, 0, 10.6336)
+diff --git a/tests/manual/TestOneUnit.tscn b/tests/manual/TestOneUnit.tscn
+index 9913230..3e6cdcf 100644
+--- a/tests/manual/TestOneUnit.tscn
++++ b/tests/manual/TestOneUnit.tscn
+@@ -10,6 +10,7 @@
+ [sub_resource type="Resource" id="Resource_aehri"]
+ script = ExtResource("3_3drrn")
+ color = Color(0.4, 0.694118, 1, 1)
++controller = 1
+ 
+ [sub_resource type="Resource" id="Resource_qqc8i"]
+ script = ExtResource("4_go41p")
+diff --git a/tests/manual/TestPlayerVsAI.tscn b/tests/manual/TestPlayerVsAI.tscn
+index a90f799..1b0c6b2 100644
+--- a/tests/manual/TestPlayerVsAI.tscn
++++ b/tests/manual/TestPlayerVsAI.tscn
+@@ -16,17 +16,19 @@
+ [ext_resource type="Shader" path="res://source/shaders/3d/simple_fog_of_war.gdshader" id="12_cnst8"]
+ [ext_resource type="PackedScene" uid="uid://1qlllsy6h5tc" path="res://source/match/players/simple-clairvoyant-ai/SimpleClairvoyantAI.tscn" id="15_6w32d"]
+ 
+-[sub_resource type="Resource" id="Resource_aehri"]
++[sub_resource type="Resource" id="Resource_sm6ga"]
+ script = ExtResource("3_8b007")
+ color = Color(0.4, 0.694118, 1, 1)
++controller = 1
+ 
+-[sub_resource type="Resource" id="Resource_ohrdq"]
++[sub_resource type="Resource" id="Resource_7xhjj"]
+ script = ExtResource("3_8b007")
+ color = Color(1, 0.360784, 0.45098, 1)
++controller = 2
+ 
+ [sub_resource type="Resource" id="Resource_tnmkt"]
+ script = ExtResource("4_kwjav")
+-players = Array[Resource]([SubResource("Resource_aehri"), SubResource("Resource_ohrdq")])
++players = Array[Resource]([SubResource("Resource_sm6ga"), SubResource("Resource_7xhjj")])
+ controlled_player = 0
+ visibility = 1
+ visible_player = 0
+@@ -85,4 +87,6 @@ material_override = SubResource("ShaderMaterial_67o07")
+ [node name="TextureRect" parent="HUD/MarginContainer/Minimap/MarginContainer" index="0"]
+ texture = SubResource("ViewportTexture_38cip")
+ 
++[node name="Placeholder" type="Node" parent="Players" index="0"]
++
+ [node name="SimpleClairvoyantAI" parent="Players" index="1" instance=ExtResource("15_6w32d")]
+diff --git a/tests/manual/TestUnitsFightingEachOther.tscn b/tests/manual/TestUnitsFightingEachOther.tscn
+index 9a4024b..b902591 100644
+--- a/tests/manual/TestUnitsFightingEachOther.tscn
++++ b/tests/manual/TestUnitsFightingEachOther.tscn
+@@ -1,11 +1,30 @@
+-[gd_scene load_steps=10 format=3 uid="uid://tcq8nbsari5i"]
++[gd_scene load_steps=15 format=3 uid="uid://tcq8nbsari5i"]
+ 
+-[ext_resource type="PackedScene" uid="uid://doitvquurtufi" path="res://source/match/Match.tscn" id="1_f87ft"]
++[ext_resource type="PackedScene" uid="uid://c84syrhfooaf0" path="res://source/match/Match.tscn" id="1_f87ft"]
+ [ext_resource type="Script" path="res://tests/manual/Match.gd" id="2_iedaw"]
+ [ext_resource type="Shader" path="res://source/shaders/3d/simple_fog_of_war.gdshader" id="2_ojmlq"]
+ [ext_resource type="PackedScene" uid="uid://cfa8cpnpk5pcb" path="res://source/match/units/AntiAirTurret.tscn" id="2_xec1u"]
++[ext_resource type="Script" path="res://source/model/PlayerSettings.gd" id="3_mmh0x"]
+ [ext_resource type="PackedScene" uid="uid://e7tko4kpeiau" path="res://source/match/units/Helicopter.tscn" id="3_vdlcv"]
+ [ext_resource type="PackedScene" uid="uid://0gow0ughqu8u" path="res://source/match/units/Drone.tscn" id="4_g2xty"]
++[ext_resource type="Script" path="res://source/model/MatchSettings.gd" id="4_xj1co"]
++
++[sub_resource type="Resource" id="Resource_ipatj"]
++script = ExtResource("3_mmh0x")
++color = Color(0.4, 0.694118, 1, 1)
++controller = 1
++
++[sub_resource type="Resource" id="Resource_clh6e"]
++script = ExtResource("3_mmh0x")
++color = Color(1, 0.360784, 0.45098, 1)
++controller = 0
++
++[sub_resource type="Resource" id="Resource_e2qbq"]
++script = ExtResource("4_xj1co")
++players = Array[Resource]([SubResource("Resource_ipatj"), SubResource("Resource_clh6e")])
++controlled_player = 0
++visibility = 1
++visible_player = 0
+ 
+ [sub_resource type="ViewportTexture" id="ViewportTexture_v46ss"]
+ viewport_path = NodePath("FogOfWar/CombinedViewport")
+@@ -16,6 +35,7 @@ render_priority = 1
+ shader = ExtResource("2_ojmlq")
+ shader_parameter/color = Color(0, 0, 0, 1)
+ shader_parameter/texture_units_per_world_unit = 2
++shader_parameter/lowest_y_allowed = -0.1
+ shader_parameter/debug_texture_view = false
+ shader_parameter/world_visibility_texture = SubResource("ViewportTexture_v46ss")
+ 
+@@ -24,6 +44,8 @@ viewport_path = NodePath("FogOfWar/CombinedViewport")
+ 
+ [node name="Match" instance=ExtResource("1_f87ft")]
+ script = ExtResource("2_iedaw")
++allow_resources_deficit_spending = true
++settings = SubResource("Resource_e2qbq")
+ 
+ [node name="AntiAirTurret" parent="Map/Units/Player0" index="0" instance=ExtResource("2_xec1u")]
+ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.1209, -3.8147e-06, 4.65078)

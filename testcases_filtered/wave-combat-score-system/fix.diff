@@ -1,0 +1,65 @@
+diff --git a/scripts/enemy.gd b/scripts/enemy.gd
+index 9a6db3f..d475a3a 100644
+--- a/scripts/enemy.gd
++++ b/scripts/enemy.gd
+@@ -12,3 +12,10 @@ func take_damage(n: int) -> void:
+-	# TODO: implement
+-	pass
++	if state == "dead":
++		return
++	hp = max(0, hp - n)
++	if hp == 0 and state == "alive":
++		state = "dying"
++		state = "dead"
++		died.emit(self)
+diff --git a/scripts/game_controller.gd b/scripts/game_controller.gd
+index 1adabf7..6a228b2 100644
+--- a/scripts/game_controller.gd
++++ b/scripts/game_controller.gd
+@@ -18,11 +18,41 @@ func start() -> void:
+-	# TODO: implement
+-	pass
++	current_wave = 0
++	_spawn_wave()
++
++func _spawn_wave() -> void:
++	_enemies = []
++	var n: int = wave_sizes[current_wave]
++	for i in range(n):
++		var e := Enemy.new()
++		e.max_hp = 10
++		e.hp = 10
++		add_child(e)
++		e.died.connect(_on_enemy_died)
++		_enemies.append(e)
++
++func _on_enemy_died(_enemy) -> void:
++	combo += 1
++	score += 10 + 5 * (combo - 1)
++	if alive_count() == 0:
++		_advance()
++
++func _advance() -> void:
++	if current_wave + 1 < wave_sizes.size():
++		current_wave += 1
++		_spawn_wave()
++	else:
++		won = true
++		game_won.emit()
+
+ func alive_count() -> int:
+-	# TODO
+-	return 0
++	var c := 0
++	for e in _enemies:
++		if e.state != "dead":
++			c += 1
++	return c
+
+ func kill_one() -> void:
+-	# TODO: implement
+-	pass
++	for e in _enemies:
++		if e.state != "dead":
++			e.take_damage(e.hp)
++			return

@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2018-12-10_09c9357_011"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "bb1ba7cd58da769c0faee8aeb445666a7665a63a"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: godot/local_map/LocalMap.tscn, godot/local_map/grid/GameBoard.gd, godot/local_map/grid/Pathfinder.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2018-12-10_09c9357_011"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

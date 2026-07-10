@@ -1,0 +1,13 @@
+diff --git a/scripts/health.gd b/scripts/health.gd
+index c09f7c4..cc22a29 100644
+--- a/scripts/health.gd
++++ b/scripts/health.gd
+@@ -11,3 +11,8 @@ var is_dead: bool = false
+ func take_damage(amount: int) -> void:
+-	health -= amount
++	if is_dead:
++		return
++	health = max(0, health - amount)
++	if health == 0:
++		is_dead = true
++		died.emit()

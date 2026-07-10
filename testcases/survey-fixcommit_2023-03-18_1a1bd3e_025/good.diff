@@ -1,0 +1,34 @@
+diff --git a/source/FeatureFlags.tscn b/source/FeatureFlags.tscn
+index e39fc97..469ae85 100644
+--- a/source/FeatureFlags.tscn
++++ b/source/FeatureFlags.tscn
+@@ -5,5 +5,4 @@
+ [node name="FeatureFlags" type="Node"]
+ script = ExtResource("1_wihie")
+ save_user_files_in_tmp = true
+-allow_resources_deficit_spending = true
+ show_minimap = false
+diff --git a/source/match/units/traits/Movement.gd b/source/match/units/traits/Movement.gd
+index ae4bff1..ff17ea2 100644
+--- a/source/match/units/traits/Movement.gd
++++ b/source/match/units/traits/Movement.gd
+@@ -147,18 +147,13 @@ func _rotate_in_direction(direction: Vector3):
+ 	if (
+ 		not is_zero_approx(direction.length())
+ 		and not rotation_target.is_equal_approx(_unit.global_transform.origin)
+-		and not (
+-			is_zero_approx(direction.x)
+-			and not is_zero_approx(direction.y)
+-			and is_zero_approx(direction.z)
+-		)
+ 	):
+ 		_unit.global_transform = _unit.global_transform.looking_at(rotation_target)
+ 
+ 
+ func _on_velocity_computed(safe_velocity: Vector3):
+ 	_update_stuck_prevention(safe_velocity)
+-	_rotate_in_direction(safe_velocity)
++	_rotate_in_direction(safe_velocity * Vector3(1, 0, 1))
+ 	_unit.global_transform.origin = _unit.global_transform.origin.move_toward(
+ 		_unit.global_transform.origin + safe_velocity, _interim_speed
+ 	)

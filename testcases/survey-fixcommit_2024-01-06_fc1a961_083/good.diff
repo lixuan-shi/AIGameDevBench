@@ -1,0 +1,74 @@
+diff --git a/scripts/components/networking/projectilesynchronizercomponent/Projectile2D.gd b/scripts/components/networking/projectilesynchronizercomponent/Projectile2D.gd
+index acfe04f..1e072bc 100644
+--- a/scripts/components/networking/projectilesynchronizercomponent/Projectile2D.gd
++++ b/scripts/components/networking/projectilesynchronizercomponent/Projectile2D.gd
+@@ -63,6 +63,11 @@ func process_collisions(motion: Vector2):
+ 
+ 	while current_motion.length() > 0 and collision_count < max_collisions:
+ 		var collision: KinematicCollision2D = move_and_collide(current_motion)
++		
++		if collision == null:
++			# This is a currently reported bug where sometimes move_and_collide may return null: https://github.com/godotengine/godot/issues/76222
++			GodotLogger.error("Failed at retrieving collision result. Possible engine bug.")
++			continue
+ 
+ 		if collision.get_collider() is Node2D:
+ 			hit_object.emit(collision.get_collider())
+diff --git a/scripts/components/networking/projectilesynchronizercomponent/ProjectileSynchronizerComponent.tscn b/scripts/components/networking/projectilesynchronizercomponent/ProjectileSynchronizerComponent.tscn
+new file mode 100644
+index 0000000..106bd2b
+--- /dev/null
++++ b/scripts/components/networking/projectilesynchronizercomponent/ProjectileSynchronizerComponent.tscn
+@@ -0,0 +1,6 @@
++[gd_scene load_steps=2 format=3 uid="uid://d120xwg2n4n23"]
++
++[ext_resource type="Script" path="res://scripts/components/networking/projectilesynchronizercomponent/projectilesynchronizercomponent.gd" id="1_7tbop"]
++
++[node name="ProjectileSynchronizerComponent" type="Node"]
++script = ExtResource("1_7tbop")
+diff --git a/scripts/components/networking/projectilesynchronizercomponent/Projectiles/Arrow.tscn b/scripts/components/networking/projectilesynchronizercomponent/Projectiles/Arrow.tscn
+index d19910d..0a148c8 100644
+--- a/scripts/components/networking/projectilesynchronizercomponent/Projectiles/Arrow.tscn
++++ b/scripts/components/networking/projectilesynchronizercomponent/Projectiles/Arrow.tscn
+@@ -9,6 +9,9 @@ b = Vector2(210, 0)
+ [node name="Arrow" type="CharacterBody2D"]
+ motion_mode = 1
+ script = ExtResource("1_eav8f")
++projectile_class = "Arrow"
++skill_class = "BasicAttack"
++move_speed = 40.0
+ 
+ [node name="Sprite2D" type="Sprite2D" parent="."]
+ rotation = 1.5708
+diff --git a/scripts/components/networking/projectilesynchronizercomponent/Projectiles/DamageProjectile.gd b/scripts/components/networking/projectilesynchronizercomponent/Projectiles/DamageProjectile.gd
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/scripts/components/networking/projectilesynchronizercomponent/projectilesynchronizercomponent.gd b/scripts/components/networking/projectilesynchronizercomponent/projectilesynchronizercomponent.gd
+index f57bff6..05b5476 100644
+--- a/scripts/components/networking/projectilesynchronizercomponent/projectilesynchronizercomponent.gd
++++ b/scripts/components/networking/projectilesynchronizercomponent/projectilesynchronizercomponent.gd
+@@ -13,7 +13,6 @@ const MAX_PROJECTILE_LIFESPAN: float = 40.0
+ const MAX_COLLISION_LIFESPAN: float = 10.0
+ 
+ @export var watcher_component: WatcherSynchronizerComponent
+-@export var skill_component: SkillComponent
+ 
+ var target_node: Node
+ 
+diff --git a/scripts/singletons/jdungeon.gd b/scripts/singletons/jdungeon.gd
+index cd2256c..fa26b7a 100644
+--- a/scripts/singletons/jdungeon.gd
++++ b/scripts/singletons/jdungeon.gd
+@@ -48,6 +48,7 @@ func register_scenes():
+ 	register_items()
+ 	register_skills()
+ 	register_maps()
++	register_projectiles()
+ 	register_character_classes()
+ 	register_dialogues()
+ 	register_status_effects()
+@@ -262,4 +263,3 @@ func register_status_effect_resource(status_class: String, status_res_path: Stri
+ 
+ func register_projectile_scene(projectile_class: String, projectile_scene_path: String):
+ 	projectile_scenes[projectile_class] = load(projectile_scene_path)
+-	assert(projectile_class == projectile_scenes[projectile_class].projectile_class)

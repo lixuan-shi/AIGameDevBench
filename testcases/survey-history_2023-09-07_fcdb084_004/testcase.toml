@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-history_2023-09-07_fcdb084_004"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "273609d83b68e3f5dc5f081e9e83a4615f8156ca"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: assets/characters/portraits/test.png, assets/characters/portraits/test.png.import, assets/editor/icons/Gamepiece.svg, assets/editor/icons/Gamepiece.svg.import, assets/editor/icons/GamepieceAnimation.svg, assets/editor/icons/GamepieceAnimation.svg.import, assets/editor/icons/IconGamepieceController.svg, assets/editor/icons/IconGamepieceController.svg.import."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "history_2023-09-07_fcdb084_004"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

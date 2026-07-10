@@ -1,0 +1,29 @@
+diff --git a/Scripts/Classes/Singletons/AudioManager.gd b/Scripts/Classes/Singletons/AudioManager.gd
+index ea4bee0..f4ee9c7 100644
+--- a/Scripts/Classes/Singletons/AudioManager.gd
++++ b/Scripts/Classes/Singletons/AudioManager.gd
+@@ -263,6 +263,12 @@ func create_stream_from_json(json_path := "") -> AudioStream:
+ 					return AudioStreamOggVorbis.load_from_file(ResourceSetter.get_pure_resource_path(json_path))
+ 		elif path.contains("res://"):
+ 			return load(path)
++			
++	for i in Settings.file.visuals.resource_packs:
++		var new_path = $ResourceSetterNew.get_resource_pack_path(ResourceSetter.get_pure_resource_path(json_path), i)
++		if ResourceSetter.get_pure_resource_path(json_path) != new_path or $ResourceSetterNew.current_resource_pack == "":
++			$ResourceSetterNew.current_resource_pack = i
++			
+ 	var bgm_file = $ResourceSetterNew.get_variation_json(JSON.parse_string(FileAccess.open(ResourceSetter.get_pure_resource_path(json_path), FileAccess.READ).get_as_text()).variations).source
+ 	path = ResourceSetter.get_pure_resource_path(json_path.replace(json_path.get_file(), bgm_file))
+ 	var stream = null
+diff --git a/Scripts/UI/ResourcePackConfigMenu.gd b/Scripts/UI/ResourcePackConfigMenu.gd
+index 234fed8..1337021 100644
+--- a/Scripts/UI/ResourcePackConfigMenu.gd
++++ b/Scripts/UI/ResourcePackConfigMenu.gd
+@@ -59,6 +59,7 @@ func update_json() -> void:
+ func close() -> void:
+ 	ResourceSetter.cache.clear()
+ 	ResourceSetterNew.cache.clear()
++	AudioManager.current_level_theme = ""
+ 	Global.level_theme_changed.emit()
+ 	closed.emit()
+ 	clear_options()

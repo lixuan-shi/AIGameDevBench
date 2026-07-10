@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://dp1c0ek4hv0r0"]
+
+[ext_resource type="Script" uid="uid://cu2pq1ydcm5ph" path="res://scripts/state_machine.gd" id="1_sm"]
+
+[node name="Main" type="Node2D" unique_id=1686517304]
+
+[node name="StateMachine" type="Node" parent="." unique_id=144829595]
+script = ExtResource("1_sm")

@@ -1,0 +1,147 @@
+diff --git a/Scenes/Levels/SMBLL/LostLevelsEnding.tscn b/Scenes/Levels/SMBLL/LostLevelsEnding.tscn
+index 8c65311..35bd69e 100644
+--- a/Scenes/Levels/SMBLL/LostLevelsEnding.tscn
++++ b/Scenes/Levels/SMBLL/LostLevelsEnding.tscn
+@@ -1,10 +1,9 @@
+-[gd_scene load_steps=27 format=4 uid="uid://b0omfelsiothx"]
++[gd_scene load_steps=26 format=4 uid="uid://b0omfelsiothx"]
+ 
+ [ext_resource type="Script" uid="uid://caugelxhwlvl0" path="res://Scripts/Parts/LostLevelsEnding.gd" id="1_qmhaw"]
+ [ext_resource type="JSON" path="res://Assets/Audio/BGM/Ending.json" id="2_k7rel"]
+ [ext_resource type="SpriteFrames" uid="uid://df4enjjl84mji" path="res://Resources/SpriteFrames/Player/Mario/Small.tres" id="4_fxsfu"]
+ [ext_resource type="Script" uid="uid://b08qfwj5jk6g1" path="res://Scripts/Parts/PlayerSprite.gd" id="4_tkq3a"]
+-[ext_resource type="JSON" path="res://Assets/Sprites/Backgrounds/Bushes/Bush.json" id="4_xoqts"]
+ [ext_resource type="Texture2D" uid="uid://dkjam0jo2k2m0" path="res://Assets/Sprites/Backgrounds/Bushes/CastleBushNight.png" id="5_wr0ye"]
+ [ext_resource type="PackedScene" uid="uid://cinr6kcbmo6gr" path="res://Scenes/Parts/DropShadowRenderer.tscn" id="6_g1x38"]
+ [ext_resource type="FontVariation" uid="uid://djxdgxy1iv8yv" path="res://Resources/ThemedResources/FontLLMain.tres" id="9_1flm1"]
+@@ -426,18 +425,6 @@ force_properties = {
+ "Time": "Night"
+ }
+ 
+-[node name="ResourceSetter2" type="Node" parent="LevelBG/PrimaryLayer/Bush" index="1" node_paths=PackedStringArray("node_to_affect")]
+-process_mode = 3
+-script = ExtResource("13_k7rel")
+-node_to_affect = NodePath("..")
+-property_name = "texture"
+-mode = 1
+-resource_json = ExtResource("4_xoqts")
+-force_properties = {
+-"Time": "Night"
+-}
+-metadata/_custom_type_script = "uid://cbal8ms2oe1ik"
+-
+ [node name="Bush2" type="Sprite2D" parent="LevelBG/PrimaryLayer" index="2"]
+ process_mode = 1
+ position = Vector2(0, -512)
+diff --git a/Scenes/Levels/SMBLL/World9/9-2.tscn b/Scenes/Levels/SMBLL/World9/9-2.tscn
+index eacfd8d..ab96b3e 100644
+--- a/Scenes/Levels/SMBLL/World9/9-2.tscn
++++ b/Scenes/Levels/SMBLL/World9/9-2.tscn
+@@ -116,14 +116,14 @@ tilemap = NodePath("../Tiles")
+ metadata/_custom_type_script = "uid://cybpwmw4ywoow"
+ 
+ [connection signal="collected" from="Tiles/Coin" to="Tiles/Coin/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@45238" to="Tiles/@Node2D@45238/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@45239" to="Tiles/@Node2D@45239/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@45240" to="Tiles/@Node2D@45240/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@45241" to="Tiles/@Node2D@45241/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@45242" to="Tiles/@Node2D@45242/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@45243" to="Tiles/@Node2D@45243/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@45244" to="Tiles/@Node2D@45244/LevelPersistance" method="set_as_active"]
+-[connection signal="collected" from="Tiles/@Node2D@45245" to="Tiles/@Node2D@45245/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@39784" to="Tiles/@Node2D@39784/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@39785" to="Tiles/@Node2D@39785/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@39786" to="Tiles/@Node2D@39786/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@39787" to="Tiles/@Node2D@39787/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@39788" to="Tiles/@Node2D@39788/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@39789" to="Tiles/@Node2D@39789/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@39790" to="Tiles/@Node2D@39790/LevelPersistance" method="set_as_active"]
++[connection signal="collected" from="Tiles/@Node2D@39791" to="Tiles/@Node2D@39791/LevelPersistance" method="set_as_active"]
+ [connection signal="player_entered" from="UpsideDownGravityArea2" to="UpsideDownGravityArea2" method="on_player_entered"]
+ [connection signal="player_exited" from="UpsideDownGravityArea2" to="UpsideDownGravityArea2" method="on_player_exited"]
+ 
+diff --git a/Scripts/Classes/Singletons/Global.gd b/Scripts/Classes/Singletons/Global.gd
+index aed0735..f29cc7d 100644
+--- a/Scripts/Classes/Singletons/Global.gd
++++ b/Scripts/Classes/Singletons/Global.gd
+@@ -266,6 +266,8 @@ func reset_values() -> void:
+ 	Checkpoint.passed = false
+ 	Checkpoint.sublevel_id = 0
+ 	Door.unlocked_doors = []
++	KeyItem.total_collected = 0
++	Checkpoint.keys_collected = 0
+ 	Level.start_level_path = Level.get_scene_string(Global.world_num, Global.level_num)
+ 	LevelPersistance.reset_states()
+ 	Level.first_load = true
+diff --git a/Scripts/Parts/CameraHandler.gd b/Scripts/Parts/CameraHandler.gd
+index 4c3a95e..c89c43a 100644
+--- a/Scripts/Parts/CameraHandler.gd
++++ b/Scripts/Parts/CameraHandler.gd
+@@ -24,6 +24,8 @@ var cam_direction := 1
+ # how far between the center and the edge of the screen before scrolling to the center
+ const SCROLL_DIFFERENCE := 48.0
+ 
++var can_diff := true
++
+ func _exit_tree() -> void:
+ 	cam_locked = false
+ 
+@@ -84,6 +86,9 @@ func handle_horizontal_scrolling(delta: float) -> void:
+ 				offset = camera_position.x - global_position.x - abs(true_velocity.x * delta)
+ 			camera_position.x = global_position.x + offset
+ 	
++	if can_diff == false: 
++		position.x = 0
++		return
+ 	# horizontal adjusgments
+ 	# if the position is matching the camera, start scrolling towards the center
+ 	if global_position.x >= camera_position.x:
+diff --git a/Scripts/Parts/Checkpoint.gd b/Scripts/Parts/Checkpoint.gd
+index 9db93ea..ff82e33 100644
+--- a/Scripts/Parts/Checkpoint.gd
++++ b/Scripts/Parts/Checkpoint.gd
+@@ -12,7 +12,7 @@ static var passed := false
+ static var respawn_position := Vector2.ZERO
+ static var level := ""
+ static var sublevel_id := 0
+-
++static var keys_collected := 0
+ static var old_state := [[], []]
+ 
+ func _enter_tree() -> void:
+@@ -37,6 +37,7 @@ func _ready() -> void:
+ 			i.global_position = self.global_position
+ 			i.reset_physics_interpolation()
+ 			i.recenter_camera()
++		KeyItem.total_collected = keys_collected
+ 		respawned.emit()
+ 
+ 
+@@ -48,6 +49,7 @@ func on_area_entered(area: Area2D) -> void:
+ 		var player: Player = area.owner
+ 		player.passed_checkpoint()
+ 		passed = true
++		keys_collected = KeyItem.total_collected
+ 		old_state = LevelPersistance.active_nodes.duplicate(true)
+ 		Level.start_level_path = Global.current_level.scene_file_path
+ 		if Global.current_game_mode == Global.GameMode.LEVEL_EDITOR or Global.current_game_mode == Global.GameMode.CUSTOM_LEVEL:
+diff --git a/Scripts/Parts/UpsideDownGravityArea.gd b/Scripts/Parts/UpsideDownGravityArea.gd
+index 5c1b653..05c0671 100644
+--- a/Scripts/Parts/UpsideDownGravityArea.gd
++++ b/Scripts/Parts/UpsideDownGravityArea.gd
+@@ -28,6 +28,9 @@ func on_player_entered(player: Player) -> void:
+ 	player.low_gravity = enable_low_gravity
+ 	player.global_position.y -= 16
+ 	player.global_rotation = -player.gravity_vector.angle() + deg_to_rad(90)
++	player.get_node("CameraHandler").global_rotation = 0
++	player.get_node("CameraHandler").position.x = 0
++	player.get_node("CameraHandler").can_diff = false
+ 	player.reset_physics_interpolation()
+ 
+ func on_player_exited(player: Player) -> void:
+@@ -36,4 +39,5 @@ func on_player_exited(player: Player) -> void:
+ 	player.global_position.y += 16
+ 	player.velocity.y *= 1.1
+ 	player.global_rotation = -player.gravity_vector.angle() + deg_to_rad(90)
++	player.get_node("CameraHandler").position.x = 0
+ 	player.reset_physics_interpolation()

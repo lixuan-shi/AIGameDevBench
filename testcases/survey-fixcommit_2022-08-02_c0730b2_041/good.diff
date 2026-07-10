@@ -1,0 +1,27 @@
+diff --git a/scenes/levels/LuigiMansion/Mansion2.tscn b/scenes/levels/LuigiMansion/Mansion2.tscn
+index 9066313..9a91fea 100644
+--- a/scenes/levels/LuigiMansion/Mansion2.tscn
++++ b/scenes/levels/LuigiMansion/Mansion2.tscn
+@@ -369,6 +369,7 @@ text = "CUTSCENE PLAYING"
+ 
+ [node name="Luigi" parent="." instance=ExtResource( 8 )]
+ position = Vector2( 608, 352 )
++collision_mask = 322
+ is_mortal = true
+ max_health = 20
+ fireball_count = 5
+diff --git a/scripts/ConeSpotter.gd b/scripts/ConeSpotter.gd
+index 8f17f93..442c18d 100644
+--- a/scripts/ConeSpotter.gd
++++ b/scripts/ConeSpotter.gd
+@@ -16,6 +16,10 @@ export(NodePath) var tracked_node setget set_tracking
+ export(bool) var cone_stops_at_tile: bool = false
+ 
+ 
++func _ready():
++	$TextureRect.rect_size.x = cone_length
++
++
+ func handle_setup():
+ 	set_physics_process(false)
+ 	# Create a triangle using the values set by the exported variables

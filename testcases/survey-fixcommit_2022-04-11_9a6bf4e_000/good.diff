@@ -1,0 +1,13 @@
+diff --git a/scripts/levels/Hub.gd b/scripts/levels/Hub.gd
+index 4465584..094478b 100644
+--- a/scripts/levels/Hub.gd
++++ b/scripts/levels/Hub.gd
+@@ -86,7 +86,7 @@ static func _get_first_level_in_dir(path: String) -> String:
+ 		dir.list_dir_begin()
+ 		var filename := dir.get_next()
+ 		while filename != "":
+-			if filename != "." and filename != ".." and !dir.current_is_dir():
++			if filename != "." and filename != ".." and !dir.current_is_dir() and filename.ends_with(".tscn"):
+ 
+ 				levels.append("%s/%s" % [path, filename])
+ 			filename = dir.get_next()

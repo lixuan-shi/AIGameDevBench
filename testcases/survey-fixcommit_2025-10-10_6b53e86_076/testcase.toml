@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-10_6b53e86_076"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "08adf8fd6cc97baafa862887ef02cf9a059ce28f"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Prefabs/LevelObjects/CastleBridge.tscn, Scenes/Prefabs/LevelObjects/LongCastleBridge.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-10_6b53e86_076"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

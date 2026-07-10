@@ -50,7 +50,8 @@ def _check_rule(rule: dict, sources: dict[str, str]) -> bool:
 
 @register("py_gdscript_ast")
 class ArchVerifier:
-    def verify(self, testcase: Testcase, workspace: Path) -> VerifierResult:
+    def verify(self, testcase: Testcase, workspace: Path,
+               godot_binary: str = "godot") -> VerifierResult:
         spec_path = testcase.dir / "arch_rules.json"
         if not spec_path.exists():
             return VerifierResult.error_result(testcase.category, "missing arch_rules.json")

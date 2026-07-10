@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-09-24_962787c_040"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "44a65fe79d999e9ac92bc581477c0b4584580511"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Levels/SMB1/World5/5-1.tscn, Scenes/Parts/ScoreNote.tscn, Scenes/Prefabs/LevelObjects/CastleToad.tscn, Scripts/Classes/States/Player/LevelExit.gd, Scripts/UI/WorldSelect.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-09-24_962787c_040"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-02-20_29c1faa_049"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "655fe68f3806597e481e59cd2ee80460529fcfb9"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\tabletop-club"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: game/Scenes/ImportAssets.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-02-20_29c1faa_049"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

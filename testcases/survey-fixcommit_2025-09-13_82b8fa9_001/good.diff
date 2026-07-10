@@ -1,0 +1,254 @@
+diff --git a/Scenes/Levels/CustomLevelMenu.tscn b/Scenes/Levels/CustomLevelMenu.tscn
+index 504d691..0ed8739 100644
+--- a/Scenes/Levels/CustomLevelMenu.tscn
++++ b/Scenes/Levels/CustomLevelMenu.tscn
+@@ -368,11 +368,11 @@ layout_mode = 2
+ focus_mode = 0
+ 
+ [node name="ScrollContainer" parent="BG/Border/Levels/VBoxContainer/LevelInfo/SelectedLevel/MarginContainer/HBoxContainer/HSplitContainer/LeftHalf/LevelInfo" index="0"]
+-scroll_horizontal = 46
++scroll_horizontal = 232
+ is_active = true
+ 
+ [node name="ScrollContainer2" parent="BG/Border/Levels/VBoxContainer/LevelInfo/SelectedLevel/MarginContainer/HBoxContainer/HSplitContainer/LeftHalf/LevelInfo" index="1"]
+-scroll_horizontal = 55
++scroll_horizontal = 29
+ is_active = true
+ 
+ [node name="Panel" type="PanelContainer" parent="BG/Border/Levels/VBoxContainer/LevelInfo"]
+@@ -383,7 +383,7 @@ theme_override_styles/panel = ExtResource("8_psbt7")
+ [node name="AutoScrollContainer" type="ScrollContainer" parent="BG/Border/Levels/VBoxContainer/LevelInfo/Panel"]
+ layout_mode = 2
+ mouse_filter = 2
+-scroll_vertical = 33
++scroll_vertical = 14
+ horizontal_scroll_mode = 3
+ vertical_scroll_mode = 3
+ script = ExtResource("24_wf6nb")
+@@ -569,12 +569,12 @@ layout_mode = 2
+ focus_mode = 0
+ 
+ [node name="ScrollContainer" parent="BG/Border/Levels/VBoxContainer/LSSLevelInfo/SelectedOnlineLevel/MarginContainer/HBoxContainer/HSplitContainer/LeftHalf/LevelInfo" index="0"]
+-scroll_horizontal = 7
++scroll_horizontal = 27
+ is_active = true
+ auto_connect_focus = false
+ 
+ [node name="ScrollContainer2" parent="BG/Border/Levels/VBoxContainer/LSSLevelInfo/SelectedOnlineLevel/MarginContainer/HBoxContainer/HSplitContainer/LeftHalf/LevelInfo" index="1"]
+-scroll_horizontal = 55
++scroll_horizontal = 29
+ is_active = true
+ auto_connect_focus = false
+ 
+@@ -587,7 +587,7 @@ theme_override_styles/panel = ExtResource("8_psbt7")
+ [node name="AutoScrollContainer" type="ScrollContainer" parent="BG/Border/Levels/VBoxContainer/LSSLevelInfo/Panel"]
+ layout_mode = 2
+ mouse_filter = 0
+-scroll_vertical = 33
++scroll_vertical = 14
+ horizontal_scroll_mode = 3
+ script = ExtResource("24_wf6nb")
+ direction = 1
+@@ -703,6 +703,7 @@ focus_mode = 2
+ [connection signal="pressed" from="BG/Border/Levels/VBoxContainer/LSSLevelInfo/HBoxContainer/ViewOnLSS" to="BG/Border/Levels/VBoxContainer/LSSLevelInfo" method="open_lss"]
+ [connection signal="request_completed" from="BG/Border/Levels/VBoxContainer/LSSLevelInfo/Description" to="BG/Border/Levels/VBoxContainer/LSSLevelInfo" method="on_request_completed"]
+ [connection signal="request_completed" from="BG/Border/Levels/VBoxContainer/LSSLevelInfo/DownloadLevel" to="BG/Border/Levels/VBoxContainer/LSSLevelInfo" method="level_downloaded"]
++[connection signal="sprites_updated" from="BGM/ResourceSetter" to="BGM" method="play"]
+ [connection signal="cancelled" from="CharacterSelect" to="BG/Border/Levels/VBoxContainer/LevelInfo" method="reopen"]
+ 
+ [editable path="BG/Border/Levels/VBoxContainer/LevelInfo/SelectedLevel"]
+diff --git a/Scripts/UI/LssLevelInfo.gd b/Scripts/UI/LssLevelInfo.gd
+index be21284..48a984c 100644
+--- a/Scripts/UI/LssLevelInfo.gd
++++ b/Scripts/UI/LssLevelInfo.gd
+@@ -70,11 +70,11 @@ func level_downloaded(result: int, response_code: int, headers: PackedStringArra
+ 	var json = JSON.parse_string(string)
+ 	var file = FileAccess.open("user://custom_levels/downloaded/" + level_id + ".lvl", FileAccess.WRITE)
+ 	var data = null
+-	if json.levelData is Array:
+-		data = get_json_from_bytes(json.levelData)
++	if json.levelData.data is Array:
++		data = get_json_from_bytes(json.levelData.data)
+ 	else:
+ 		data = json.levelData
+-	file.store_string(JSON.stringify(data))
++	file.store_string(JSON.stringify(str_to_var(data)))
+ 	file.close()
+ 	%Download.hide()
+ 	%OnlinePlay.show()
+@@ -82,7 +82,11 @@ func level_downloaded(result: int, response_code: int, headers: PackedStringArra
+ 
+ func play_level() -> void:
+ 	var file_path := "user://custom_levels/downloaded/" + level_id + ".lvl"
+-	LevelEditor.level_file = JSON.parse_string(FileAccess.open(file_path, FileAccess.READ).get_as_text())
++	var file = JSON.parse_string(FileAccess.open(file_path, FileAccess.READ).get_as_text())
++	LevelEditor.level_file = file
++	var info = file["Info"]
++	LevelEditor.level_author = info["Author"]
++	LevelEditor.level_name = info["Name"]
+ 	level_play.emit()
+ 
+ func get_json_from_bytes(json := []) -> String:
+diff --git a/export_presets.cfg b/export_presets.cfg
+index c103903..ae60e6a 100644
+--- a/export_presets.cfg
++++ b/export_presets.cfg
+@@ -7,9 +7,9 @@ advanced_options=false
+ dedicated_server=false
+ custom_features=""
+ export_filter="all_resources"
+-include_filter="*.bgm, *.txt"
++include_filter="*.bgm, *.mp3, *.txt"
+ exclude_filter=""
+-export_path="../builds/Windows/SMB1R.exe"
++export_path="../Exports/Windows/SMB1R.exe"
+ patches=PackedStringArray()
+ encryption_include_filters=""
+ encryption_exclude_filters=""
+@@ -80,7 +80,7 @@ custom_features=""
+ export_filter="all_resources"
+ include_filter="*.bgm, *.mp3, *.txt"
+ exclude_filter=""
+-export_path="../builds/Linux/SMB1R.x86_64"
++export_path="../Exports/Linux/SMB1R.x86_64"
+ patches=PackedStringArray()
+ encryption_include_filters=""
+ encryption_exclude_filters=""
+@@ -117,6 +117,92 @@ dotnet/embed_build_outputs=false
+ 
+ [preset.2]
+ 
++name="Linux 32"
++platform="Linux"
++runnable=false
++advanced_options=false
++dedicated_server=false
++custom_features=""
++export_filter="all_resources"
++include_filter=""
++exclude_filter=""
++export_path="../Exports/Linux 32/SMB1R.x86_32"
++patches=PackedStringArray()
++encryption_include_filters=""
++encryption_exclude_filters=""
++seed=0
++encrypt_pck=false
++encrypt_directory=false
++script_export_mode=2
++
++[preset.2.options]
++
++custom_template/debug=""
++custom_template/release=""
++debug/export_console_wrapper=1
++binary_format/embed_pck=false
++texture_format/s3tc_bptc=true
++texture_format/etc2_astc=false
++shader_baker/enabled=false
++binary_format/architecture="x86_32"
++ssh_remote_deploy/enabled=false
++ssh_remote_deploy/host="user@host_ip"
++ssh_remote_deploy/port="22"
++ssh_remote_deploy/extra_args_ssh=""
++ssh_remote_deploy/extra_args_scp=""
++ssh_remote_deploy/run_script="#!/usr/bin/env bash
++export DISPLAY=:0
++unzip -o -q \"{temp_dir}/{archive_name}\" -d \"{temp_dir}\"
++\"{temp_dir}/{exe_name}\" {cmd_args}"
++ssh_remote_deploy/cleanup_script="#!/usr/bin/env bash
++kill $(pgrep -x -f \"{temp_dir}/{exe_name} {cmd_args}\")
++rm -rf \"{temp_dir}\""
++
++[preset.3]
++
++name="Linux ARM64"
++platform="Linux"
++runnable=false
++advanced_options=true
++dedicated_server=false
++custom_features=""
++export_filter="all_resources"
++include_filter="*.bgm, *.mp3, *.txt"
++exclude_filter=""
++export_path="../Exports/LinuxARM/SMB1R.arm64"
++patches=PackedStringArray()
++encryption_include_filters=""
++encryption_exclude_filters=""
++seed=0
++encrypt_pck=false
++encrypt_directory=false
++script_export_mode=2
++
++[preset.3.options]
++
++custom_template/debug=""
++custom_template/release=""
++debug/export_console_wrapper=1
++binary_format/embed_pck=false
++texture_format/s3tc_bptc=true
++texture_format/etc2_astc=false
++shader_baker/enabled=false
++binary_format/architecture="arm64"
++ssh_remote_deploy/enabled=false
++ssh_remote_deploy/host="user@host_ip"
++ssh_remote_deploy/port="22"
++ssh_remote_deploy/extra_args_ssh=""
++ssh_remote_deploy/extra_args_scp=""
++ssh_remote_deploy/run_script="#!/usr/bin/env bash
++export DISPLAY=:0
++unzip -o -q \"{temp_dir}/{archive_name}\" -d \"{temp_dir}\"
++\"{temp_dir}/{exe_name}\" {cmd_args}"
++ssh_remote_deploy/cleanup_script="#!/usr/bin/env bash
++kill $(pgrep -x -f \"{temp_dir}/{exe_name} {cmd_args}\")
++rm -rf \"{temp_dir}\""
++
++[preset.4]
++
+ name="Windows Desktop 32"
+ platform="Windows Desktop"
+ runnable=false
+@@ -126,7 +212,7 @@ custom_features=""
+ export_filter="all_resources"
+ include_filter="*.bgm, *.txt"
+ exclude_filter=""
+-export_path="../builds/Win32/SMB1R.exe"
++export_path="../Exports/Windows32/SMB1R.exe"
+ patches=PackedStringArray()
+ encryption_include_filters=""
+ encryption_exclude_filters=""
+@@ -135,7 +221,7 @@ encrypt_pck=false
+ encrypt_directory=false
+ script_export_mode=2
+ 
+-[preset.2.options]
++[preset.4.options]
+ 
+ custom_template/debug=""
+ custom_template/release=""
+@@ -183,7 +269,7 @@ ssh_remote_deploy/cleanup_script="Stop-ScheduledTask -TaskName godot_remote_debu
+ Unregister-ScheduledTask -TaskName godot_remote_debug -Confirm:$false -ErrorAction:SilentlyContinue
+ Remove-Item -Recurse -Force '{temp_dir}'"
+ 
+-[preset.3]
++[preset.5]
+ 
+ name="Windows Desktop ARM"
+ platform="Windows Desktop"
+@@ -194,7 +280,7 @@ custom_features=""
+ export_filter="all_resources"
+ include_filter=""
+ exclude_filter=""
+-export_path="../builds/Arm64/SMB1R.exe"
++export_path="../Exports/WindowsARM/SMB1R.exe"
+ patches=PackedStringArray()
+ encryption_include_filters=""
+ encryption_exclude_filters=""
+@@ -203,7 +289,7 @@ encrypt_pck=false
+ encrypt_directory=false
+ script_export_mode=2
+ 
+-[preset.3.options]
++[preset.5.options]
+ 
+ custom_template/debug=""
+ custom_template/release=""

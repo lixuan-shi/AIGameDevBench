@@ -1,0 +1,50 @@
+diff --git a/Scenes/Prefabs/LevelObjects/BooRaceHandler.tscn b/Scenes/Prefabs/LevelObjects/BooRaceHandler.tscn
+index 08a84fe..72a4d8d 100644
+--- a/Scenes/Prefabs/LevelObjects/BooRaceHandler.tscn
++++ b/Scenes/Prefabs/LevelObjects/BooRaceHandler.tscn
+@@ -89,6 +89,18 @@ tracks/2/keys = {
+ "update": 1,
+ "values": [true, false]
+ }
++tracks/3/type = "value"
++tracks/3/imported = false
++tracks/3/enabled = true
++tracks/3/path = NodePath("Countdown:playing")
++tracks/3/interp = 1
++tracks/3/loop_wrap = true
++tracks/3/keys = {
++"times": PackedFloat32Array(0),
++"transitions": PackedFloat32Array(1),
++"update": 1,
++"values": [true]
++}
+ 
+ [sub_resource type="Animation" id="Animation_axajb"]
+ length = 0.001
+@@ -128,6 +140,18 @@ tracks/2/keys = {
+ "update": 1,
+ "values": [true]
+ }
++tracks/3/type = "value"
++tracks/3/imported = false
++tracks/3/enabled = true
++tracks/3/path = NodePath("Countdown:playing")
++tracks/3/interp = 1
++tracks/3/loop_wrap = true
++tracks/3/keys = {
++"times": PackedFloat32Array(0),
++"transitions": PackedFloat32Array(1),
++"update": 1,
++"values": [false]
++}
+ 
+ [sub_resource type="AnimationLibrary" id="AnimationLibrary_qeaax"]
+ _data = {
+@@ -167,7 +191,6 @@ metadata/_custom_type_script = "uid://cq6f682453q6o"
+ 
+ [node name="Countdown" type="AudioStreamPlayer" parent="."]
+ stream = ExtResource("6_qeaax")
+-autoplay = true
+ bus = &"SFX"
+ script = ExtResource("7_reyer")
+ metadata/_custom_type_script = "uid://dmtw1jesw1vl7"

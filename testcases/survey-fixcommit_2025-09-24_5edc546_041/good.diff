@@ -1,0 +1,94 @@
+diff --git a/Scenes/Prefabs/Entities/Enemies/RockyWrench.tscn b/Scenes/Prefabs/Entities/Enemies/RockyWrench.tscn
+index 1eafc7b..5e258a6 100644
+--- a/Scenes/Prefabs/Entities/Enemies/RockyWrench.tscn
++++ b/Scenes/Prefabs/Entities/Enemies/RockyWrench.tscn
+@@ -1,4 +1,4 @@
+-[gd_scene load_steps=34 format=3 uid="uid://c3m38c2skawpj"]
++[gd_scene load_steps=35 format=3 uid="uid://c3m38c2skawpj"]
+ 
+ [ext_resource type="Script" uid="uid://bfsh8bhcmknkh" path="res://Scripts/Classes/Entities/Enemies/RockyWrench.gd" id="1_pl7bt"]
+ [ext_resource type="Texture2D" uid="uid://bfora2lrmtyj4" path="res://Assets/Sprites/Enemies/RockyWrench.png" id="2_8y80u"]
+@@ -15,6 +15,7 @@
+ [ext_resource type="Script" uid="uid://bbww34oiexbx2" path="res://Scripts/Classes/Components/ShellDetection.gd" id="10_w66sd"]
+ [ext_resource type="Script" uid="uid://ba18grqjixded" path="res://Scripts/Classes/Components/ExplosionDetection.gd" id="13_h21ug"]
+ [ext_resource type="Script" uid="uid://5octqlf4ohel" path="res://Scripts/Classes/Components/ScoreNoteSpawner.gd" id="14_el25t"]
++[ext_resource type="Script" uid="uid://cmg61722ktg2m" path="res://Scripts/Classes/Components/BlockBouncingDetection.gd" id="16_q44ss"]
+ 
+ [sub_resource type="AtlasTexture" id="AtlasTexture_nqvoc"]
+ atlas = ExtResource("2_8y80u")
+@@ -391,6 +392,11 @@ script = ExtResource("14_el25t")
+ add_score = true
+ metadata/_custom_type_script = "uid://5octqlf4ohel"
+ 
++[node name="BlockBouncingDetection" type="Node" parent="." node_paths=PackedStringArray("hitbox")]
++script = ExtResource("16_q44ss")
++hitbox = NodePath("../Sprite/EntityHitbox")
++metadata/_custom_type_script = "uid://cmg61722ktg2m"
++
+ [connection signal="killed" from="." to="GibSpawner" method="summon_gib"]
+ [connection signal="player_stomped_on" from="Sprite/StompHitbox/EnemyPlayerDetection" to="." method="on_player_stomped_on"]
+ [connection signal="invincible_player_hit" from="Sprite/EntityHitbox/EnemyPlayerDetection" to="." method="die_from_object"]
+@@ -405,3 +411,4 @@ metadata/_custom_type_script = "uid://5octqlf4ohel"
+ [connection signal="timeout" from="Timer" to="." method="on_timeout"]
+ [connection signal="explosion_entered" from="ExplosionDetection" to="." method="die_from_object"]
+ [connection signal="explosion_entered" from="ExplosionDetection" to="ScoreNoteSpawner" method="spawn_note" binds= [500]]
++[connection signal="block_bounced" from="BlockBouncingDetection" to="." method="die_from_object"]
+diff --git a/Scripts/Parts/LevelLoader.gd b/Scripts/Parts/LevelLoader.gd
+index e18c7fb..bfe60ab 100644
+--- a/Scripts/Parts/LevelLoader.gd
++++ b/Scripts/Parts/LevelLoader.gd
+@@ -118,13 +118,14 @@ func apply_level_data(data := "") -> void:
+ 	level.can_backscroll = bool(values[4])
+ 	level.vertical_height = -int(values[5])
+ 	level.time_limit = int(values[6])
+-	%ThemeTime.selected = values[1]
+-	%LevelMusic.selected = values[2]
+-	%Campaign.selected = values[3]
+-	%BackScroll.set_pressed_no_signal(bool(values[4]))
+-	%HeightLimit.value = values[5]
+-	%TimeLimit.value = values[6]
+-	%SubLevelID.selected = editor.sub_level_id
++	if is_instance_valid($TileMenu):
++		%ThemeTime.selected = values[1]
++		%LevelMusic.selected = values[2]
++		%Campaign.selected = values[3]
++		%BackScroll.set_pressed_no_signal(bool(values[4]))
++		%HeightLimit.value = values[5]
++		%TimeLimit.value = values[6]
++		%SubLevelID.selected = editor.sub_level_id
+ 	ResourceSetterNew.cache.clear()
+ 	Global.level_theme_changed.emit()
+ 
+@@ -140,12 +141,13 @@ func apply_bg_data(data := "") -> void:
+ 			value = (decode_from_base64_2char(i))
+ 		else:
+ 			value = (base64_charset.find(i))
+-		if SELECTORS[id] is SpinBox:
+-			SELECTORS[id].value = value
+-		elif SELECTORS[id] is Button:
+-			SELECTORS[id].set_pressed_no_signal(bool(value))
+-		else:
+-			SELECTORS[id].selected = value
++		if is_instance_valid($TileMenu):
++			if SELECTORS[id] is SpinBox:
++				SELECTORS[id].value = value
++			elif SELECTORS[id] is Button:
++				SELECTORS[id].set_pressed_no_signal(bool(value))
++			else:
++				SELECTORS[id].selected = value
+ 		level_bg.set_value(value, BG_VALUES[id])
+ 		id += 1
+ 	
+diff --git a/Scripts/Parts/LevelTransition.gd b/Scripts/Parts/LevelTransition.gd
+index 5987e33..f67349f 100644
+--- a/Scripts/Parts/LevelTransition.gd
++++ b/Scripts/Parts/LevelTransition.gd
+@@ -43,6 +43,8 @@ func _ready() -> void:
+ 	Global.p_switch_timer = -1
+ 	if Checkpoint.passed:
+ 		Door.unlocked_doors = Checkpoint.unlocked_doors.duplicate()
++	else:
++		Door.unlocked_doors = []
+ 	if Global.current_campaign == "SMBANN":
+ 		DiscoLevel.reset_values()
+ 	DiscoLevel.first_load = true

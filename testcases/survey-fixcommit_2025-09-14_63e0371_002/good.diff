@@ -1,0 +1,12 @@
+diff --git a/Scripts/Classes/States/Player/Pipe.gd b/Scripts/Classes/States/Player/Pipe.gd
+index d472fc3..92eff07 100644
+--- a/Scripts/Classes/States/Player/Pipe.gd
++++ b/Scripts/Classes/States/Player/Pipe.gd
+@@ -16,6 +16,7 @@ func physics_update(delta: float) -> void:
+ 		player.direction = int(player.pipe_enter_direction.x)
+ 		player.sprite.scale.x = player.direction
+ 	else:
++		player.sprite.speed_scale = 1
+ 		player.play_animation("Pipe")
+ 
+ func exit() -> void:

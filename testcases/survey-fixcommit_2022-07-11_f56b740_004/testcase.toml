@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-07-11_f56b740_004"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "83239e6a92c67cb3bfe2273da083dd813d2577cc"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\tabletop-club"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: game/Scenes/Game/UI/Previews/ObjectPreview.tscn, game/Scripts/FallingWorld.gd, game/Scripts/Game/3D/Room.gd, game/Scripts/Game/Pieces/StackLasagne.gd, game/Scripts/Game/UI/Previews/ObjectPreview.gd, game/Scripts/Game/UI/Previews/ObjectPreviewFactory.gd, game/Scripts/PieceBuilder.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-07-11_f56b740_004"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

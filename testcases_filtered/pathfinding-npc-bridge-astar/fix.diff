@@ -1,0 +1,217 @@
+diff --git a/scripts/npc_actor.gd b/scripts/npc_actor.gd
+index c0eb8df..2d90887 100644
+--- a/scripts/npc_actor.gd
++++ b/scripts/npc_actor.gd
+@@ -3,18 +3,203 @@ extends CharacterBody3D
+ @export var movement_speed := 2.6
+ @export var waypoint_arrival_distance := 0.18
+ @export var wait_at_target := 0.45
++@export var debug_enabled := true
++@export var debug_log_interval := 0.75
+ 
+-var graph_points: Array[Vector3] = []
+-var graph_edges: Array[Vector2i] = []
+-var route_target_ids: Array[int] = []
++var _astar := AStar3D.new()
++var _graph_points: Array[Vector3] = []
++var _route_target_ids: Array[int] = []
++var _route_index := 0
++var _current_path := PackedVector3Array()
++var _current_waypoint_index := 0
++var _wait_timer := 0.0
++var _debug_log_timer := 0.0
++var _path_line: MeshInstance3D
++var _next_waypoint_marker: MeshInstance3D
+ 
+ func configure_pathfinding(points: Array[Vector3], edges: Array[Vector2i], target_ids: Array[int]) -> void:
+-	graph_points = points.duplicate()
+-	graph_edges = edges.duplicate()
+-	route_target_ids = target_ids.duplicate()
+-	# TODO: Build pathfinding state and start moving between route targets.
++	_graph_points = points.duplicate()
++	_route_target_ids = target_ids.duplicate()
++	_astar.clear()
++	for index in range(_graph_points.size()):
++		_astar.add_point(index, _graph_points[index])
++	for edge in edges:
++		_astar.connect_points(edge.x, edge.y, true)
++	print("[AStarPath] configured points=%d edges=%d route_targets=%s" % [_graph_points.size(), edges.size(), str(_route_target_ids)])
++	call_deferred("_start_next_route")
+ 
+ 
+-func _physics_process(_delta: float) -> void:
+-	velocity = Vector3.ZERO
++func _ready() -> void:
++	if debug_enabled:
++		call_deferred("_create_debug_nodes")
++
++
++func _physics_process(delta: float) -> void:
++	if _route_target_ids.is_empty() or _current_path.is_empty():
++		velocity = Vector3.ZERO
++		move_and_slide()
++		_update_debug(delta)
++		return
++
++	if _wait_timer > 0.0:
++		_wait_timer -= delta
++		velocity = Vector3.ZERO
++		move_and_slide()
++		_update_debug(delta)
++		return
++
++	_skip_reached_waypoints()
++	if _current_waypoint_index >= _current_path.size():
++		_advance_route_target()
++		move_and_slide()
++		_update_debug(delta)
++		return
++
++	var waypoint := _current_path[_current_waypoint_index]
++	var direction := waypoint - global_position
++	direction.y = 0.0
++	if direction.length() > 0.02:
++		velocity = direction.normalized() * movement_speed
++		look_at(global_position + direction, Vector3.UP)
++	else:
++		velocity = Vector3.ZERO
+ 	move_and_slide()
++	_update_debug(delta)
++
++
++func _start_next_route() -> void:
++	if _route_target_ids.is_empty() or _astar.get_point_count() == 0:
++		return
++	var start_id := _find_closest_graph_point(global_position)
++	var target_id := _route_target_ids[_route_index]
++	_current_path = _astar.get_point_path(start_id, target_id)
++	_current_waypoint_index = 0
++	_skip_reached_waypoints()
++	_log_route("new_route", start_id, target_id)
++	_refresh_debug_path()
++
++
++func _advance_route_target() -> void:
++	_route_index = (_route_index + 1) % _route_target_ids.size()
++	_wait_timer = wait_at_target
++	_start_next_route()
++
++
++func _skip_reached_waypoints() -> void:
++	while _current_waypoint_index < _current_path.size() and global_position.distance_to(_current_path[_current_waypoint_index]) <= waypoint_arrival_distance:
++		_current_waypoint_index += 1
++
++
++func _find_closest_graph_point(point: Vector3) -> int:
++	var closest_id := 0
++	var closest_distance := INF
++	for index in range(_graph_points.size()):
++		var distance := point.distance_to(_graph_points[index])
++		if distance < closest_distance:
++			closest_distance = distance
++			closest_id = index
++	return closest_id
++
++
++func _path_length(path: PackedVector3Array) -> float:
++	var total := 0.0
++	for index in range(path.size() - 1):
++		total += path[index].distance_to(path[index + 1])
++	return total
++
++
++func _update_debug(delta: float) -> void:
++	if not debug_enabled:
++		return
++
++	_debug_log_timer -= delta
++	if _debug_log_timer <= 0.0:
++		_debug_log_timer = debug_log_interval
++		var waypoint := global_position
++		if _current_waypoint_index < _current_path.size():
++			waypoint = _current_path[_current_waypoint_index]
++		print("[AStarPath] pos=%s target_id=%d waypoint_index=%d/%d waypoint=%s distance=%.2f path_length=%.2f" % [
++			_fmt_vec(global_position),
++			_route_target_ids[_route_index] if not _route_target_ids.is_empty() else -1,
++			_current_waypoint_index,
++			_current_path.size(),
++			_fmt_vec(waypoint),
++			global_position.distance_to(waypoint),
++			_path_length(_current_path),
++		])
++		_refresh_debug_path()
++
++	if _next_waypoint_marker != null and _current_waypoint_index < _current_path.size():
++		_next_waypoint_marker.global_position = _current_path[_current_waypoint_index] + Vector3.UP * 0.32
++
++
++func _create_debug_nodes() -> void:
++	var debug_parent := get_tree().current_scene
++	if debug_parent == null:
++		debug_parent = get_parent()
++	if debug_parent == null:
++		debug_parent = self
++
++	_path_line = MeshInstance3D.new()
++	_path_line.name = "DebugNPCPathLine"
++	_path_line.material_override = _make_debug_material(Color(1.0, 0.88, 0.05, 1.0))
++	debug_parent.add_child(_path_line)
++
++	_next_waypoint_marker = MeshInstance3D.new()
++	_next_waypoint_marker.name = "DebugNextWaypoint"
++	var mesh := SphereMesh.new()
++	mesh.radius = 0.14
++	mesh.height = 0.28
++	_next_waypoint_marker.mesh = mesh
++	_next_waypoint_marker.material_override = _make_debug_material(Color(1.0, 1.0, 1.0, 1.0))
++	debug_parent.add_child(_next_waypoint_marker)
++
++
++func _refresh_debug_path() -> void:
++	if not debug_enabled or _path_line == null:
++		return
++	var line_vertices := PackedVector3Array()
++	if _current_path.size() > 0:
++		line_vertices.append(global_position + Vector3.UP * 0.45)
++		line_vertices.append(_current_path[min(_current_waypoint_index, _current_path.size() - 1)] + Vector3.UP * 0.45)
++		for index in range(max(_current_waypoint_index, 0), _current_path.size() - 1):
++			line_vertices.append(_current_path[index] + Vector3.UP * 0.45)
++			line_vertices.append(_current_path[index + 1] + Vector3.UP * 0.45)
++
++	var arrays := []
++	arrays.resize(Mesh.ARRAY_MAX)
++	arrays[Mesh.ARRAY_VERTEX] = line_vertices
++	var mesh := ArrayMesh.new()
++	if not line_vertices.is_empty():
++		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_LINES, arrays)
++	_path_line.mesh = mesh
++
++
++func _make_debug_material(color: Color) -> StandardMaterial3D:
++	var material := StandardMaterial3D.new()
++	material.albedo_color = color
++	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
++	material.no_depth_test = true
++	return material
++
++
++func _log_route(reason: String, start_id: int, target_id: int) -> void:
++	print("[AStarPath] %s start_id=%d target_id=%d points=%d length=%.2f path=%s" % [
++		reason,
++		start_id,
++		target_id,
++		_current_path.size(),
++		_path_length(_current_path),
++		_format_path_ids(_current_path),
++	])
++
++
++func _format_path_ids(path: PackedVector3Array) -> String:
++	var labels: Array[String] = []
++	for point in path:
++		labels.append(str(_find_closest_graph_point(point)))
++	return " -> ".join(labels)
++
++
++func _fmt_vec(value: Vector3) -> String:
++	return "(%.2f, %.2f, %.2f)" % [value.x, value.y, value.z]

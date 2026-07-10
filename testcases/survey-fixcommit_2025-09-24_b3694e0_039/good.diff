@@ -1,0 +1,12 @@
+diff --git a/Scripts/Classes/Entities/Player.gd b/Scripts/Classes/Entities/Player.gd
+index 8dc3940..87bc6cd 100644
+--- a/Scripts/Classes/Entities/Player.gd
++++ b/Scripts/Classes/Entities/Player.gd
+@@ -392,6 +392,7 @@ func add_stomp_combo(award_score := true) -> void:
+ 	if stomp_combo >= 10:
+ 		if award_score:
+ 			if Global.current_game_mode == Global.GameMode.CHALLENGE or Settings.file.difficulty.inf_lives:
++				Global.score += 10000
+ 				score_note_spawner.spawn_note(10000)
+ 			else:
+ 				Global.lives += 1

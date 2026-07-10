@@ -24,6 +24,50 @@ def _flatten(obj, prefix: str, out: dict) -> None:
         out[prefix] = obj
 
 
+def _coerce_godot_value(raw: str):
+    """Best-effort scalar parse for a Godot config value (int/float/bool/string)."""
+    raw = raw.strip()
+    if len(raw) >= 2 and raw[0] == '"' and raw[-1] == '"':
+        return raw[1:-1]
+    low = raw.lower()
+    if low == "true":
+        return True
+    if low == "false":
+        return False
+    try:
+        return int(raw)
+    except ValueError:
+        pass
+    try:
+        return float(raw)
+    except ValueError:
+        pass
+    return raw
+
+
+def _flatten_godot_cfg(text: str, out: dict) -> None:
+    """Flatten a Godot INI-style config (project.godot / *.cfg).
+
+    Keys use '/' separators (e.g. window/size/viewport_width) and live under
+    [section] headers. We emit '<section>.<key>' so that, with the verifier's
+    leaf = key.split('.')[-1], the leaf is the full slash key (which contains
+    no '.'), matching aliases like 'window/size/viewport_width'.
+    """
+    section = ""
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith(";"):
+            continue
+        if stripped.startswith("[") and stripped.endswith("]"):
+            section = stripped[1:-1].strip()
+            continue
+        if "=" in stripped:
+            key, _, val = stripped.partition("=")
+            key = key.strip()
+            prefix = f"{section}.{key}" if section else key
+            out[prefix] = _coerce_godot_value(val)
+
+
 def flatten_config(path: Path) -> dict[str, object]:
     out: dict[str, object] = {}
     text = path.read_text(encoding="utf-8", errors="replace")
@@ -31,6 +75,8 @@ def flatten_config(path: Path) -> dict[str, object]:
         _flatten(json.loads(text), "", out)
     elif path.suffix == ".toml":
         _flatten(tomllib.loads(text), "", out)
+    elif path.suffix in (".godot", ".cfg"):
+        _flatten_godot_cfg(text, out)
     elif path.suffix == ".tres":
         try:
             from godot_parser import load as gp_load
@@ -66,7 +112,8 @@ def _matches(value, expected, tol) -> bool:
 
 @register("py_config")
 class ConfigVerifier:
-    def verify(self, testcase: Testcase, workspace: Path) -> VerifierResult:
+    def verify(self, testcase: Testcase, workspace: Path,
+               godot_binary: str = "godot") -> VerifierResult:
         spec_path = testcase.dir / "expected.json"
         if not spec_path.exists():
             return VerifierResult.error_result(testcase.category, "missing expected.json")

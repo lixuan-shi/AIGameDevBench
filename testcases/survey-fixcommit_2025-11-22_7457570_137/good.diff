@@ -1,0 +1,112 @@
+diff --git a/Scenes/Prefabs/LevelObjects/EndFinalCastle.tscn b/Scenes/Prefabs/LevelObjects/EndFinalCastle.tscn
+index 9dafc8c..b92f903 100644
+--- a/Scenes/Prefabs/LevelObjects/EndFinalCastle.tscn
++++ b/Scenes/Prefabs/LevelObjects/EndFinalCastle.tscn
+@@ -1,4 +1,4 @@
+-[gd_scene load_steps=20 format=4 uid="uid://bney0cc8cfm5s"]
++[gd_scene load_steps=22 format=4 uid="uid://bney0cc8cfm5s"]
+ 
+ [ext_resource type="Script" uid="uid://qq26qw7ltflb" path="res://Scripts/Parts/EndCastle.gd" id="1_hwcne"]
+ [ext_resource type="Script" uid="uid://caq1qiwmy0mox" path="res://Scripts/Parts/BetterAnimatedSprite.gd" id="2_1kswc"]
+@@ -7,6 +7,7 @@
+ [ext_resource type="JSON" path="res://Assets/Sprites/Tilesets/CastleFlag.json" id="4_wqi45"]
+ [ext_resource type="PackedScene" uid="uid://bikdod5ra10ra" path="res://Scenes/Parts/LargeCastleVisual.tscn" id="6_w7qld"]
+ [ext_resource type="Script" uid="uid://73oviwf6bbys" path="res://Scripts/Classes/Components/TilesetTextureSetter.gd" id="8_akqko"]
++[ext_resource type="Script" uid="uid://cnheej0sxmoxg" path="res://Scripts/Parts/PlayerDetection.gd" id="8_rgjtr"]
+ [ext_resource type="PackedScene" uid="uid://bem5ht17ukgcs" path="res://Scenes/Parts/LargeSPCastleVisual.tscn" id="10_kd4m5"]
+ [ext_resource type="Texture2D" uid="uid://dt0qtxu2l646n" path="res://Assets/Sprites/Tilesets/Terrain/Overworld.png" id="10_wqi45"]
+ [ext_resource type="Texture2D" uid="uid://dkcs5i8l1y4y6" path="res://Assets/Sprites/Tilesets/EndingFinalCastleSprite.png" id="11_wqi45"]
+@@ -51,6 +52,10 @@ _data = {
+ &"Raise": SubResource("Animation_1x3lf")
+ }
+ 
++[sub_resource type="SegmentShape2D" id="SegmentShape2D_657we"]
++a = Vector2(0, -16)
++b = Vector2(0, 16)
++
+ [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_wqi45"]
+ texture = ExtResource("10_wqi45")
+ texture_region_size = Vector2i(8, 8)
+@@ -123,6 +128,14 @@ position = Vector2(0, -40)
+ visible = false
+ position = Vector2(32, -40)
+ 
++[node name="PlayerDetection" type="Area2D" parent="."]
++script = ExtResource("8_rgjtr")
++metadata/_custom_type_script = "uid://cnheej0sxmoxg"
++
++[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerDetection"]
++position = Vector2(0, -16)
++shape = SubResource("SegmentShape2D_657we")
++
+ [node name="OverlaySprite" type="Sprite2D" parent="."]
+ visible = false
+ z_index = 10
+diff --git a/Scenes/Prefabs/LevelObjects/EndFinalSpCastle.tscn b/Scenes/Prefabs/LevelObjects/EndFinalSpCastle.tscn
+index 86a1ade..20c3ee5 100644
+--- a/Scenes/Prefabs/LevelObjects/EndFinalSpCastle.tscn
++++ b/Scenes/Prefabs/LevelObjects/EndFinalSpCastle.tscn
+@@ -31,5 +31,5 @@ visible = false
+ [node name="SmallCastleVisual2" parent="." index="4"]
+ visible = true
+ 
+-[node name="Overlay" parent="." index="7"]
++[node name="Overlay" parent="." index="8"]
+ visible = true
+diff --git a/Scenes/Prefabs/LevelObjects/EndSmallCastle.tscn b/Scenes/Prefabs/LevelObjects/EndSmallCastle.tscn
+index 1e3c089..d4cce10 100644
+--- a/Scenes/Prefabs/LevelObjects/EndSmallCastle.tscn
++++ b/Scenes/Prefabs/LevelObjects/EndSmallCastle.tscn
+@@ -1,4 +1,4 @@
+-[gd_scene load_steps=20 format=4 uid="uid://byqmn8yi7iuac"]
++[gd_scene load_steps=22 format=4 uid="uid://byqmn8yi7iuac"]
+ 
+ [ext_resource type="Script" uid="uid://qq26qw7ltflb" path="res://Scripts/Parts/EndCastle.gd" id="1_4yifo"]
+ [ext_resource type="Script" uid="uid://caq1qiwmy0mox" path="res://Scripts/Parts/BetterAnimatedSprite.gd" id="2_l3xjf"]
+@@ -6,6 +6,7 @@
+ [ext_resource type="Script" uid="uid://bdq0373j5n5o0" path="res://Scripts/Parts/CameraRightLimit.gd" id="4_1x3lf"]
+ [ext_resource type="JSON" path="res://Assets/Sprites/Tilesets/CastleFlag.json" id="4_7xlhl"]
+ [ext_resource type="PackedScene" uid="uid://qn4g0qkjcuiy" path="res://Scenes/Parts/SmallCastleVisual.tscn" id="5_an8pi"]
++[ext_resource type="Script" uid="uid://cnheej0sxmoxg" path="res://Scripts/Parts/PlayerDetection.gd" id="7_oyrq2"]
+ [ext_resource type="Texture2D" uid="uid://dt0qtxu2l646n" path="res://Assets/Sprites/Tilesets/Terrain/Overworld.png" id="7_xg4af"]
+ [ext_resource type="Script" uid="uid://73oviwf6bbys" path="res://Scripts/Classes/Components/TilesetTextureSetter.gd" id="8_l3xjf"]
+ [ext_resource type="JSON" path="res://Assets/Sprites/Tilesets/Terrain/TerrainTiles.json" id="9_oyrq2"]
+@@ -53,6 +54,10 @@ _data = {
+ &"Raise": SubResource("Animation_7xlhl")
+ }
+ 
++[sub_resource type="SegmentShape2D" id="SegmentShape2D_76jrx"]
++a = Vector2(0, -16)
++b = Vector2(0, 16)
++
+ [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_2hcdu"]
+ texture = ExtResource("7_xg4af")
+ texture_region_size = Vector2i(8, 8)
+@@ -126,6 +131,14 @@ autostart = true
+ [node name="SmallCastleVisual" parent="." instance=ExtResource("5_an8pi")]
+ position = Vector2(0, -40)
+ 
++[node name="PlayerDetection" type="Area2D" parent="."]
++script = ExtResource("7_oyrq2")
++metadata/_custom_type_script = "uid://cnheej0sxmoxg"
++
++[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerDetection"]
++position = Vector2(0, -16)
++shape = SubResource("SegmentShape2D_76jrx")
++
+ [node name="Overlay" type="TileMapLayer" parent="."]
+ visible = false
+ z_index = 10
+diff --git a/Scripts/Parts/EndCastle.gd b/Scripts/Parts/EndCastle.gd
+index a331095..79c3194 100644
+--- a/Scripts/Parts/EndCastle.gd
++++ b/Scripts/Parts/EndCastle.gd
+@@ -41,7 +41,7 @@ func _process(_delta: float) -> void:
+ 
+ func _physics_process(_delta: float) -> void:
+ 	for i: Player in get_tree().get_nodes_in_group("Players"):
+-		if i.can_pose and i.global_position >= global_position and i.sprite.sprite_frames.has_animation("PoseDoor"):
++		if i.state_machine.get_state() == "LevelExit" and i.can_pose and $PlayerDetection.is_player_in_area() and i.global_position >= global_position and i.sprite.sprite_frames.has_animation("PoseDoor"):
+ 			i.is_posing = true; i.can_pose = false
+ 			i.global_position = global_position
+ 			i.play_animation("PoseDoor")

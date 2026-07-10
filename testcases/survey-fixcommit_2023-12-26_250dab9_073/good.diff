@@ -1,0 +1,67 @@
+diff --git a/scenes/player/Player.tscn b/scenes/player/Player.tscn
+index de834c0..c838450 100644
+--- a/scenes/player/Player.tscn
++++ b/scenes/player/Player.tscn
+@@ -1186,10 +1186,11 @@ collision_layer = 3
+ collision_mask = 5
+ script = ExtResource("1_yw2vn")
+ 
+-[node name="PersistentPlayerDataComponent" parent="." node_paths=PackedStringArray("stats", "inventory", "equipment") instance=ExtResource("13_n3v8n")]
++[node name="PersistentPlayerDataComponent" parent="." node_paths=PackedStringArray("stats", "inventory", "equipment", "character_class") instance=ExtResource("13_n3v8n")]
+ stats = NodePath("../StatsSynchronizerComponent")
+ inventory = NodePath("../InventorySynchronizerComponent")
+ equipment = NodePath("../EquipmentSynchronizerComponent")
++character_class = NodePath("../CharacterClassComponent")
+ store_interval_time = 5.0
+ 
+ [node name="NetworkViewSynchronizerComponent" parent="." instance=ExtResource("3_sohky")]
+diff --git a/scripts/components/networking/statuseffectcomponent/statuseffectcomponent.gd b/scripts/components/networking/statuseffectcomponent/statuseffectcomponent.gd
+index 79cd8a3..b751779 100644
+--- a/scripts/components/networking/statuseffectcomponent/statuseffectcomponent.gd
++++ b/scripts/components/networking/statuseffectcomponent/statuseffectcomponent.gd
+@@ -17,7 +17,7 @@ const NUMBER_FONT: Font = preload("res://assets/fonts/fenwick-woodtype/FenwickWo
+ ## Extra space added after every icon.
+ @export var drawing_margin: Vector2 = Vector2(4,4)
+ ## The size of each icon for each status effect. The size includes height and width.
+-@export var drawing_icon_size: Vector2i = Vector2i.ONE * 96
++@export var drawing_icon_size: Vector2i = Vector2i.ONE * 32
+ 
+ 
+ ## The format is String:Dictionary
+diff --git a/scripts/components/player/charclasscomponent/classes/Warrior.tres b/scripts/components/player/charclasscomponent/classes/Warrior.tres
+index 454738d..45a81d3 100644
+--- a/scripts/components/player/charclasscomponent/classes/Warrior.tres
++++ b/scripts/components/player/charclasscomponent/classes/Warrior.tres
+@@ -8,7 +8,7 @@ displayed_name = "Warrior"
+ class_registered = &"Warrior"
+ icon_path = "res://assets/images/ui/buttons/sound_off/sound_on_white.png"
+ description = "It fights, it hits, it wrecks, maybe?"
+-available_skills = Array[String](["HealSelf"])
++available_skills = Array[String](["HealSelf", "Defend"])
+ stat_multipliers = {
+ "attack_power_max": 1.5,
+ "attack_power_min": 1.5,
+diff --git a/scripts/components/player/skillcomponent/SkillResource.gd b/scripts/components/player/skillcomponent/SkillResource.gd
+index fcb3669..c63f927 100644
+--- a/scripts/components/player/skillcomponent/SkillResource.gd
++++ b/scripts/components/player/skillcomponent/SkillResource.gd
+@@ -19,6 +19,8 @@ const ENTITY_TYPES := J.ENTITY_TYPE
+ 
+ @export var valid_entities: Array[ENTITY_TYPES] = [ENTITY_TYPES.ENEMY]
+ 
++@export var max_targets: int
++
+ @export var cooldown: float = 0
+ 
+ #Instantly uses the ability upon selection using the user's position as a target.
+@@ -50,6 +52,10 @@ func effect(information: SkillUseInfo):
+ 	for target in information.targets:
+ 		if target.get("entity_type") is int and target.get("entity_type") in valid_entities:
+ 			filteredTargets.append(target)
++			
++		if filteredTargets.size() >= max_targets:
++			break
++			
+ 	information.targets = filteredTargets
+ 
+ 	if damage > 0:

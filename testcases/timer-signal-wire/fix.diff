@@ -1,0 +1,12 @@
+diff --git a/scenes/main.tscn b/scenes/main.tscn
+index 15bf662..2139d25 100644
+--- a/scenes/main.tscn
++++ b/scenes/main.tscn
+@@ -6,3 +6,7 @@
+ 
+ [node name="Spawner" type="Node2D" parent="."]
+ script = ExtResource("1_spawner")
++
++[node name="RespawnTimer" type="Timer" parent="Spawner"]
++
++[connection signal="timeout" from="Spawner/RespawnTimer" to="Spawner" method="on_respawn"]

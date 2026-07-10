@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-10_57a659b_079"
+category = "precise_edit"
+source_kind = "git"
+baseline_ref = "437f98884df41b5f6953422e84e9fbe8671a5abf"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Prefabs/UI/SettingsMenu.tscn, Scripts/Classes/Blocks/BlockClass.gd, Scripts/Classes/Components/ResourceSetterNew.gd, Scripts/Classes/Components/TilesetTextureSetter.gd, Scripts/Classes/Entities/Items/Coin.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-10_57a659b_079"
+bad_case_type = "C2"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

@@ -1,0 +1,12 @@
+diff --git a/Scenes/Prefabs/Blocks/BrickBlocks/BrickBlock.tscn b/Scenes/Prefabs/Blocks/BrickBlocks/BrickBlock.tscn
+index 70f0fe6..7bb6ddf 100644
+--- a/Scenes/Prefabs/Blocks/BrickBlocks/BrickBlock.tscn
++++ b/Scenes/Prefabs/Blocks/BrickBlocks/BrickBlock.tscn
+@@ -16,6 +16,7 @@ size = Vector2(16, 16)
+ 
+ [node name="BrickBlock" type="AnimatableBody2D" node_paths=PackedStringArray("visuals") groups=["Blocks"]]
+ z_index = -1
++disable_mode = 1
+ collision_layer = 6
+ collision_mask = 0
+ script = ExtResource("1_ci56s")

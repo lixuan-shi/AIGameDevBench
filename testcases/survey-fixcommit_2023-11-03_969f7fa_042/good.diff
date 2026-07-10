@@ -1,0 +1,322 @@
+diff --git a/scenes/enemies/ClamDog/ClamDog.gd b/scenes/enemies/ClamDog/ClamDog.gd
+index 73eff99..13fac65 100644
+--- a/scenes/enemies/ClamDog/ClamDog.gd
++++ b/scenes/enemies/ClamDog/ClamDog.gd
+@@ -67,7 +67,7 @@ func attack(target: CharacterBody2D):
+ 	var damage = randi_range(stats.attack_power_min, stats.attack_power_max)
+ 
+ 	if target.get("stats"):
+-		target.stats.hurt(name, damage)
++		target.stats.hurt(self, damage)
+ 		action_synchronizer.attack(target.name, damage)
+ 
+ 
+diff --git a/scenes/enemies/ClamDog/ClamDog.tscn b/scenes/enemies/ClamDog/ClamDog.tscn
+index 8a3b25a..1b93219 100644
+--- a/scenes/enemies/ClamDog/ClamDog.tscn
++++ b/scenes/enemies/ClamDog/ClamDog.tscn
+@@ -917,6 +917,7 @@ hp = 75
+ attack_power_min = 10
+ attack_power_max = 15
+ movement_speed = 200.0
++experience_worth = 40
+ 
+ [node name="LootComponent" parent="." node_paths=PackedStringArray("stats") instance=ExtResource("5_88wie")]
+ stats = NodePath("../StatsSynchronizerComponent")
+diff --git a/scenes/enemies/MoldedDruvar/MoldedDruvar.gd b/scenes/enemies/MoldedDruvar/MoldedDruvar.gd
+index 1a2e9d0..4e239df 100644
+--- a/scenes/enemies/MoldedDruvar/MoldedDruvar.gd
++++ b/scenes/enemies/MoldedDruvar/MoldedDruvar.gd
+@@ -67,7 +67,7 @@ func attack(target: CharacterBody2D):
+ 	var damage = randi_range(stats.attack_power_min, stats.attack_power_max)
+ 
+ 	if target.get("stats"):
+-		target.stats.hurt(name, damage)
++		target.stats.hurt(self, damage)
+ 		action_synchronizer.attack(target.name, damage)
+ 
+ 
+diff --git a/scenes/enemies/MoldedDruvar/MoldedDruvar.tscn b/scenes/enemies/MoldedDruvar/MoldedDruvar.tscn
+index f730d06..cee6eb4 100644
+--- a/scenes/enemies/MoldedDruvar/MoldedDruvar.tscn
++++ b/scenes/enemies/MoldedDruvar/MoldedDruvar.tscn
+@@ -796,6 +796,7 @@ attack_power_max = 50
+ attack_speed = 2.0
+ defense = 8
+ movement_speed = 75.0
++experience_worth = 80
+ 
+ [node name="ActionSynchronizerComponent" parent="." node_paths=PackedStringArray("watcher_synchronizer") instance=ExtResource("5_aextl")]
+ watcher_synchronizer = NodePath("../WatcherSynchronizerComponent")
+diff --git a/scenes/enemies/Sheep/Sheep.tscn b/scenes/enemies/Sheep/Sheep.tscn
+index f8a54a9..9cc32f9 100644
+--- a/scenes/enemies/Sheep/Sheep.tscn
++++ b/scenes/enemies/Sheep/Sheep.tscn
+@@ -248,6 +248,7 @@ watcher_synchronizer = NodePath("../WatcherSynchronizerComponent")
+ hp_max = 20
+ hp = 20
+ movement_speed = 50.0
++experience_worth = 10
+ 
+ [node name="LootComponent" parent="." node_paths=PackedStringArray("stats") instance=ExtResource("5_2qlym")]
+ stats = NodePath("../StatsSynchronizerComponent")
+diff --git a/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.gd b/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.gd
+index 91fcf50..0b43f18 100644
+--- a/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.gd
++++ b/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.gd
+@@ -67,7 +67,7 @@ func attack(target: CharacterBody2D):
+ 	var damage = randi_range(stats.attack_power_min, stats.attack_power_max)
+ 
+ 	if target.get("stats"):
+-		target.stats.hurt(name, damage)
++		target.stats.hurt(self, damage)
+ 		action_synchronizer.attack(target.name, damage)
+ 
+ 
+diff --git a/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn b/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn
+index 24c33df..2d62e17 100644
+--- a/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn
++++ b/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn
+@@ -797,6 +797,7 @@ hp = 50
+ attack_power_min = 10
+ attack_power_max = 15
+ movement_speed = 200.0
++experience_worth = 50
+ 
+ [node name="ActionSynchronizerComponent" parent="." node_paths=PackedStringArray("watcher_synchronizer") instance=ExtResource("5_75v1y")]
+ watcher_synchronizer = NodePath("../WatcherSynchronizerComponent")
+diff --git a/scenes/player/Player.tscn b/scenes/player/Player.tscn
+index 9e5d32f..14411e2 100644
+--- a/scenes/player/Player.tscn
++++ b/scenes/player/Player.tscn
+@@ -1,4 +1,4 @@
+-[gd_scene load_steps=39 format=3 uid="uid://cycpseafpexil"]
++[gd_scene load_steps=40 format=3 uid="uid://cycpseafpexil"]
+ 
+ [ext_resource type="Script" path="res://scenes/player/Player.gd" id="1_yw2vn"]
+ [ext_resource type="Texture2D" uid="uid://fuk2rvw34m4d" path="res://assets/images/player/base/Basecharacter.png" id="2_j04kt"]
+@@ -25,13 +25,13 @@
+ [ext_resource type="PackedScene" uid="uid://dssmk0m8xsvxf" path="res://scenes/ui/game_menu/game_menu.tscn" id="13_musf7"]
+ [ext_resource type="PackedScene" uid="uid://8hhnyrweana5" path="res://scripts/components/persistentplayerdatacomponent/PersistentPlayerDataComponent.tscn" id="13_n3v8n"]
+ [ext_resource type="PackedScene" uid="uid://bqsdy2usb2e6d" path="res://scenes/player/equipment/Equipment.tscn" id="14_2fdu8"]
+-[ext_resource type="StyleBox" uid="uid://pbfuprosr3en" path="res://assets/themes/ProgressBars.tres" id="14_3h4ha"]
+ [ext_resource type="PackedScene" uid="uid://ccq2mcrkefjnb" path="res://scenes/player/deathpopup/DeathPopup.tscn" id="15_ho0h1"]
+ [ext_resource type="PackedScene" uid="uid://dmf2tmcuq22vg" path="res://scenes/player/chatpanel/ChatPanel.tscn" id="16_xx8pu"]
+ [ext_resource type="PackedScene" uid="uid://dirsk8pf0bxh5" path="res://scenes/player/statdisplay/StatDisplay.tscn" id="17_3wdg5"]
+ [ext_resource type="PackedScene" uid="uid://chhiamhxxhm3v" path="res://scripts/components/interfacecomponent/InterfaceComponent.tscn" id="18_bmbbk"]
+ [ext_resource type="PackedScene" uid="uid://c5tliladmodux" path="res://scripts/components/positionsynchronizercomponent/PositionSynchronizerComponent.tscn" id="18_ot7di"]
+ [ext_resource type="Script" path="res://scenes/player/player_gui.gd" id="23_h5xag"]
++[ext_resource type="PackedScene" uid="uid://npibcxiy8qqo" path="res://scenes/player/expbar/ExpBar.tscn" id="29_vmfl8"]
+ 
+ [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_lk3fd"]
+ radius = 24.6666
+@@ -1094,19 +1094,9 @@ gold = null
+ visible = false
+ layout_mode = 1
+ 
+-[node name="ExpBar" type="ProgressBar" parent="Camera2D/UILayer/GUI"]
++[node name="ExpBar" parent="Camera2D/UILayer/GUI" node_paths=PackedStringArray("stats") instance=ExtResource("29_vmfl8")]
+ layout_mode = 1
+-anchors_preset = 7
+-anchor_left = 0.5
+-anchor_top = 1.0
+-anchor_right = 0.5
+-anchor_bottom = 1.0
+-offset_left = -320.0
+-offset_top = -32.0
+-offset_right = 320.0
+-grow_horizontal = 2
+-grow_vertical = 0
+-theme_override_styles/fill = ExtResource("14_3h4ha")
++stats = NodePath("../../../../StatsSynchronizerComponent")
+ 
+ [node name="DeathPopup" parent="Camera2D/UILayer/GUI" instance=ExtResource("15_ho0h1")]
+ visible = false
+diff --git a/scenes/player/expbar/ExpBar.gd b/scenes/player/expbar/ExpBar.gd
+new file mode 100644
+index 0000000..394a0c2
+--- /dev/null
++++ b/scenes/player/expbar/ExpBar.gd
+@@ -0,0 +1,28 @@
++extends ProgressBar
++
++@export var stats: StatsSynchronizerComponent
++
++
++# Called when the node enters the scene tree for the first time.
++func _ready():
++	stats.stats_changed.connect(_on_stats_changed)
++	renew_values()
++
++
++func renew_values():
++	if stats.experience_needed <= 0:
++		return
++
++	var progress: float = float(stats.experience) / stats.experience_needed * 100
++	if progress >= 100:
++		progress = 0
++
++	value = progress
++
++
++func _on_stats_changed(type: StatsSynchronizerComponent.TYPE):
++	match type:
++		StatsSynchronizerComponent.TYPE.EXPERIENCE:
++			renew_values()
++		StatsSynchronizerComponent.TYPE.EXPERIENCE_NEEDED:
++			renew_values()
+diff --git a/scenes/player/expbar/ExpBar.tscn b/scenes/player/expbar/ExpBar.tscn
+new file mode 100644
+index 0000000..19b8b11
+--- /dev/null
++++ b/scenes/player/expbar/ExpBar.tscn
+@@ -0,0 +1,18 @@
++[gd_scene load_steps=3 format=3 uid="uid://npibcxiy8qqo"]
++
++[ext_resource type="StyleBox" uid="uid://pbfuprosr3en" path="res://assets/themes/ProgressBars.tres" id="1_6g03i"]
++[ext_resource type="Script" path="res://scenes/player/expbar/ExpBar.gd" id="2_qtgyb"]
++
++[node name="ExpBar" type="ProgressBar"]
++anchors_preset = 7
++anchor_left = 0.5
++anchor_top = 1.0
++anchor_right = 0.5
++anchor_bottom = 1.0
++offset_left = -320.0
++offset_top = -32.0
++offset_right = 320.0
++grow_horizontal = 2
++grow_vertical = 0
++theme_override_styles/fill = ExtResource("1_6g03i")
++script = ExtResource("2_qtgyb")
+diff --git a/scripts/components/playerbehaviorcomponent/PlayerBehaviorComponent.gd b/scripts/components/playerbehaviorcomponent/PlayerBehaviorComponent.gd
+index edc9fed..ce72bb4 100644
+--- a/scripts/components/playerbehaviorcomponent/PlayerBehaviorComponent.gd
++++ b/scripts/components/playerbehaviorcomponent/PlayerBehaviorComponent.gd
+@@ -185,7 +185,7 @@ func attack(target: CharacterBody2D):
+ 	var damage = randi_range(stats_component.attack_power_min, stats_component.attack_power_max)
+ 
+ 	if target.get("stats"):
+-		target.stats.hurt(target_node.name, damage)
++		target.stats.hurt(target_node, damage)
+ 		if action_synchronizer:
+ 			action_synchronizer.attack(target_node.name, damage)
+ 
+diff --git a/scripts/components/statssynchronizercomponent/StatsSynchronizerComponent.gd b/scripts/components/statssynchronizercomponent/StatsSynchronizerComponent.gd
+index bc22626..73c3d54 100644
+--- a/scripts/components/statssynchronizercomponent/StatsSynchronizerComponent.gd
++++ b/scripts/components/statssynchronizercomponent/StatsSynchronizerComponent.gd
+@@ -115,10 +115,10 @@ signal respawned
+ 			sync_int_change(TYPE.EXPERIENCE_NEEDED, val)
+ 
+ @export var loot_range: float = 64
++@export var experience_worth: int = 0
+ 
+ var target_node: Node
+ var is_dead: bool = false
+-var experience_worth: int = 0
+ 
+ var server_buffer: Array[Dictionary] = []
+ var ready_done: bool = false
+@@ -189,7 +189,7 @@ func check_server_buffer():
+ 			server_buffer.remove_at(i)
+ 
+ 
+-func hurt(from: String, damage: int) -> int:
++func hurt(from: Node, damage: int) -> int:
+ 	# # Reduce the damage according to the defense stat
+ 	var reduced_damage = max(0, damage - defense)
+ 
+@@ -199,13 +199,15 @@ func hurt(from: String, damage: int) -> int:
+ 	# # Die if damage is bigger than remaining hp
+ 	else:
+ 		hp = 0
++		if experience_worth > 0 and from.get("stats"):
++			from.stats.add_experience(experience_worth)
+ 
+ 	var timestamp: float = Time.get_unix_time_from_system()
+ 
+ 	for watcher in watcher_synchronizer.watchers:
+-		_sync_hurt.rpc_id(watcher.peer_id, timestamp, from, reduced_damage)
++		_sync_hurt.rpc_id(watcher.peer_id, timestamp, from.name, reduced_damage)
+ 
+-	got_hurt.emit(from, reduced_damage)
++	got_hurt.emit(from.name, reduced_damage)
+ 
+ 	return reduced_damage
+ 
+@@ -235,6 +237,36 @@ func load_defaults():
+ 	movement_speed = _default_movement_speed
+ 
+ 
++func calculate_experience_needed(current_level: int):
++	# TODO: Replace placeholder function to calculate experience needed to level up
++	return BASE_EXPERIENCE + (BASE_EXPERIENCE * (pow(current_level, 2) - 1))
++
++
++func add_level(amount: int):
++	level += amount
++
++
++func add_experience(amount: int):
++	experience += amount
++
++	while experience >= experience_needed:
++		experience -= experience_needed
++		add_level(1)
++
++
++func apply_boost(boost: Boost):
++	hp_max += boost.hp_max
++	hp += boost.hp
++	attack_power_min += boost.attack_power_min
++	attack_power_max += boost.attack_power_max
++
++	defense += boost.defense
++
++	for watcher in watcher_synchronizer.watchers:
++		var data: Dictionary = to_json(true)
++		sync_response.rpc_id(watcher.peer_id, data)
++
++
+ func to_json(full: bool = false) -> Dictionary:
+ 	var data: Dictionary = {"hp": hp, "level": level, "experience": experience}
+ 	if full:
+@@ -314,36 +346,6 @@ func from_json(data: Dictionary, full: bool = false) -> bool:
+ 	return true
+ 
+ 
+-func calculate_experience_needed(current_level: int):
+-	# TODO: Replace placeholder function to calculate experience needed to level up
+-	return BASE_EXPERIENCE + (BASE_EXPERIENCE * (pow(current_level, 2) - 1))
+-
+-
+-func add_level(amount: int):
+-	level += amount
+-
+-
+-func add_experience(amount: int):
+-	experience += amount
+-
+-	while experience >= experience_needed:
+-		experience -= experience_needed
+-		add_level(1)
+-
+-
+-func apply_boost(boost: Boost):
+-	hp_max += boost.hp_max
+-	hp += boost.hp
+-	attack_power_min += boost.attack_power_min
+-	attack_power_max += boost.attack_power_max
+-
+-	defense += boost.defense
+-
+-	for watcher in watcher_synchronizer.watchers:
+-		var data: Dictionary = to_json(true)
+-		sync_response.rpc_id(watcher.peer_id, data)
+-
+-
+ func sync_int_change(stat_type: TYPE, value: int):
+ 	if not ready_done:
+ 		return

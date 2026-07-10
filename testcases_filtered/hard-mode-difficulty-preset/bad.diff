@@ -1,0 +1,11 @@
+diff --git a/config/enemy_stats.json b/config/enemy_stats.json
+index dbcdfcc..c363ae4 100644
+--- a/config/enemy_stats.json
++++ b/config/enemy_stats.json
+@@ -1,5 +1,5 @@
+ {
+   "difficulty": "hard",
+-  "enemy_health": 100,
++  "enemy_health": 150,
+   "enemy_damage": 10
+ }

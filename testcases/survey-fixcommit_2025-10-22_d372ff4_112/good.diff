@@ -1,0 +1,14 @@
+diff --git a/Scripts/Classes/Entities/Enemies/Bowser.gd b/Scripts/Classes/Entities/Enemies/Bowser.gd
+index 7e2a4f1..96f69e6 100644
+--- a/Scripts/Classes/Entities/Enemies/Bowser.gd
++++ b/Scripts/Classes/Entities/Enemies/Bowser.gd
+@@ -130,8 +130,7 @@ func fireball_hit() -> void:
+ func play_music() -> void:
+ 	for i: EntityGenerator in get_tree().get_nodes_in_group("EntityGenerators"):
+ 		if i.entity_scene != null:
+-			if i.entity_scene.resource_path == "res://Scenes/
+-			Prefabs/Entities/Enemies/BowserFlame.tscn":
++			if i.entity_scene.resource_path == "res://Scenes/Prefabs/Entities/Enemies/BowserFlame.tscn":
+ 				i.queue_free()
+ 	if Settings.file.audio.extra_bgm == 0: return
+ 	if Global.level_editor != null:

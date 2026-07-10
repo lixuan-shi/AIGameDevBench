@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-08_7edfccb_074"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "5cc87189416d37c517d2c81bb55a188fb8c8328c"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Levels/SMB1/CoinHeavens/1.tscn, Scenes/Levels/SMBLL/CoinHeavens/1.tscn, Scenes/Levels/SMBLL/CoinHeavens/2.tscn, Scripts/Classes/Components/TilesetTextureSetter.gd, Scripts/Classes/Singletons/SaveManager.gd, Scripts/Classes/UI/GameHUD.gd, Scripts/Parts/TitleScreen.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-08_7edfccb_074"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

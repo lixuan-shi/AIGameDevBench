@@ -1,0 +1,13 @@
+diff --git a/godot/combat/interface/PopupLabel.gd b/godot/combat/interface/PopupLabel.gd
+index 6948d66..c7b9026 100644
+--- a/godot/combat/interface/PopupLabel.gd
++++ b/godot/combat/interface/PopupLabel.gd
+@@ -10,7 +10,7 @@ func start(battler : Battler, type : String, message : String) -> void:
+ 	Initializes the node and starts its animation
+ 	@type: either health, mana, missed. Determines the animation the label will use
+ 	"""
+-	assert type in ['miss', 'mana', 'health']
++	assert type in ['missed', 'mana', 'health']
+ 	var extents : RectExtents = battler.skin.get_extents()
+ 	label.text = message
+ 	

@@ -1,0 +1,30 @@
+[testcase]
+id = "wave-combat-score-system"
+category = "behavior_logic"
+source_kind = "folder"
+source_repo = "authored:representative-set"
+task = """
+Implement the multi-system wave/combat/score game across res://scripts/enemy.gd and res://scripts/game_controller.gd.
+
+Enemy (res://scripts/enemy.gd): a 3-state lifecycle alive -> dying -> dead. take_damage(n) reduces hp clamped at 0; when hp hits 0 it transitions to dying, emits died(self) exactly once, then settles to dead. Damage after death does nothing and never re-emits.
+
+GameController (res://scripts/game_controller.gd):
+- start() spawns wave 0 (wave_sizes[0] Enemy children of the controller) and connects each enemy's died signal.
+- When an enemy dies: award score = 10 + 5*(combo-1) where combo is the running count of kills so far (1st kill 10, 2nd 15, 3rd 20, ...). When all enemies of the current wave are dead, advance to and spawn the next wave. After the LAST wave is fully cleared, emit game_won exactly once and set won = true.
+- alive_count() returns the living enemies of the current wave.
+- kill_one() deals lethal damage to the first living enemy of the current wave.
+
+With wave_sizes [2,3], the five kills score 10,15,20,25,30 for a total of 100.
+"""
+
+[verifier]
+type = "godot_scene_assert"
+entry = "verifier_scene.tscn"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+author = "Claude"
+created = "2026-06-30"
+notes = "behavior_logic/brutal (multi-system). Enemy FSM + controller spawning/wiring + combo scoring + wave advance + win detection, all interacting across two files. Baseline stubs -> noop=0. Many partial-credit failure points (single died emit, combo formula, advance timing, win-once). Golden -> 1.0."

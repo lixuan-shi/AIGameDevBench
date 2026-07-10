@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-03-24_4b4762d_059"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "403b35d87275208dffe21f12fd450d19cbd04455"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\tabletop-club"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: game/Scripts/Game/CameraController.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-03-24_4b4762d_059"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

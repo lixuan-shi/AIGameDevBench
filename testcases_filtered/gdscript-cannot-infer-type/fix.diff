@@ -1,0 +1,12 @@
+diff --git a/scripts/score_tracker.gd b/scripts/score_tracker.gd
+index 8268a52..71f2477 100644
+--- a/scripts/score_tracker.gd
++++ b/scripts/score_tracker.gd
+@@ -9,6 +9,6 @@ var _scores := [10, 25, 7]
+ func total_score() -> int:
+ 	var total := 0
+ 	for i in range(_scores.size()):
+-		var value := _scores[i]
++		var value: int = _scores[i]
+ 		total += value
+ 	return total

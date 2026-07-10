@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-02-05_46df0eb_011"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "c7f96a267bc4df05670982354b9807b0ca97e3b5"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rts"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: source/match/units/projectiles/CannonShell.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-02-05_46df0eb_011"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

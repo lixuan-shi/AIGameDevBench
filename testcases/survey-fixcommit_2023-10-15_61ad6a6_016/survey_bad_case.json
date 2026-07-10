@@ -1,0 +1,133 @@
+{
+  "schema": "survey.bad_case.testcase.v1",
+  "testcase_id": "survey-fixcommit_2023-10-15_61ad6a6_016",
+  "source_repo": "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\jdungeon",
+  "baseline_ref": "5d57c142f1e5c39d18e2eda9f663546b6a50b86d",
+  "repro_ref": "5d57c142f1e5c39d18e2eda9f663546b6a50b86d",
+  "bad_ref": "5d57c142f1e5c39d18e2eda9f663546b6a50b86d",
+  "good_ref": "61ad6a60afee3404566d33661d4309bbdc3271a7",
+  "baseline_resolution_error": null,
+  "expected": {
+    "bad_case_type": "A1",
+    "notes": "fix commit 61ad6a6: fix login via enter",
+    "original_l0_pass": null,
+    "original_l1_pass": null,
+    "original_l0_details": [],
+    "original_l1_details": [],
+    "original_human_intervention_ratio": 0.0,
+    "original_rounds_to_resolution": 2,
+    "must_change_one_of": [
+      "scenes/loginpanel/LoginPanel.gd"
+    ],
+    "minimum_changed_files": 1
+  },
+  "hidden_oracle": {
+    "good_ref": "61ad6a60afee3404566d33661d4309bbdc3271a7",
+    "good_diff_file": "good.diff",
+    "good_changed_files": [
+      "scenes/loginpanel/LoginPanel.gd"
+    ],
+    "history_mining_strategy": "fix_commit_parent"
+  },
+  "bench_record": {
+    "testcase_id": "fixcommit_2023-10-15_61ad6a6_016",
+    "harness": "git-history",
+    "category": "survey:A1",
+    "l0_l1_pass": true,
+    "score": 0.0,
+    "verifier_result": {
+      "score": 0.0,
+      "status": "fail",
+      "category": "survey:A1",
+      "error": "fix commit 61ad6a6: fix login via enter",
+      "checks": [
+        {
+          "name": "bad_case_detected",
+          "passed": false,
+          "detail": "fix commit 61ad6a6: fix login via enter",
+          "expected": "none",
+          "actual": "A1"
+        },
+        {
+          "name": "human_intervention_ratio",
+          "passed": true,
+          "detail": "",
+          "expected": "<= 0.40",
+          "actual": 0.0
+        },
+        {
+          "name": "rounds_to_resolution",
+          "passed": true,
+          "detail": "",
+          "expected": "<= 4",
+          "actual": 2
+        }
+      ]
+    },
+    "diff": "",
+    "artifacts_path": null,
+    "ai_agent_context": {
+      "harness": "git-history",
+      "transcript_session_id": null,
+      "transcript_match_confidence": null,
+      "transcript_path": null,
+      "codex_session_id": null,
+      "total_tokens": null,
+      "filtered_to_commits": [
+        "61ad6a6"
+      ],
+      "filtered_turns": null,
+      "turns": []
+    },
+    "survey_session": {
+      "session_id": "fixcommit_2023-10-15_61ad6a6_016",
+      "harness": "git-history",
+      "config": {},
+      "bad_case_type": "A1",
+      "auto_detected": true,
+      "confidence": "low",
+      "notes": "fix commit 61ad6a6: fix login via enter",
+      "prompts": [],
+      "system_context": {
+        "source": "git-history-fix",
+        "baseline_ref": "5d57c142f1e5c39d18e2eda9f663546b6a50b86d",
+        "bad_ref": "5d57c142f1e5c39d18e2eda9f663546b6a50b86d",
+        "good_ref": "61ad6a60afee3404566d33661d4309bbdc3271a7",
+        "good_commit_timestamp": "2023-10-15T22:46:41+02:00",
+        "good_changed_files": [
+          "scenes/loginpanel/LoginPanel.gd"
+        ],
+        "fix_commit_subject": "fix login via enter",
+        "oracle_level": "diff_only",
+        "history_mining_strategy": "fix_commit_parent",
+        "failure_mode": "enter-to-submit missing"
+      },
+      "changed_files": [
+        "scenes/loginpanel/LoginPanel.gd"
+      ],
+      "commits": [
+        "61ad6a6"
+      ],
+      "timestamps": {
+        "started": "2023-10-15T22:46:41+02:00",
+        "ended": "2023-10-15T22:46:41+02:00"
+      },
+      "verification": null,
+      "outcome": {
+        "first_pass_success": false,
+        "rounds_to_resolution": 2,
+        "ai_lines_changed": 0,
+        "human_lines_changed": 0,
+        "human_intervention_ratio": 0.0,
+        "token_cost": 0,
+        "session_duration_minutes": 0.0
+      },
+      "tag": {
+        "bad_case_type": "A1",
+        "suggested_type": "A1",
+        "confidence": "medium",
+        "root_cause": "Login could not be submitted via the Enter key because submit handling wasn't wired to accept input."
+      }
+    }
+  }
+}

@@ -1,0 +1,657 @@
+diff --git a/scenes/enemies/MoldedDruvar/MoldedDruvar.tscn b/scenes/enemies/MoldedDruvar/MoldedDruvar.tscn
+index 189520e..fc15933 100644
+--- a/scenes/enemies/MoldedDruvar/MoldedDruvar.tscn
++++ b/scenes/enemies/MoldedDruvar/MoldedDruvar.tscn
+@@ -821,27 +821,21 @@ stats_synchronizer = NodePath("../StatsSynchronizerComponent")
+ scale = Vector2(0.06, 0.06)
+ 
+ [node name="BackHand" type="Sprite2D" parent="Sprites"]
+-scale = Vector2(1, 1)
+ texture = ExtResource("1_fnuxl")
+ 
+ [node name="BackLeg" type="Sprite2D" parent="Sprites"]
+-scale = Vector2(1, 1)
+ texture = ExtResource("2_xe2qq")
+ 
+ [node name="TopLeg" type="Sprite2D" parent="Sprites"]
+-scale = Vector2(1, 1)
+ texture = ExtResource("3_x4duj")
+ 
+ [node name="Body" type="Sprite2D" parent="Sprites"]
+-scale = Vector2(1, 1)
+ texture = ExtResource("4_uuhj7")
+ 
+ [node name="Head" type="Sprite2D" parent="Sprites"]
+-scale = Vector2(1, 1)
+ texture = ExtResource("5_af0rv")
+ 
+ [node name="TopHand" type="Sprite2D" parent="Sprites"]
+-scale = Vector2(1, 1)
+ texture = ExtResource("6_ajo5s")
+ 
+ [node name="Skeleton" type="Node2D" parent="."]
+diff --git a/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn b/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn
+index 7fed3f4..72ef28d 100644
+--- a/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn
++++ b/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn
+@@ -834,42 +834,36 @@ metadata/_edit_lock_ = true
+ 
+ [node name="RightArm" type="Sprite2D" parent="Sprites"]
+ position = Vector2(-100, -560)
+-scale = Vector2(1, 1)
+ texture = ExtResource("4_agvxr")
+ offset = Vector2(-173, 6.50012)
+ metadata/_edit_lock_ = true
+ 
+ [node name="RightLeg" type="Sprite2D" parent="Sprites"]
+ position = Vector2(-110, -260)
+-scale = Vector2(1, 1)
+ texture = ExtResource("5_fywxg")
+ offset = Vector2(-163, -293.5)
+ metadata/_edit_lock_ = true
+ 
+ [node name="LeftLeg" type="Sprite2D" parent="Sprites"]
+ position = Vector2(100, -270)
+-scale = Vector2(1, 1)
+ texture = ExtResource("7_7d51h")
+ offset = Vector2(-373, -283.5)
+ metadata/_edit_lock_ = true
+ 
+ [node name="Body" type="Sprite2D" parent="Sprites"]
+ position = Vector2(0, -270)
+-scale = Vector2(1, 1)
+ texture = ExtResource("8_31yn2")
+ offset = Vector2(-270, -280)
+ metadata/_edit_lock_ = true
+ 
+ [node name="Axe" type="Sprite2D" parent="Sprites"]
+ position = Vector2(250, -1100)
+-scale = Vector2(1, 1)
+ texture = ExtResource("3_jrku4")
+ offset = Vector2(-523, 546.5)
+ metadata/_edit_lock_ = true
+ 
+ [node name="LeftArm" type="Sprite2D" parent="Sprites"]
+ position = Vector2(160, -570)
+-scale = Vector2(1, 1)
+ texture = ExtResource("6_37oon")
+ offset = Vector2(-433, 16.5001)
+ metadata/_edit_lock_ = true
+diff --git a/scenes/player/Player copy.gd b/scenes/player/Player copy.gd
+deleted file mode 100644
+index 43a4b22..0000000
+--- a/scenes/player/Player copy.gd	
++++ /dev/null
+@@ -1,249 +0,0 @@
+-extends JPlayerBody2D
+-
+-@onready var animation_player = $AnimationPlayer
+-
+-@onready var floating_text_scene = preload("res://scenes/templates/JFloatingText/JFloatingText.tscn")
+-@onready var skeleton = $Skeleton
+-@onready var original_scale = $Skeleton.scale
+-
+-@onready var equipment_sprites = {
+-	"Head": $Sprites/Head,
+-	"Body": $Sprites/Body,
+-	"Legs": [$Sprites/RightLeg, $Sprites/LeftLeg],
+-	"Arms": [$Sprites/RightArm, $Sprites/LeftArm],
+-	"RightHand": $Sprites/RightHand,
+-	"LeftHand": $Sprites/LeftHand
+-}
+-
+-@onready var original_sprite_textures = {
+-	"Head": $Sprites/Head.texture,
+-	"Body": $Sprites/Body.texture,
+-	"Legs": [$Sprites/RightLeg.texture, $Sprites/LeftLeg.texture],
+-	"Arms": [$Sprites/RightArm.texture, $Sprites/LeftArm.texture],
+-	"RightHand": $Sprites/RightHand.texture,
+-	"LeftHand": $Sprites/LeftHand.texture
+-}
+-
+-
+-func _init():
+-	super()
+-
+-
+-func _ready():
+-	synchronizer.loop_animation_changed.connect(_on_loop_animation_changed)
+-	synchronizer.attacked.connect(_on_attacked)
+-	synchronizer.healed.connect(_on_healed)
+-	synchronizer.got_hurt.connect(_on_got_hurt)
+-
+-	equipment.loaded.connect(_on_equipment_loaded)
+-	equipment.item_added.connect(_on_item_equiped)
+-	equipment.item_removed.connect(_on_item_unequiped)
+-
+-	stats.stats_changed.connect(_on_stats_changed)
+-
+-	synchronizer.died.connect(_on_died)
+-	synchronizer.respawned.connect(_on_respawned)
+-
+-	animation_player.play(loop_animation)
+-
+-	$JInterface.display_name = username
+-
+-	super()
+-
+-	if J.is_server():
+-		# No input is handeld on server's side
+-		set_process_input(false)
+-		# Remove the camera with ui on the server's side
+-		$Camera2D.queue_free()
+-
+-		$JInterface.update_hp_bar(stats.hp, stats.hp_max)
+-		# Make sure to load equipment on server side
+-		equipment_changed()
+-	else:
+-		if peer_id != multiplayer.get_unique_id():
+-			# No input is handeld on other player's side
+-			set_process_input(false)
+-			# Remove the camera with ui on the other player's side
+-			$Camera2D.queue_free()
+-
+-		else:
+-			$Camera2D/UILayer/GUI/Inventory.register_signals()
+-			$Camera2D/UILayer/GUI/Equipment.register_signals()
+-
+-		synchronizer.experience_gained.connect(_on_experience_gained)
+-		synchronizer.level_gained.connect(_on_level_gained)
+-
+-
+-func _physics_process(_delta):
+-	if loop_animation == "Move":
+-		update_face_direction(velocity.x)
+-
+-
+-func update_face_direction(direction: float):
+-	if direction < 0:
+-		skeleton.scale = original_scale
+-		return
+-	if direction > 0:
+-		skeleton.scale = Vector2(original_scale.x * -1, original_scale.y)
+-		return
+-
+-
+-func focus_camera():
+-	$Camera2D.make_current()
+-
+-
+-func _on_loop_animation_changed(animation: String, direction: Vector2):
+-	loop_animation = animation
+-
+-	animation_player.play(loop_animation)
+-
+-	update_face_direction(direction.x)
+-
+-
+-func _on_attacked(target: String, _damage: int):
+-	animation_player.stop()
+-	animation_player.play("Attack")
+-
+-	var enemy: JEnemyBody2D = J.world.enemies.get_node(target)
+-	if enemy == null:
+-		return
+-
+-	update_face_direction(position.direction_to(enemy.position).x)
+-
+-
+-func _on_got_hurt(_from: String, hp: int, damage: int):
+-	$JInterface.update_hp_bar(hp, stats.hp_max)
+-	var text = floating_text_scene.instantiate()
+-	text.amount = damage
+-	text.type = text.TYPES.DAMAGE
+-	add_child(text)
+-
+-
+-func _on_healed(_from: String, hp: int, healing: int):
+-	$JInterface.update_hp_bar(hp, stats.hp_max)
+-	var text = floating_text_scene.instantiate()
+-	text.amount = healing
+-	text.type = text.TYPES.HEALING
+-	add_child(text)
+-
+-
+-func load_equipment_single_sprite(equipment_slot: String):
+-	for child in equipment_sprites[equipment_slot].get_children():
+-		child.queue_free()
+-
+-	if equipment.items[equipment_slot]:
+-		equipment_sprites[equipment_slot].texture = null
+-
+-		var item: JItem = equipment.items[equipment_slot].duplicate()
+-		item.scale = item.scale / original_scale
+-		item.get_node("Sprite").hide()
+-		item.get_node("EquipmentSprite").show()
+-		equipment_sprites[equipment_slot].add_child(item)
+-	else:
+-		equipment_sprites[equipment_slot].texture = original_sprite_textures[equipment_slot]
+-
+-
+-func load_equipment_double_sprites(equipment_slot: String):
+-	for equipment_sprite in equipment_sprites[equipment_slot]:
+-		for child in equipment_sprite.get_children():
+-			child.queue_free()
+-
+-	if equipment.items[equipment_slot]:
+-		equipment_sprites[equipment_slot][0].texture = null
+-		equipment_sprites[equipment_slot][1].texture = null
+-
+-		var item_right: JItem = equipment.items[equipment_slot].duplicate()
+-		item_right.scale = item_right.scale / original_scale
+-		item_right.get_node("Sprite").hide()
+-		item_right.get_node("EquipmentSpriteRight").show()
+-		equipment_sprites[equipment_slot][0].add_child(item_right)
+-
+-		var item_left: JItem = equipment.items[equipment_slot].duplicate()
+-		item_left.scale = item_left.scale / original_scale
+-		item_left.get_node("Sprite").hide()
+-		item_left.get_node("EquipmentSpriteLeft").show()
+-		equipment_sprites[equipment_slot][1].add_child(item_left)
+-
+-	else:
+-		equipment_sprites[equipment_slot][0].texture = original_sprite_textures[equipment_slot][0]
+-		equipment_sprites[equipment_slot][1].texture = original_sprite_textures[equipment_slot][1]
+-
+-
+-func equipment_changed():
+-	load_equipment_single_sprite("Head")
+-	load_equipment_single_sprite("Body")
+-	load_equipment_double_sprites("Arms")
+-	load_equipment_double_sprites("Legs")
+-	load_equipment_single_sprite("RightHand")
+-	load_equipment_single_sprite("LeftHand")
+-
+-
+-func update_exp_bar():
+-	var progress: float = float(stats.experience) / stats.experience_needed * 100
+-	if progress >= 100:
+-		progress = 0
+-
+-	$Camera2D/UILayer/GUI/ExpBar.value = progress
+-
+-
+-func update_level():
+-	$JInterface.display_name = username + " (%d)" % stats.level
+-
+-
+-func _on_equipment_loaded():
+-	equipment_changed()
+-
+-
+-func _on_item_equiped(_item_uuid: String, _item_class: String):
+-	equipment_changed()
+-
+-
+-func _on_item_unequiped(_item_uuid: String):
+-	equipment_changed()
+-
+-
+-func _on_stats_changed(type: JStats.TYPE):
+-	if type == JStats.TYPE.HP or type == JStats.TYPE.HP_MAX:
+-		$JInterface.update_hp_bar(stats.hp, stats.hp_max)
+-		return
+-
+-	if not J.is_server() and peer_id == multiplayer.get_unique_id():
+-		if type == JStats.TYPE.EXPERIENCE:
+-			update_exp_bar()
+-			return
+-		if type == JStats.TYPE.LEVEL:
+-			update_level()
+-			return
+-
+-
+-func _on_experience_gained(_from: String, _current_exp: int, amount: int):
+-	var text = floating_text_scene.instantiate()
+-	text.amount = amount
+-	text.type = text.TYPES.EXPERIENCE
+-	add_child(text)
+-
+-	update_exp_bar()
+-
+-
+-func _on_level_gained(_current_level: int, _amount: int, _experience_needed: int):
+-	update_level()
+-
+-
+-func _on_died():
+-	if not J.is_server() and peer_id == multiplayer.get_unique_id():
+-		$Camera2D/UILayer/GUI/DeathPopup.show_popup()
+-
+-	animation_player.stop()
+-	animation_player.play("Die")
+-
+-
+-func _on_respawned():
+-	loop_animation = "Idle"
+-	animation_player.play(loop_animation)
+-
+-	# Fetch your new hp
+-	if not J.is_server():
+-		if peer_id == multiplayer.get_unique_id():
+-			$Camera2D/UILayer/GUI/DeathPopup.hide()
+-
+-		stats.sync_stats.rpc_id(1, peer_id)
+diff --git a/scenes/player/Player.gd b/scenes/player/Player.gd
+index d7be0c0..069e287 100644
+--- a/scenes/player/Player.gd
++++ b/scenes/player/Player.gd
+@@ -14,7 +14,6 @@ var entity_type: J.ENTITY_TYPE = J.ENTITY_TYPE.PLAYER
+ @onready var position_synchronizer: PositionSynchronizerComponent = $PositionSynchronizerComponent
+ @onready
+ var network_view_synchronizer: NetworkViewSynchronizerComponent = $NetworkViewSynchronizerComponent
+-@onready var animation_synchronizer: AnimationSynchronizerComponent = $AnimationSynchronizerComponent
+ 
+ @onready var stats: StatsSynchronizerComponent = $StatsSynchronizerComponent
+ @onready var inventory: InventorySynchronizerComponent = $InventorySynchronizerComponent
+@@ -195,14 +194,10 @@ func _on_item_unequiped(_item_uuid: String):
+ 
+ 
+ func _on_died():
+-	if J.is_server():
+-		animation_synchronizer.send_new_action_animation("Die")
+-	elif peer_id == multiplayer.get_unique_id():
++	if not J.is_server() and peer_id == multiplayer.get_unique_id():
+ 		$Camera2D/UILayer/GUI/DeathPopup.show_popup()
+ 
+ 
+ func _on_respawned():
+-	if J.is_server():
+-		animation_synchronizer.send_new_loop_animation("Idle")
+-	elif peer_id == multiplayer.get_unique_id():
++	if not J.is_server() and peer_id == multiplayer.get_unique_id():
+ 		$Camera2D/UILayer/GUI/DeathPopup.hide()
+diff --git a/scenes/player/Player.tscn b/scenes/player/Player.tscn
+index 40042b5..5752cfe 100644
+--- a/scenes/player/Player.tscn
++++ b/scenes/player/Player.tscn
+@@ -1,4 +1,4 @@
+-[gd_scene load_steps=38 format=3 uid="uid://cycpseafpexil"]
++[gd_scene load_steps=39 format=3 uid="uid://cycpseafpexil"]
+ 
+ [ext_resource type="Script" path="res://scenes/player/Player.gd" id="1_yw2vn"]
+ [ext_resource type="Texture2D" uid="uid://fuk2rvw34m4d" path="res://assets/images/player/base/Basecharacter.png" id="2_j04kt"]
+@@ -13,9 +13,10 @@
+ [ext_resource type="PackedScene" uid="uid://1dsekcllclva" path="res://scripts/components/playerbehaviorcomponent/PlayerBehaviorComponent.tscn" id="6_xf4id"]
+ [ext_resource type="Texture2D" uid="uid://dhpyicp5pnbh7" path="res://assets/images/player/base/base_head.png" id="7_mfldg"]
+ [ext_resource type="Texture2D" uid="uid://b38ld53gomnkq" path="res://assets/images/player/base/base_fronthand.png" id="8_1uo8h"]
+-[ext_resource type="PackedScene" uid="uid://bo2y25xscje6x" path="res://scripts/components/animationsynchronizercomponent/AnimationSynchronizerComponent.tscn" id="8_gf6y5"]
+ [ext_resource type="PackedScene" uid="uid://dfkcs65b1vpi3" path="res://scripts/components/updatefacecomponent/UpdateFaceComponent.tscn" id="9_5pqlh"]
++[ext_resource type="PackedScene" uid="uid://bjjk2cftt2cex" path="res://scripts/components/actionsynchronizercomponent/ActionSynchronizerComponent.tscn" id="9_s3vs1"]
+ [ext_resource type="PackedScene" uid="uid://dfwc0qu1hc7xr" path="res://scripts/components/inventorysynchronizercomponent/InventorySynchronizerComponent.tscn" id="10_6gj4a"]
++[ext_resource type="PackedScene" uid="uid://c0p6pnjudl1v" path="res://scripts/components/animationcomponent/AnimationComponent.tscn" id="11_2wc1v"]
+ [ext_resource type="PackedScene" uid="uid://cka62nlyw5gm5" path="res://scripts/components/equipmentsynchronizercomponent/EquipmentSynchronizerComponent.tscn" id="12_5ivre"]
+ [ext_resource type="PackedScene" uid="uid://uord7b0pb5jt" path="res://scenes/player/inventory/Inventory.tscn" id="12_cqvu1"]
+ [ext_resource type="PackedScene" uid="uid://dy1r3n0fpuneq" path="res://scenes/player/shop/Shop.tscn" id="12_macoo"]
+@@ -905,18 +906,22 @@ attack_power_min = 1
+ 
+ [node name="InputSynchronizerComponent" parent="." instance=ExtResource("3_07d0t")]
+ 
+-[node name="PlayerBehaviorComponent" parent="." node_paths=PackedStringArray("input_synchronizer", "stats_component", "animation_synchronizer") instance=ExtResource("6_xf4id")]
++[node name="PlayerBehaviorComponent" parent="." node_paths=PackedStringArray("input_synchronizer", "stats_component", "action_synchronizer") instance=ExtResource("6_xf4id")]
+ input_synchronizer = NodePath("../InputSynchronizerComponent")
+ stats_component = NodePath("../StatsSynchronizerComponent")
+-animation_synchronizer = NodePath("../AnimationSynchronizerComponent")
++action_synchronizer = NodePath("../ActionSynchronizerComponent")
+ 
+-[node name="AnimationSynchronizerComponent" parent="." node_paths=PackedStringArray("watcher_synchronizer", "animation_player") instance=ExtResource("8_gf6y5")]
++[node name="ActionSynchronizerComponent" parent="." node_paths=PackedStringArray("watcher_synchronizer") instance=ExtResource("9_s3vs1")]
+ watcher_synchronizer = NodePath("../WatcherSynchronizerComponent")
+-animation_player = NodePath("../AnimationPlayer")
+ 
+ [node name="UpdateFaceComponent" parent="." node_paths=PackedStringArray("skeleton") instance=ExtResource("9_5pqlh")]
+ skeleton = NodePath("../Skeleton")
+ 
++[node name="AnimationComponent" parent="." node_paths=PackedStringArray("animation_player", "stats", "action_synchronizer") instance=ExtResource("11_2wc1v")]
++animation_player = NodePath("../AnimationPlayer")
++stats = NodePath("../StatsSynchronizerComponent")
++action_synchronizer = NodePath("../ActionSynchronizerComponent")
++
+ [node name="InventorySynchronizerComponent" parent="." instance=ExtResource("10_6gj4a")]
+ 
+ [node name="EquipmentSynchronizerComponent" parent="." node_paths=PackedStringArray("watcher_synchronizer") instance=ExtResource("12_5ivre")]
+diff --git a/scripts/components/actionsynchronizercomponent/ActionSynchronizerComponent.gd b/scripts/components/actionsynchronizercomponent/ActionSynchronizerComponent.gd
+new file mode 100644
+index 0000000..a03b369
+--- /dev/null
++++ b/scripts/components/actionsynchronizercomponent/ActionSynchronizerComponent.gd
+@@ -0,0 +1,50 @@
++extends Node
++
++class_name ActionSynchronizerComponent
++
++signal attacked(target: String, damage: int)
++
++@export var watcher_synchronizer: WatcherSynchronizerComponent
++
++enum TYPE { ATTACK }
++
++var target_node: Node
++
++var server_buffer: Array[Dictionary] = []
++
++
++func _ready():
++	target_node = get_parent()
++
++	if not J.is_server():
++		return
++
++
++func _physics_process(_delta):
++	_check_server_buffer()
++
++
++func _check_server_buffer():
++	for i in range(server_buffer.size() - 1, -1, -1):
++		var entry = server_buffer[i]
++		if entry["timestamp"] <= J.client.clock:
++			match entry["type"]:
++				TYPE.ATTACK:
++					attacked.emit(entry["target"], entry["damage"])
++			server_buffer.remove_at(i)
++
++
++func attack(target: String, damage: int):
++	var timestamp: float = Time.get_unix_time_from_system()
++
++	for watcher in watcher_synchronizer.watchers:
++		_sync_attack.rpc_id(watcher.peer_id, timestamp, target, damage)
++
++	attacked.emit(target, damage)
++
++
++@rpc("call_remote", "authority", "reliable")
++func _sync_attack(timestamp: float, target: String, damage: int):
++	server_buffer.append(
++		{"type": TYPE.ATTACK, "timestamp": timestamp, "target": target, "damage": damage}
++	)
+diff --git a/scripts/components/actionsynchronizercomponent/ActionSynchronizerComponent.tscn b/scripts/components/actionsynchronizercomponent/ActionSynchronizerComponent.tscn
+new file mode 100644
+index 0000000..4837df0
+--- /dev/null
++++ b/scripts/components/actionsynchronizercomponent/ActionSynchronizerComponent.tscn
+@@ -0,0 +1,6 @@
++[gd_scene load_steps=2 format=3 uid="uid://bjjk2cftt2cex"]
++
++[ext_resource type="Script" path="res://scripts/components/actionsynchronizercomponent/ActionSynchronizerComponent.gd" id="1_tcvs7"]
++
++[node name="ActionSynchronizerComponent" type="Node"]
++script = ExtResource("1_tcvs7")
+diff --git a/scripts/components/animationcomponent/AnimationComponent.gd b/scripts/components/animationcomponent/AnimationComponent.gd
+new file mode 100644
+index 0000000..3288a45
+--- /dev/null
++++ b/scripts/components/animationcomponent/AnimationComponent.gd
+@@ -0,0 +1,89 @@
++extends Node
++
++class_name AnimationComponent
++
++@export var animation_player: AnimationPlayer
++@export var stats: StatsSynchronizerComponent
++@export var action_synchronizer: ActionSynchronizerComponent
++
++@export var idle_animation: String = "Idle"
++@export var move_animation: String = "Move"
++@export var attack_animation: String = "Attack"
++@export var hurt_animation: String = "Hurt"
++@export var die_animation: String = "Die"
++
++var target_node: Node
++
++var loop_animation: String = idle_animation
++var wait_to_finish = false
++var dead = false
++
++
++func _ready():
++	target_node = get_parent()
++
++	if J.is_server():
++		return
++
++	if target_node.get("velocity") == null:
++		J.logger.error("target_node does not have the position variable")
++		return
++
++	stats.got_hurt.connect(_on_got_hurt)
++	stats.died.connect(_on_died)
++	stats.respawned.connect(_on_respawned)
++
++	if action_synchronizer:
++		action_synchronizer.attacked.connect(_on_attacked)
++
++	animation_player.animation_finished.connect(_on_animation_finished)
++
++
++func _physics_process(_delta):
++	if wait_to_finish or dead:
++		return
++
++	if target_node.velocity.is_zero_approx():
++		if (
++			animation_player.current_animation != idle_animation
++			and animation_player.has_animation(idle_animation)
++		):
++			loop_animation = idle_animation
++			animation_player.play(idle_animation)
++	else:
++		if (
++			animation_player.current_animation != move_animation
++			and animation_player.has_animation(move_animation)
++		):
++			loop_animation = move_animation
++			animation_player.play(move_animation)
++
++
++func _on_got_hurt(_from: String, _damage: int):
++	if animation_player.has_animation(hurt_animation):
++		animation_player.stop()
++		animation_player.play(hurt_animation)
++		wait_to_finish = true
++
++
++func _on_died():
++	dead = true
++
++	if animation_player.has_animation(die_animation):
++		animation_player.stop()
++		animation_player.play(die_animation)
++
++
++func _on_respawned():
++	dead = false
++
++
++func _on_attacked(_target: String, _damage: int):
++	if animation_player.has_animation(attack_animation):
++		animation_player.stop()
++		animation_player.play(attack_animation)
++		wait_to_finish = true
++
++
++func _on_animation_finished(_anim_name: String):
++	wait_to_finish = false
+diff --git a/scripts/components/animationcomponent/AnimationComponent.tscn b/scripts/components/animationcomponent/AnimationComponent.tscn
+new file mode 100644
+index 0000000..f3add7b
+--- /dev/null
++++ b/scripts/components/animationcomponent/AnimationComponent.tscn
+@@ -0,0 +1,6 @@
++[gd_scene load_steps=2 format=3 uid="uid://c0p6pnjudl1v"]
++
++[ext_resource type="Script" path="res://scripts/components/animationcomponent/AnimationComponent.gd" id="1_p710y"]
++
++[node name="AnimationComponent" type="Node"]
++script = ExtResource("1_p710y")
+diff --git a/scripts/components/playerbehaviorcomponent/PlayerBehaviorComponent.gd b/scripts/components/playerbehaviorcomponent/PlayerBehaviorComponent.gd
+index 84a8336..edc9fed 100644
+--- a/scripts/components/playerbehaviorcomponent/PlayerBehaviorComponent.gd
++++ b/scripts/components/playerbehaviorcomponent/PlayerBehaviorComponent.gd
+@@ -6,7 +6,7 @@ enum INTERACT_TYPE { ENEMY, NPC, ITEM }
+ 
+ @export var input_synchronizer: InputSynchronizerComponent
+ @export var stats_component: StatsSynchronizerComponent
+-@export var animation_synchronizer: AnimationSynchronizerComponent
++@export var action_synchronizer: ActionSynchronizerComponent
+ 
+ var target_node: Node
+ 
+@@ -131,8 +131,6 @@ func behavior(_delta: float):
+ 			target_node.velocity = (
+ 				target_node.position.direction_to(move_target) * stats_component.movement_speed
+ 			)
+-			if animation_synchronizer:
+-				animation_synchronizer.send_new_loop_animation("Move")
+ 		else:
+ 			moving = false
+ 			target_node.velocity = Vector2.ZERO
+@@ -152,8 +150,6 @@ func behavior(_delta: float):
+ 						target_node.position.direction_to(interact_target.position)
+ 						* stats_component.movement_speed
+ 					)
+-					if animation_synchronizer:
+-						animation_synchronizer.send_new_loop_animation("Move")
+ 				else:
+ 					target_node.velocity = Vector2.ZERO
+ 
+@@ -167,8 +163,6 @@ func behavior(_delta: float):
+ 						target_node.position.direction_to(interact_target.position)
+ 						* stats_component.movement_speed
+ 					)
+-					if animation_synchronizer:
+-						animation_synchronizer.send_new_loop_animation("Move")
+ 				else:
+ 					target_node.velocity = Vector2.ZERO
+ 					interact_target.interact(target_node)
+@@ -180,27 +174,20 @@ func behavior(_delta: float):
+ 						target_node.position.direction_to(interact_target.position)
+ 						* stats_component.movement_speed
+ 					)
+-					if animation_synchronizer:
+-						animation_synchronizer.send_new_loop_animation("Move")
+ 				else:
+ 					target_node.velocity = Vector2.ZERO
+ 					interact_target.loot(target_node)
+ 					interacting = false
+ 					interact_target = null
+ 
+-	else:
+-		if animation_synchronizer:
+-			animation_synchronizer.send_new_loop_animation("Idle")
+-
+ 
+ func attack(target: CharacterBody2D):
+ 	var damage = randi_range(stats_component.attack_power_min, stats_component.attack_power_max)
+ 
+ 	if target.get("stats"):
+ 		target.stats.hurt(target_node.name, damage)
+-
+-	if animation_synchronizer:
+-		animation_synchronizer.send_new_action_animation("Attack")
++		if action_synchronizer:
++			action_synchronizer.attack(target_node.name, damage)
+ 
+ 
+ func _on_attack_area_enemy_entered(body: Node2D):

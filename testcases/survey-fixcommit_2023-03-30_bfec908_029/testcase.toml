@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-03-30_bfec908_029"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "0c10edc062abc62836f64658f37170dc0db36ffd"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rts"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: source/match/units/actions/Constructing.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-03-30_bfec908_029"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

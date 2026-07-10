@@ -1,0 +1,111 @@
+diff --git a/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn b/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn
+index 15ccc49..8de44fa 100644
+--- a/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn
++++ b/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn
+@@ -784,42 +784,36 @@ metadata/_edit_lock_ = true
+ 
+ [node name="RightArm" type="Sprite2D" parent="Sprites"]
+ position = Vector2(-100, -560)
+-scale = Vector2(1, 1)
+ texture = ExtResource("4_agvxr")
+ offset = Vector2(-173, 6.50012)
+ metadata/_edit_lock_ = true
+ 
+ [node name="RightLeg" type="Sprite2D" parent="Sprites"]
+ position = Vector2(-110, -260)
+-scale = Vector2(1, 1)
+ texture = ExtResource("5_fywxg")
+ offset = Vector2(-163, -293.5)
+ metadata/_edit_lock_ = true
+ 
+ [node name="LeftLeg" type="Sprite2D" parent="Sprites"]
+ position = Vector2(100, -270)
+-scale = Vector2(1, 1)
+ texture = ExtResource("7_7d51h")
+ offset = Vector2(-373, -283.5)
+ metadata/_edit_lock_ = true
+ 
+ [node name="Body" type="Sprite2D" parent="Sprites"]
+ position = Vector2(0, -270)
+-scale = Vector2(1, 1)
+ texture = ExtResource("8_31yn2")
+ offset = Vector2(-270, -280)
+ metadata/_edit_lock_ = true
+ 
+ [node name="Axe" type="Sprite2D" parent="Sprites"]
+ position = Vector2(250, -1100)
+-scale = Vector2(1, 1)
+ texture = ExtResource("3_jrku4")
+ offset = Vector2(-523, 546.5)
+ metadata/_edit_lock_ = true
+ 
+ [node name="LeftArm" type="Sprite2D" parent="Sprites"]
+ position = Vector2(160, -570)
+-scale = Vector2(1, 1)
+ texture = ExtResource("6_37oon")
+ offset = Vector2(-433, 16.5001)
+ metadata/_edit_lock_ = true
+diff --git a/scenes/loginpanel/LoginPanel.tscn b/scenes/loginpanel/LoginPanel.tscn
+index 3df9b56..d0c8fe5 100644
+--- a/scenes/loginpanel/LoginPanel.tscn
++++ b/scenes/loginpanel/LoginPanel.tscn
+@@ -2,8 +2,8 @@
+ 
+ [ext_resource type="Script" path="res://scenes/loginpanel/LoginPanel.gd" id="1_uhohb"]
+ [ext_resource type="Theme" uid="uid://dreboohjjcn2f" path="res://assets/themes/LoginPanelTheme.tres" id="2_d6ypk"]
+-[ext_resource type="AudioStream" uid="uid://b3kstyb5opkj1" path="res://assets/audio/ui/login_panel/ui_click.mp3" id="3_pgl4f"]
+-[ext_resource type="AudioStream" uid="uid://xvulnt1qjsua" path="res://assets/audio/ui/login_panel/village_ consort.mp3" id="4_c7ug3"]
++[ext_resource type="AudioStream" uid="uid://b3kstyb5opkj1" path="res://assets/audio/ui/login_panel/ui_click/ui_click.mp3" id="3_pgl4f"]
++[ext_resource type="AudioStream" uid="uid://xvulnt1qjsua" path="res://assets/audio/ui/login_panel/village_consort/village_ consort.mp3" id="4_c7ug3"]
+ 
+ [sub_resource type="Animation" id="Animation_hddh3"]
+ length = 0.001
+diff --git a/scenes/ui/game_menu/game_menu.gd b/scenes/ui/game_menu/game_menu.gd
+index 3b3f71b..f53d813 100644
+--- a/scenes/ui/game_menu/game_menu.gd
++++ b/scenes/ui/game_menu/game_menu.gd
+@@ -15,11 +15,15 @@ func _input(event):
+ 		else :
+ 			self.show()
+ 			JUI.above_ui=true
+-	
+-	if (event is InputEventMouseButton) and event.pressed:
+-		var event_local = make_input_local(event)
+-		if !Rect2(Vector2(panel.position.x,panel.position.y),Vector2(panel.size.x,panel.size.y)).has_point(event_local.position):
+-			self.hide()
++	if self.is_visible_in_tree():
++		if (event is InputEventMouseButton) and event.pressed:
++			var event_local = make_input_local(event)
++			if !Rect2(Vector2(panel.position.x,panel.position.y),Vector2(panel.size.x,panel.size.y)).has_point(event_local.position):
++				self.hide()
++				JUI.above_ui=false 
++				get_viewport().set_input_as_handled()
++
++
+ 
+ 
+ 
+diff --git a/scenes/ui/game_menu/game_menu.tscn b/scenes/ui/game_menu/game_menu.tscn
+index bc4a658..0c2f7d0 100644
+--- a/scenes/ui/game_menu/game_menu.tscn
++++ b/scenes/ui/game_menu/game_menu.tscn
+@@ -10,6 +10,8 @@ anchor_right = 1.0
+ anchor_bottom = 1.0
+ grow_horizontal = 2
+ grow_vertical = 2
++size_flags_horizontal = 4
++size_flags_vertical = 4
+ theme = ExtResource("1_j753d")
+ script = ExtResource("2_erqce")
+ 
+diff --git a/scripts/global.gd b/scripts/global.gd
+index 65a7d28..2dcebe1 100644
+--- a/scripts/global.gd
++++ b/scripts/global.gd
+@@ -51,4 +51,4 @@ func load_client_env_variables():
+ 	if env_port_str != "":
+ 		env_server_port = int(env_port_str)
+ 
+-	return true
+\ No newline at end of file
++	return true

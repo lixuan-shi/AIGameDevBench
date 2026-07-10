@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2024-04-29_31b7486_043"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "fff10fe57e602faada7cec3d7ecfe677a7c0b404"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: maps/opening_cutscene.gd, src/combat/combat_arena.gd, src/common/combat_events.gd, src/common/screen_transitions/ScreenTransition.tscn, src/common/screen_transitions/screen_transition.gd, src/common/screen_transitions/shader_screen_transition.gd, src/common/screen_transitions/texture_fade.gdshader, src/field/cutscenes/templates/area_transitions/area_transition.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2024-04-29_31b7486_043"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

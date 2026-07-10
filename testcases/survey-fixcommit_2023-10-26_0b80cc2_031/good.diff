@@ -1,0 +1,404 @@
+diff --git a/scenes/enemies/MoldedDruvar/MoldedDruvar.tscn b/scenes/enemies/MoldedDruvar/MoldedDruvar.tscn
+index d6cf782..47ba0f9 100644
+--- a/scenes/enemies/MoldedDruvar/MoldedDruvar.tscn
++++ b/scenes/enemies/MoldedDruvar/MoldedDruvar.tscn
+@@ -18,15 +18,7 @@
+ [ext_resource type="PackedScene" uid="uid://dfkcs65b1vpi3" path="res://scripts/components/updatefacecomponent/UpdateFaceComponent.tscn" id="7_lx7n7"]
+ [ext_resource type="PackedScene" uid="uid://dv6a22n6h5bly" path="res://scripts/components/avoidancerayscomponent/AvoidanceRaysComponent.tscn" id="9_whu8q"]
+ [ext_resource type="Script" path="res://addons/beehave/nodes/beehave_tree.gd" id="10_xhds1"]
+-[ext_resource type="Script" path="res://addons/beehave/nodes/composites/selector_reactive.gd" id="11_hywmq"]
+-[ext_resource type="PackedScene" uid="uid://dbllgq1k86dyd" path="res://scenes/enemies/common/ai/sequences/death_sequence/DeathSequence.tscn" id="12_8aom2"]
+-[ext_resource type="Script" path="res://addons/beehave/nodes/composites/sequence.gd" id="13_a7ko2"]
+-[ext_resource type="PackedScene" uid="uid://b4h6plpm1hoii" path="res://scenes/enemies/common/ai/conditionals/is_in_combat/IsInCombat.tscn" id="14_0ay2y"]
+-[ext_resource type="PackedScene" uid="uid://c4ss75lmmvkoi" path="res://scenes/enemies/common/ai/sequences/attack_sequence/AttackSequence.tscn" id="15_xroah"]
+-[ext_resource type="PackedScene" uid="uid://c32syir0x72av" path="res://scenes/enemies/common/ai/sequences/pursuit_sequence/PursuitSequence.tscn" id="16_ro5io"]
+-[ext_resource type="PackedScene" uid="uid://ditk3sn70usrs" path="res://scenes/enemies/common/ai/sequences/leash_sequence/LeashSequence.tscn" id="17_k4dru"]
+-[ext_resource type="PackedScene" uid="uid://dk8p2emk8wofb" path="res://scenes/enemies/common/ai/sequences/wander_sequence/WanderSequence.tscn" id="18_3opgl"]
+-[ext_resource type="PackedScene" uid="uid://bho6r0fx8owhk" path="res://scenes/enemies/common/ai/sequences/idle_sequence/IdleSequence.tscn" id="19_p33m3"]
++[ext_resource type="PackedScene" uid="uid://clyv1sf3bn5g0" path="res://scenes/enemies/common/ai/selectors/aggressive_mob/AggressiveMob.tscn" id="11_l62gi"]
+ [ext_resource type="Script" path="res://addons/beehave/blackboard.gd" id="20_vnsr5"]
+ 
+ [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_n3uon"]
+@@ -903,34 +895,8 @@ script = ExtResource("10_xhds1")
+ enabled = false
+ actor_node_path = NodePath("..")
+ 
+-[node name="WhatAmIDoingWithMyLife" type="Node" parent="BeehaveTree"]
+-script = ExtResource("11_hywmq")
+-
+-[node name="DeathSequence" parent="BeehaveTree/WhatAmIDoingWithMyLife" instance=ExtResource("12_8aom2")]
+-
+-[node name="CombatSequence" type="Node" parent="BeehaveTree/WhatAmIDoingWithMyLife"]
+-script = ExtResource("13_a7ko2")
+-
+-[node name="IsInCombat" parent="BeehaveTree/WhatAmIDoingWithMyLife/CombatSequence" node_paths=PackedStringArray("aggro_radius") instance=ExtResource("14_0ay2y")]
+-aggro_radius = NodePath("../../../../AggroRadius")
+-should_leash = true
+-leash_distance = 450.0
+-
+-[node name="AggrodSelector" type="Node" parent="BeehaveTree/WhatAmIDoingWithMyLife/CombatSequence"]
+-script = ExtResource("11_hywmq")
+-
+-[node name="AttackSequence" parent="BeehaveTree/WhatAmIDoingWithMyLife/CombatSequence/AggrodSelector" instance=ExtResource("15_xroah")]
+-
+-[node name="PursuitSequence" parent="BeehaveTree/WhatAmIDoingWithMyLife/CombatSequence/AggrodSelector" instance=ExtResource("16_ro5io")]
+-
+-[node name="LeashSequence" parent="BeehaveTree/WhatAmIDoingWithMyLife" instance=ExtResource("17_k4dru")]
+-
+-[node name="WanderThenIdleSequence" type="Node" parent="BeehaveTree/WhatAmIDoingWithMyLife"]
+-script = ExtResource("13_a7ko2")
+-
+-[node name="WanderSequence" parent="BeehaveTree/WhatAmIDoingWithMyLife/WanderThenIdleSequence" instance=ExtResource("18_3opgl")]
+-
+-[node name="IdleSequence" parent="BeehaveTree/WhatAmIDoingWithMyLife/WanderThenIdleSequence" instance=ExtResource("19_p33m3")]
++[node name="AggressiveMob" parent="BeehaveTree" node_paths=PackedStringArray("aggro_radius") instance=ExtResource("11_l62gi")]
++aggro_radius = NodePath("../../AggroRadius")
+ 
+ [node name="Blackboard" type="Node" parent="."]
+ script = ExtResource("20_vnsr5")
+diff --git a/scenes/enemies/Sheep/Sheep.tscn b/scenes/enemies/Sheep/Sheep.tscn
+index 8ea0137..4779bb5 100644
+--- a/scenes/enemies/Sheep/Sheep.tscn
++++ b/scenes/enemies/Sheep/Sheep.tscn
+@@ -12,14 +12,8 @@
+ [ext_resource type="Script" path="res://addons/beehave/nodes/beehave_tree.gd" id="5_yme22"]
+ [ext_resource type="PackedScene" uid="uid://dikf715gqy3x" path="res://scripts/components/enemyrespawncomponent/EnemyRespawnComponent.tscn" id="6_mmahp"]
+ [ext_resource type="PackedScene" uid="uid://dfkcs65b1vpi3" path="res://scripts/components/updatefacecomponent/UpdateFaceComponent.tscn" id="7_aau1x"]
+-[ext_resource type="Script" path="res://addons/beehave/nodes/composites/sequence.gd" id="7_bkydl"]
+-[ext_resource type="Script" path="res://addons/beehave/nodes/composites/selector_reactive.gd" id="7_hnfbx"]
+-[ext_resource type="PackedScene" uid="uid://dbllgq1k86dyd" path="res://scenes/enemies/common/ai/sequences/death_sequence/DeathSequence.tscn" id="8_c8mlh"]
+-[ext_resource type="PackedScene" uid="uid://dk8p2emk8wofb" path="res://scenes/enemies/common/ai/sequences/wander_sequence/WanderSequence.tscn" id="8_eh1yg"]
+-[ext_resource type="PackedScene" uid="uid://b4h6plpm1hoii" path="res://scenes/enemies/common/ai/conditionals/is_in_combat/IsInCombat.tscn" id="9_6wbxk"]
+-[ext_resource type="PackedScene" uid="uid://bho6r0fx8owhk" path="res://scenes/enemies/common/ai/sequences/idle_sequence/IdleSequence.tscn" id="9_51l4p"]
+-[ext_resource type="PackedScene" uid="uid://dv6a22n6h5bly" path="res://scripts/components/avoidancerayscomponent/AvoidanceRaysComponent.tscn" id="11_nla65"]
+-[ext_resource type="PackedScene" uid="uid://m6q3h1qhesne" path="res://scenes/enemies/common/ai/sequences/flee_sequence/FleeSequence.tscn" id="11_qdpx0"]
++[ext_resource type="PackedScene" uid="uid://ct1h0eeeyfurc" path="res://scenes/enemies/common/ai/selectors/passive_critter/PassiveCritter.tscn" id="7_lpvxr"]
++[ext_resource type="PackedScene" uid="uid://dv6a22n6h5bly" path="res://scenes/enemies/common/avoidance_rays/AvoidanceRays.tscn" id="11_nla65"]
+ [ext_resource type="Script" path="res://addons/beehave/blackboard.gd" id="12_oa8ou"]
+ 
+ [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_orhwg"]
+@@ -252,7 +246,7 @@ libraries = {
+ 
+ [node name="StuckTimer" type="Timer" parent="."]
+ process_callback = 0
+-wait_time = 0.5
++wait_time = 0.25
+ one_shot = true
+ 
+ [node name="Blackboard" type="Node" parent="."]
+@@ -264,21 +258,4 @@ enabled = false
+ actor_node_path = NodePath("..")
+ blackboard = NodePath("../Blackboard")
+ 
+-[node name="WhatAmIDoingWithMyLife" type="Node" parent="BeehaveTree"]
+-script = ExtResource("7_hnfbx")
+-
+-[node name="DeathSequence" parent="BeehaveTree/WhatAmIDoingWithMyLife" instance=ExtResource("8_c8mlh")]
+-
+-[node name="CombatSequence" type="Node" parent="BeehaveTree/WhatAmIDoingWithMyLife"]
+-script = ExtResource("7_bkydl")
+-
+-[node name="IsInCombat" parent="BeehaveTree/WhatAmIDoingWithMyLife/CombatSequence" instance=ExtResource("9_6wbxk")]
+-
+-[node name="FleeSequence" parent="BeehaveTree/WhatAmIDoingWithMyLife/CombatSequence" instance=ExtResource("11_qdpx0")]
+-
+-[node name="WanderThenIdle" type="Node" parent="BeehaveTree/WhatAmIDoingWithMyLife"]
+-script = ExtResource("7_bkydl")
+-
+-[node name="WanderSequence" parent="BeehaveTree/WhatAmIDoingWithMyLife/WanderThenIdle" instance=ExtResource("8_eh1yg")]
+-
+-[node name="IdleSequence" parent="BeehaveTree/WhatAmIDoingWithMyLife/WanderThenIdle" instance=ExtResource("9_51l4p")]
++[node name="FleeingCritter" parent="BeehaveTree" instance=ExtResource("7_lpvxr")]
+diff --git a/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn b/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn
+index 3731c4f..b1fe190 100644
+--- a/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn
++++ b/scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.tscn
+@@ -1,4 +1,4 @@
+-[gd_scene load_steps=38 format=3 uid="uid://d4b7x1k03s5hr"]
++[gd_scene load_steps=22 format=3 uid="uid://d4b7x1k03s5hr"]
+ 
+ [ext_resource type="Script" path="res://scenes/enemies/TreeTrunkGuy/TreeTrunkGuy.gd" id="1_j7ilt"]
+ [ext_resource type="Texture2D" uid="uid://ddw7gwukhi221" path="res://assets/images/enemies/treetrunkguy/Treetrunkguy.png" id="2_2joj6"]
+@@ -19,15 +19,7 @@
+ [ext_resource type="Texture2D" uid="uid://b6k68irc0gh3s" path="res://assets/images/enemies/treetrunkguy/Treetrunkguy_torso.png" id="8_31yn2"]
+ [ext_resource type="PackedScene" uid="uid://dv6a22n6h5bly" path="res://scripts/components/avoidancerayscomponent/AvoidanceRaysComponent.tscn" id="10_2fx0n"]
+ [ext_resource type="Script" path="res://addons/beehave/nodes/beehave_tree.gd" id="11_8dyih"]
+-[ext_resource type="Script" path="res://addons/beehave/nodes/composites/selector_reactive.gd" id="12_q5ghj"]
+-[ext_resource type="PackedScene" uid="uid://dbllgq1k86dyd" path="res://scenes/enemies/common/ai/sequences/death_sequence/DeathSequence.tscn" id="13_rphmn"]
+-[ext_resource type="Script" path="res://addons/beehave/nodes/composites/sequence.gd" id="14_1oqp7"]
+-[ext_resource type="PackedScene" uid="uid://b4h6plpm1hoii" path="res://scenes/enemies/common/ai/conditionals/is_in_combat/IsInCombat.tscn" id="15_4qoax"]
+-[ext_resource type="PackedScene" uid="uid://c4ss75lmmvkoi" path="res://scenes/enemies/common/ai/sequences/attack_sequence/AttackSequence.tscn" id="16_va72r"]
+-[ext_resource type="PackedScene" uid="uid://c32syir0x72av" path="res://scenes/enemies/common/ai/sequences/pursuit_sequence/PursuitSequence.tscn" id="17_2cn8w"]
+-[ext_resource type="PackedScene" uid="uid://dk8p2emk8wofb" path="res://scenes/enemies/common/ai/sequences/wander_sequence/WanderSequence.tscn" id="17_i8kes"]
+-[ext_resource type="PackedScene" uid="uid://bho6r0fx8owhk" path="res://scenes/enemies/common/ai/sequences/idle_sequence/IdleSequence.tscn" id="18_2p2tr"]
+-[ext_resource type="PackedScene" uid="uid://ditk3sn70usrs" path="res://scenes/enemies/common/ai/sequences/leash_sequence/LeashSequence.tscn" id="18_qro3p"]
++[ext_resource type="PackedScene" uid="uid://clyv1sf3bn5g0" path="res://scenes/enemies/common/ai/selectors/aggressive_mob/AggressiveMob.tscn" id="12_njkv6"]
+ [ext_resource type="Script" path="res://addons/beehave/blackboard.gd" id="21_v4d8y"]
+ 
+ [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_6b05c"]
+@@ -918,7 +910,7 @@ libraries = {
+ 
+ [node name="StuckTimer" type="Timer" parent="."]
+ process_callback = 0
+-wait_time = 0.5
++wait_time = 0.25
+ one_shot = true
+ 
+ [node name="AggroRadius" type="Area2D" parent="."]
+@@ -936,34 +928,8 @@ enabled = false
+ actor_node_path = NodePath("..")
+ blackboard = NodePath("../Blackboard")
+ 
+-[node name="WhatAmIDoingWithMyLife" type="Node" parent="BeehaveTree"]
+-script = ExtResource("12_q5ghj")
+-
+-[node name="DeathSequence" parent="BeehaveTree/WhatAmIDoingWithMyLife" instance=ExtResource("13_rphmn")]
+-
+-[node name="CombatSequence" type="Node" parent="BeehaveTree/WhatAmIDoingWithMyLife"]
+-script = ExtResource("14_1oqp7")
+-
+-[node name="IsInCombat" parent="BeehaveTree/WhatAmIDoingWithMyLife/CombatSequence" node_paths=PackedStringArray("aggro_radius") instance=ExtResource("15_4qoax")]
+-aggro_radius = NodePath("../../../../AggroRadius")
+-should_leash = true
+-leash_distance = 450.0
+-
+-[node name="AggrodSelector" type="Node" parent="BeehaveTree/WhatAmIDoingWithMyLife/CombatSequence"]
+-script = ExtResource("12_q5ghj")
+-
+-[node name="AttackSequence" parent="BeehaveTree/WhatAmIDoingWithMyLife/CombatSequence/AggrodSelector" instance=ExtResource("16_va72r")]
+-
+-[node name="PursuitSequence" parent="BeehaveTree/WhatAmIDoingWithMyLife/CombatSequence/AggrodSelector" instance=ExtResource("17_2cn8w")]
+-
+-[node name="LeashSequence" parent="BeehaveTree/WhatAmIDoingWithMyLife" instance=ExtResource("18_qro3p")]
+-
+-[node name="WanderThenIdleSequence" type="Node" parent="BeehaveTree/WhatAmIDoingWithMyLife"]
+-script = ExtResource("14_1oqp7")
+-
+-[node name="WanderSequence" parent="BeehaveTree/WhatAmIDoingWithMyLife/WanderThenIdleSequence" instance=ExtResource("17_i8kes")]
+-
+-[node name="IdleSequence" parent="BeehaveTree/WhatAmIDoingWithMyLife/WanderThenIdleSequence" instance=ExtResource("18_2p2tr")]
++[node name="AggressiveMob" parent="BeehaveTree" node_paths=PackedStringArray("aggro_radius") instance=ExtResource("12_njkv6")]
++aggro_radius = NodePath("../../AggroRadius")
+ 
+ [node name="Blackboard" type="Node" parent="."]
+ script = ExtResource("21_v4d8y")
+diff --git a/scenes/enemies/common/ai/conditionals/is_in_combat/IsInCombat.gd b/scenes/enemies/common/ai/conditionals/is_in_combat/IsInCombat.gd
+index fbf77a9..60654d2 100644
+--- a/scenes/enemies/common/ai/conditionals/is_in_combat/IsInCombat.gd
++++ b/scenes/enemies/common/ai/conditionals/is_in_combat/IsInCombat.gd
+@@ -1,6 +1,5 @@
+ extends ConditionLeaf
+ 
+-@export var aggro_radius: Area2D = null
+ @export var should_leash := false
+ @export var leash_distance: float = 350.0
+ @export var targetable_entity_type: J.ENTITY_TYPE = J.ENTITY_TYPE.PLAYER
+@@ -9,11 +8,14 @@ var start_combat := false
+ var in_combat := false
+ var target: CharacterBody2D = null
+ var _blackboard: Blackboard
++var aggro_radius: Area2D
+ 
+ 
+ func tick(actor: Node, blackboard: Blackboard):
+ 	if not _blackboard:
+ 		_blackboard = blackboard
++	if aggro_radius == null:
++		aggro_radius = blackboard.get_value("aggro_radius")
+ 	if blackboard.get_value("is_resetting"):
+ 		_reset(actor)
+ 		return FAILURE
+@@ -50,6 +52,18 @@ func tick(actor: Node, blackboard: Blackboard):
+ 	return FAILURE
+ 
+ 
++func _set_default_aggro_radius(actor: Node) -> void:
++	aggro_radius = Area2D.new()
++	var shape = CircleShape2D.new()
++	shape.radius = 200.0
++	var collision_shape = CollisionShape2D.new()
++	collision_shape.shape = shape
++	aggro_radius.add_child(collision_shape)
++	aggro_radius.collision_layer = 0
++	aggro_radius.collision_mask = 2
++	actor.add_child(aggro_radius)
++
++
+ func _on_body_entered(body: Node2D):
+ 	if target == null and body.get("entity_type") == targetable_entity_type:
+ 		start_combat = true
+diff --git a/scenes/enemies/common/ai/selectors/aggressive_mob/AggressiveMob.gd b/scenes/enemies/common/ai/selectors/aggressive_mob/AggressiveMob.gd
+new file mode 100644
+index 0000000..0b9ec99
+--- /dev/null
++++ b/scenes/enemies/common/ai/selectors/aggressive_mob/AggressiveMob.gd
+@@ -0,0 +1,8 @@
++extends SelectorReactiveComposite
++
++@export var aggro_radius: Area2D = null
++
++
++func before_run(_actor: Node, blackboard: Blackboard) -> void:
++	if not blackboard.has_value("aggro_radius"):
++		blackboard.set_value("aggro_radius", aggro_radius)
+diff --git a/scenes/enemies/common/ai/selectors/aggressive_mob/AggressiveMob.tscn b/scenes/enemies/common/ai/selectors/aggressive_mob/AggressiveMob.tscn
+new file mode 100644
+index 0000000..7adca3f
+--- /dev/null
++++ b/scenes/enemies/common/ai/selectors/aggressive_mob/AggressiveMob.tscn
+@@ -0,0 +1,43 @@
++[gd_scene load_steps=12 format=3 uid="uid://clyv1sf3bn5g0"]
++
++[ext_resource type="Script" path="res://scenes/enemies/common/ai/selectors/aggressive_mob/AggressiveMob.gd" id="1_26yi3"]
++[ext_resource type="Script" path="res://addons/beehave/nodes/composites/selector_reactive.gd" id="1_pcwtr"]
++[ext_resource type="PackedScene" uid="uid://dbllgq1k86dyd" path="res://scenes/enemies/common/ai/sequences/death_sequence/DeathSequence.tscn" id="2_r4cek"]
++[ext_resource type="Script" path="res://addons/beehave/nodes/composites/sequence_reactive.gd" id="3_3oxb0"]
++[ext_resource type="PackedScene" uid="uid://b4h6plpm1hoii" path="res://scenes/enemies/common/ai/conditionals/is_in_combat/IsInCombat.tscn" id="4_6bept"]
++[ext_resource type="PackedScene" uid="uid://c4ss75lmmvkoi" path="res://scenes/enemies/common/ai/sequences/attack_sequence/AttackSequence.tscn" id="5_1icos"]
++[ext_resource type="PackedScene" uid="uid://c32syir0x72av" path="res://scenes/enemies/common/ai/sequences/pursuit_sequence/PursuitSequence.tscn" id="6_3f7qx"]
++[ext_resource type="PackedScene" uid="uid://ditk3sn70usrs" path="res://scenes/enemies/common/ai/sequences/leash_sequence/LeashSequence.tscn" id="7_4bne4"]
++[ext_resource type="Script" path="res://addons/beehave/nodes/composites/sequence.gd" id="8_pw4p2"]
++[ext_resource type="PackedScene" uid="uid://dk8p2emk8wofb" path="res://scenes/enemies/common/ai/sequences/wander_sequence/WanderSequence.tscn" id="9_4uipm"]
++[ext_resource type="PackedScene" uid="uid://bho6r0fx8owhk" path="res://scenes/enemies/common/ai/sequences/idle_sequence/IdleSequence.tscn" id="10_3xfuq"]
++
++[node name="AggressiveMob" type="Node"]
++script = ExtResource("1_26yi3")
++
++[node name="DeathSequence" parent="." instance=ExtResource("2_r4cek")]
++
++[node name="CombatSequence" type="Node" parent="."]
++script = ExtResource("3_3oxb0")
++
++[node name="IsInCombat" parent="CombatSequence" instance=ExtResource("4_6bept")]
++should_leash = true
++leash_distance = 450.0
++
++[node name="AggrodSelector" type="Node" parent="CombatSequence"]
++script = ExtResource("1_pcwtr")
++
++[node name="AttackSequence" parent="CombatSequence/AggrodSelector" instance=ExtResource("5_1icos")]
++script = ExtResource("3_3oxb0")
++
++[node name="PursuitSequence" parent="CombatSequence/AggrodSelector" instance=ExtResource("6_3f7qx")]
++
++[node name="LeashSequence" parent="." instance=ExtResource("7_4bne4")]
++script = ExtResource("3_3oxb0")
++
++[node name="WanderThenIdleSequence" type="Node" parent="."]
++script = ExtResource("8_pw4p2")
++
++[node name="WanderSequence" parent="WanderThenIdleSequence" instance=ExtResource("9_4uipm")]
++
++[node name="IdleSequence" parent="WanderThenIdleSequence" instance=ExtResource("10_3xfuq")]
+diff --git a/scenes/enemies/common/ai/selectors/passive_critter/PassiveCritter.tscn b/scenes/enemies/common/ai/selectors/passive_critter/PassiveCritter.tscn
+new file mode 100644
+index 0000000..7dea12b
+--- /dev/null
++++ b/scenes/enemies/common/ai/selectors/passive_critter/PassiveCritter.tscn
+@@ -0,0 +1,29 @@
++[gd_scene load_steps=9 format=3 uid="uid://ct1h0eeeyfurc"]
++
++[ext_resource type="Script" path="res://addons/beehave/nodes/composites/selector_reactive.gd" id="1_nxkna"]
++[ext_resource type="PackedScene" uid="uid://dbllgq1k86dyd" path="res://scenes/enemies/common/ai/sequences/death_sequence/DeathSequence.tscn" id="2_cp0jq"]
++[ext_resource type="Script" path="res://addons/beehave/nodes/composites/sequence_reactive.gd" id="3_dbvhw"]
++[ext_resource type="PackedScene" uid="uid://b4h6plpm1hoii" path="res://scenes/enemies/common/ai/conditionals/is_in_combat/IsInCombat.tscn" id="4_w5eu2"]
++[ext_resource type="PackedScene" uid="uid://m6q3h1qhesne" path="res://scenes/enemies/common/ai/sequences/flee_sequence/FleeSequence.tscn" id="5_813g5"]
++[ext_resource type="Script" path="res://addons/beehave/nodes/composites/sequence.gd" id="6_18spk"]
++[ext_resource type="PackedScene" uid="uid://dk8p2emk8wofb" path="res://scenes/enemies/common/ai/sequences/wander_sequence/WanderSequence.tscn" id="7_n8th2"]
++[ext_resource type="PackedScene" uid="uid://bho6r0fx8owhk" path="res://scenes/enemies/common/ai/sequences/idle_sequence/IdleSequence.tscn" id="8_ddpuq"]
++
++[node name="FleeingCritter" type="Node"]
++script = ExtResource("1_nxkna")
++
++[node name="DeathSequence" parent="." instance=ExtResource("2_cp0jq")]
++
++[node name="CombatSequence" type="Node" parent="."]
++script = ExtResource("3_dbvhw")
++
++[node name="IsInCombat" parent="CombatSequence" instance=ExtResource("4_w5eu2")]
++
++[node name="FleeSequence" parent="CombatSequence" instance=ExtResource("5_813g5")]
++
++[node name="WanderThenIdle" type="Node" parent="."]
++script = ExtResource("6_18spk")
++
++[node name="WanderSequence" parent="WanderThenIdle" instance=ExtResource("7_n8th2")]
++
++[node name="IdleSequence" parent="WanderThenIdle" instance=ExtResource("8_ddpuq")]
+diff --git a/scenes/enemies/common/ai/sequences/flee_sequence/FleeSequence.tscn b/scenes/enemies/common/ai/sequences/flee_sequence/FleeSequence.tscn
+index be2b26a..aa8c86e 100644
+--- a/scenes/enemies/common/ai/sequences/flee_sequence/FleeSequence.tscn
++++ b/scenes/enemies/common/ai/sequences/flee_sequence/FleeSequence.tscn
+@@ -1,11 +1,11 @@
+ [gd_scene load_steps=4 format=3 uid="uid://m6q3h1qhesne"]
+ 
+-[ext_resource type="Script" path="res://addons/beehave/nodes/composites/sequence.gd" id="1_csbvd"]
++[ext_resource type="Script" path="res://addons/beehave/nodes/composites/sequence_reactive.gd" id="1_rvy15"]
+ [ext_resource type="Script" path="res://scenes/enemies/common/ai/sequences/flee_sequence/ShouldFlee.gd" id="2_u0k0h"]
+ [ext_resource type="PackedScene" uid="uid://dtoop6xo6ukwe" path="res://scenes/enemies/common/ai/actions/move_to/MoveTo.tscn" id="3_ysl1a"]
+ 
+ [node name="FleeSequence" type="Node"]
+-script = ExtResource("1_csbvd")
++script = ExtResource("1_rvy15")
+ 
+ [node name="ShouldFlee" type="Node" parent="."]
+ script = ExtResource("2_u0k0h")
+diff --git a/scenes/enemies/common/ai/sequences/idle_sequence/IdleSequence.tscn b/scenes/enemies/common/ai/sequences/idle_sequence/IdleSequence.tscn
+index edb8dd2..f8ec67b 100644
+--- a/scenes/enemies/common/ai/sequences/idle_sequence/IdleSequence.tscn
++++ b/scenes/enemies/common/ai/sequences/idle_sequence/IdleSequence.tscn
+@@ -1,12 +1,12 @@
+ [gd_scene load_steps=5 format=3 uid="uid://bho6r0fx8owhk"]
+ 
+-[ext_resource type="Script" path="res://addons/beehave/nodes/composites/sequence.gd" id="1_yq2in"]
++[ext_resource type="Script" path="res://addons/beehave/nodes/composites/sequence_reactive.gd" id="1_014ih"]
+ [ext_resource type="Script" path="res://scenes/enemies/common/ai/sequences/idle_sequence/ShouldIdle.gd" id="2_7knm0"]
+ [ext_resource type="Script" path="res://scenes/enemies/common/ai/decorators/RandomRangeTimeLimiter.gd" id="3_k8akg"]
+ [ext_resource type="Script" path="res://scenes/enemies/common/ai/sequences/idle_sequence/Idle.gd" id="4_vhmeo"]
+ 
+ [node name="IdleSequence" type="Node"]
+-script = ExtResource("1_yq2in")
++script = ExtResource("1_014ih")
+ 
+ [node name="ShouldIdle" type="Node" parent="."]
+ script = ExtResource("2_7knm0")
+diff --git a/scenes/enemies/common/ai/sequences/wander_sequence/WanderSequence.gd b/scenes/enemies/common/ai/sequences/wander_sequence/WanderSequence.gd
+index 48eea96..d8f9353 100644
+--- a/scenes/enemies/common/ai/sequences/wander_sequence/WanderSequence.gd
++++ b/scenes/enemies/common/ai/sequences/wander_sequence/WanderSequence.gd
+@@ -1,3 +1,3 @@
+-extends SequenceComposite
++extends SequenceReactiveComposite
+ 
+ @export var wander_radius := 75.0
+diff --git a/scenes/enemies/common/ai/sequences/wander_sequence/WanderSequence.tscn b/scenes/enemies/common/ai/sequences/wander_sequence/WanderSequence.tscn
+index fd43de1..8bdb4fc 100644
+--- a/scenes/enemies/common/ai/sequences/wander_sequence/WanderSequence.tscn
++++ b/scenes/enemies/common/ai/sequences/wander_sequence/WanderSequence.tscn
+@@ -6,7 +6,7 @@
+ 
+ [node name="WanderSequence" type="Node"]
+ script = ExtResource("1_xnhn0")
+-wander_radius = 150.0
++wander_radius = 100.0
+ 
+ [node name="ShouldWander" type="Node" parent="."]
+ script = ExtResource("2_asw17")
+diff --git a/scenes/enemies/common/ai/sequences/wandering_npc/WanderingNPC.tscn b/scenes/enemies/common/ai/sequences/wandering_npc/WanderingNPC.tscn
+new file mode 100644
+index 0000000..adf73eb
+--- /dev/null
++++ b/scenes/enemies/common/ai/sequences/wandering_npc/WanderingNPC.tscn
+@@ -0,0 +1,12 @@
++[gd_scene load_steps=4 format=3 uid="uid://uyjmyghaqsiq"]
++
++[ext_resource type="Script" path="res://addons/beehave/nodes/composites/sequence.gd" id="1_ylk1i"]
++[ext_resource type="PackedScene" uid="uid://dk8p2emk8wofb" path="res://scenes/enemies/common/ai/sequences/wander_sequence/WanderSequence.tscn" id="2_k7bbt"]
++[ext_resource type="PackedScene" uid="uid://bho6r0fx8owhk" path="res://scenes/enemies/common/ai/sequences/idle_sequence/IdleSequence.tscn" id="3_la3hs"]
++
++[node name="WanderingNPC" type="Node"]
++script = ExtResource("1_ylk1i")
++
++[node name="WanderSequence" parent="." instance=ExtResource("2_k7bbt")]
++
++[node name="IdleSequence" parent="." instance=ExtResource("3_la3hs")]

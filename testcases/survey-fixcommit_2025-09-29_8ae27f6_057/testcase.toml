@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-09-29_8ae27f6_057"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "528c4ddfa97678aa4d71e820ac045dbf3e077810"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Levels/SMBANN/DiscoEnding.tscn, Scenes/Levels/SMBANN/World8/8-4a.tscn, Scenes/Levels/SMBANN/World8/8-4c.tscn, Scenes/Levels/SMBLL/LostLevelsEnding.tscn, Scenes/Levels/SMBLL/World1/1-2.tscn, Scenes/Levels/SMBLL/World8/8-4c.tscn, Scripts/Parts/LostLevelsEnding.gd, Scripts/UI/DiscoResults.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-09-29_8ae27f6_057"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

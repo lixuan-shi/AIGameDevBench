@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2022-09-05_d6730d6_052"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "60b5ac3d062ea5dc3469c93904c8283b66217d94"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\a-little-game-called-mario"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: textures/marwing/WORLD1.tres."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2022-09-05_d6730d6_052"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

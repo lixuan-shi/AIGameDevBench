@@ -1,0 +1,13 @@
+diff --git a/scenes/main.tscn b/scenes/main.tscn
+index f1dc18d..4548299 100644
+--- a/scenes/main.tscn
++++ b/scenes/main.tscn
+@@ -6,7 +6,7 @@ size = Vector2(32, 64)
+ [node name="Main" type="Node2D"]
+ 
+ [node name="Player" type="CharacterBody2D" parent="."]
+-collision_layer = 1
++collision_layer = 2
+ collision_mask = 1
+ 
+ [node name="PlayerShape" type="CollisionShape2D" parent="Player"]

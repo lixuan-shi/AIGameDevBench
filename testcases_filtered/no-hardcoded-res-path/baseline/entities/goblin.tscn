@@ -1,0 +1,3 @@
+[gd_scene format=3 uid="uid://b0goblin0entity0scene0"]
+
+[node name="Goblin" type="Node2D"]

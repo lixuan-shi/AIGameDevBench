@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-07_468bf19_071"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "213feed6eb03291462f2e2c80921c49511056393"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Levels/SMBLL/World1/1-1.tscn, Scenes/Levels/SMBLL/World1/1-1a.tscn, Scenes/Levels/SMBLL/World1/1-2.tscn, Scenes/Levels/SMBLL/World1/1-2a.tscn, Scenes/Levels/SMBLL/World1/1-2b.tscn, Scenes/Levels/SMBLL/World1/1-3.tscn, Scenes/Levels/SMBLL/World10/10-4.tscn, Scenes/Levels/SMBLL/World11/11-1.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-07_468bf19_071"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

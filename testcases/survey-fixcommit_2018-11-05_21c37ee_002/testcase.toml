@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2018-11-05_21c37ee_002"
+category = "architecture"
+source_kind = "git"
+baseline_ref = "1cedc4e372b3e7d2de7d039bc36d159d4d330b17"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rpg"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: godot/combat/battlers/BlueBattler.tscn, godot/combat/battlers/DanBattler.tscn, godot/combat/battlers/Job.gd, godot/combat/battlers/jobs/DefaultJob.tres, godot/combat/battlers/jobs/Fighter.tres, godot/combat/battlers/jobs/Porcupine.tres."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2018-11-05_21c37ee_002"
+bad_case_type = "A3"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

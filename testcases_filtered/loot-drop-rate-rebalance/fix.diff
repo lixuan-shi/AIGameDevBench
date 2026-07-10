@@ -1,0 +1,14 @@
+diff --git a/data/loot_table.json b/data/loot_table.json
+index 98d21a2..40c03a6 100644
+--- a/data/loot_table.json
++++ b/data/loot_table.json
+@@ -1,7 +1,7 @@
+ {
+   "drop_weights": {
+-    "common": 0.80,
++    "common": 0.76,
+     "rare": 0.18,
+-    "legendary": 0.02
++    "legendary": 0.06
+   }
+ }

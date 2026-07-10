@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-01-23_91bb05d_005"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "dc2e8ee920dffa81a3eecdd0271877068b475bfe"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rts"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: source/match/players/human/UnitActionsController.gd, source/match/utils/UnitMovementUtils.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-01-23_91bb05d_005"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

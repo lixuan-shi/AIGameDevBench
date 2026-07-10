@@ -1,0 +1,23 @@
+[testcase]
+id = "player-fsm-transition-guard"
+category = "behavior_logic"
+source_kind = "folder"
+source_repo = "authored:representative-set"
+task = """
+Complete the player state machine in res://scripts/state_machine.gd. change_state(target_name) must:
+- reject the transition when the current state does not allow it (current.can_transition_to(target_name) is false): return false, leave `current` unchanged, and call NO enter()/exit();
+- otherwise call exit() on the current state, then enter() on the new state, update `current` to the new state, and return true.
+States declare their legal targets via the `allowed` array (e.g. jump only allows "idle", so jump->jump is illegal). Do not change state.gd.
+"""
+
+[verifier]
+type = "godot_scene_assert"
+entry = "verifier_scene.tscn"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+author = "Claude"
+created = "2026-06-29"
+notes = "behavior_logic/med. Trap: baseline change_state bare-swaps current with no guard and no enter()/exit(). All checkpoints require the guard + enter/exit, so noop=0. A partial fix that calls enter/exit but skips the guard fails the illegal_transition checkpoints; golden does both -> 1.0."

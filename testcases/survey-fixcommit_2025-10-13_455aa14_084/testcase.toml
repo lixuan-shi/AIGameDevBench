@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-13_455aa14_084"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "a9055451aeb72bbebad5a030ef794f89f4383197"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scenes/Levels/SMBS/World7/7-4.tscn, Scripts/Classes/Entities/PipeArea.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-13_455aa14_084"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

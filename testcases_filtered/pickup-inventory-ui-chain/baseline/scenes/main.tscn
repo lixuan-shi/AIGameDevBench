@@ -1,0 +1,15 @@
+[gd_scene format=3 uid="uid://btkcvpbao8qhl"]
+
+[ext_resource type="Script" uid="uid://du1w5wgm4os5x" path="res://scripts/inventory.gd" id="1_inv"]
+[ext_resource type="Script" uid="uid://cpur5t3gh2jd8" path="res://scripts/hud_label.gd" id="2_lbl"]
+
+[node name="Main" type="Node2D" unique_id=150893656]
+
+[node name="Inventory" type="Node" parent="." unique_id=955998751]
+script = ExtResource("1_inv")
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=1084586371]
+
+[node name="CountLabel" type="Label" parent="HUD" unique_id=53199568]
+text = "0"
+script = ExtResource("2_lbl")

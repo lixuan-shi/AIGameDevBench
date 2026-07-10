@@ -1,0 +1,714 @@
+diff --git a/src/combat/actors/combat_turn_queue.gd b/src/combat/actors/combat_turn_queue.gd
+deleted file mode 100644
+index 63423c9..0000000
+--- a/src/combat/actors/combat_turn_queue.gd
++++ /dev/null
+@@ -1,169 +0,0 @@
+-@icon("icon_turn_queue.png")
+-class_name CombatTurnQueue extends Node
+-
+-## Emitted whenever the combat logic has finished, including all animation details.
+-signal finished(has_player_won: bool)
+-
+-## A list of the combat participants, in [BattlerRoster] form. This object is created by the turn
+-## queue from children [Battler]s and then made available to other combat systems.
+-var battler_roster: BattlerRoster
+-
+-## Tracks which combat round is currently being played. Every round, all active Actors will get a
+-## turn to act.
+-var round_count = 1:
+-	set(value):
+-		round_count = value
+-		print("\nBegin turn %d" % round_count)
+-
+-
+-func _ready() -> void:
+-	battler_roster = BattlerRoster.new(self)
+-
+-
+-# Combat occurs in two phases: Battlers choose their actions and then act them out. The first phase
+-# sees all AI Battlers choose their action, followed by the player. Player actions are chosen by
+-# repeatedly calling _select_next_player_action.
+-func next_round() -> void:
+-	round_count += 1
+-	
+-	# First of all, let enemy (necessarily AI) battlers pick their actions.
+-	for battler in battler_roster.find_live_battlers(battler_roster.get_enemy_battlers()):
+-		if battler.ai != null:
+-			battler.ai.select_action(battler, battler_roster)
+-		print("%s picked: " % battler.name, battler.cached_action)
+-	
+-	# Secondly, allow player Battlers to pick their action.
+-	# This will be iterative as the player selects and cancels their choices. The turn queue will
+-	# move to the action phase once all player Battlers have an action selected.
+-	_select_next_player_action()
+-
+-
+-# Player Battlers select their actions by repeatedly calling _select_next_player_action. The method
+-# looks for player Battlers who have no cached action and prioritizes those further up in the scene
+-# tree. This allows the player to go "backwards" and "forwards" between Battlers, choosing actions
+-# and cancelling them as needed.
+-# At this point, all AI Battlers should have a cached actoin.
+-# Once all Battlers have an action cached (see Battler.cached_action), _select_next_player_action
+-# calls _next_turn to move into the second phase.
+-func _select_next_player_action() -> void:
+-	# Find any remaining player Battlers that need an action selected.
+-	var player_battlers: = battler_roster.get_player_battlers()
+-	var remaining_battlers: = battler_roster.find_battlers_needing_actions(player_battlers)
+-	
+-	# If there are no player Battlers needing actions, move on to the second phase of a round:
+-	# taking action!
+-	if remaining_battlers.is_empty():
+-		print("No remaining actions, move to execution.")
+-		_play_next_action.call_deferred()
+-		return
+-	
+-	# If there are player Battlers needing cached actions, pick the first one and allow it to search
+-	# for an action using either its AI controller (if present) or player input.
+-	var next_player_battler: Battler = remaining_battlers.front()
+-	print("%s looking for actions!" % next_player_battler.name)
+-	next_player_battler.action_cached.connect(_select_next_player_action, 
+-		CONNECT_DEFERRED | CONNECT_ONE_SHOT)
+-	CombatEvents.player_battler_selected.emit(next_player_battler)
+-
+-
+-# The second phase of combat has each Battler act in order of speed. This is done by repeatedly
+-# calling _next_turn until no active Battlers have a cached action waiting to be executed.
+-func _play_next_action() -> void:
+-	# Check for battle end conditions, that one side has been downed.
+-	if battler_roster.are_battlers_defeated(battler_roster.get_player_battlers()):
+-		finished.emit.call_deferred(false)
+-		print("Player defeated")
+-		return
+-	elif battler_roster.are_battlers_defeated(battler_roster.get_enemy_battlers()):
+-		finished.emit.call_deferred(true)
+-		print("Enemies defeated")
+-		return
+-
+-	# Check for an active Battler. If neither side has lost yet there are no active actors, it's
+-	# time to start the next round.
+-	var next_actor: = _get_next_actor()
+-	if next_actor == null:
+-		next_round()
+-		return
+-	
+-	# Connect to the actor's turn_finished signal. The actor is guaranteed to emit the signal,
+-	# even if it will be freed at the end of this frame.
+-	# However, we'll call_defer the next turn, since the current actor may have been downed on its
+-	# turn and we need a frame to process the change.
+-	next_actor.turn_finished.connect(_play_next_action, CONNECT_DEFERRED | CONNECT_ONE_SHOT)
+-	next_actor.act()
+-
+-
+-func _get_next_actor() -> Battler:
+-	var battlers: = battler_roster.get_battlers()
+-	var ready_to_act_battlers: = battler_roster.find_ready_to_act_battlers(battlers)
+-	if ready_to_act_battlers.is_empty():
+-		return null
+-	
+-	ready_to_act_battlers.sort_custom(Battler.sort)
+-	return ready_to_act_battlers.front()
+-
+-
+-## Returns all Battlers existing in the current combat.
+-func get_battlers() -> Array[Battler]:
+-	var battler_list: Array[Battler] = []
+-	battler_list.assign(find_children("*", "Battler"))
+-	return battler_list
+-
+-
+-## Returns all existing player Battlers.
+-func get_player_battlers() -> Array[Battler]:
+-	return get_battlers().filter(
+-		func _filter_players(battler: Battler):
+-			return battler.is_player
+-	)
+-
+-
+-## Returns all existing Battlers that are opposed to the player.
+-func get_enemy_battlers() -> Array[Battler]:
+-	return get_battlers().filter(
+-		func _filter_enemies(battler: Battler):
+-			return not battler.is_player
+-	)
+-
+-
+-## Filter an array of Battlers to return only whose health points are currently greater than 0.
+-func find_live_battlers(battlers: Array[Battler]) -> Array[Battler]:
+-	return battlers.filter(func(battler: Battler): return battler.stats.health > 0)
+-
+-
+-## Filter an array of Battlers to find those who are active but do not yet have a cached action (see
+-## [member Battler.cached_action]).
+-func find_battlers_needing_actions(battlers: Array[Battler]) -> Array[Battler]:
+-	return battlers.filter(
+-		func _filter_actors(actor: Battler) -> bool:
+-			return actor.is_active and actor.cached_action == null
+-	)
+-
+-
+-## Filter an array of Battlers to find those who may take an action. That is, they are active (see
+-## [member Battler.is_active]) and have a cached action ready (see [member Battler.cached_action]).
+-func find_ready_to_act_battlers(battlers: Array[Battler]) -> Array[Battler]:
+-	return battlers.filter(
+-		func _filter_actors(actor: Battler) -> bool:
+-			return actor.is_active and actor.cached_action != null
+-	)
+-
+-
+-## Returns true if all the specified battlers are inactive.
+-func are_battlers_defeated(battlers: Array[Battler]) -> bool:
+-	for battler in battlers:
+-		if battler.is_active:
+-			return false
+-	
+-	return true
+-
+-
+-func _to_string() -> String:
+-	var battlers: = get_battlers()
+-	battlers.sort_custom(Battler.sort)
+-
+-	var msg: = "\n%s (CombatTurnQueue) - round %d" % [name, round_count]
+-	for battler in battlers:
+-		msg += "\n\t" + battler.to_string()
+-	return msg
+diff --git a/src/combat/actors/combat_turn_queue.gd.uid b/src/combat/actors/combat_turn_queue.gd.uid
+deleted file mode 100644
+index e358c72..0000000
+--- a/src/combat/actors/combat_turn_queue.gd.uid
++++ /dev/null
+@@ -1 +0,0 @@
+-uid://d4iykhcmgf6ox
+diff --git a/src/combat/battlers/battler.gd b/src/combat/battlers/battler.gd
+index b77691c..2f27bd4 100644
+--- a/src/combat/battlers/battler.gd
++++ b/src/combat/battlers/battler.gd
+@@ -171,6 +171,7 @@ func _ready() -> void:
+ 
+ 
+ #func act(targets: Array[Battler] = []) -> void:
++## [method BattlerAction.execute] the Battler's [member cached_action].
+ func act() -> void:
+ 	if cached_action:
+ 		stats.energy -= cached_action.energy_cost
+diff --git a/src/combat/battlers/battler_anim.gd b/src/combat/battlers/battler_anim.gd
+index 8f5a9c8..b2a28c0 100644
+--- a/src/combat/battlers/battler_anim.gd
++++ b/src/combat/battlers/battler_anim.gd
+@@ -9,7 +9,7 @@
+ class_name BattlerAnim extends Marker2D
+ 
+ ## Dictates how far the battler moves forwards and backwards at the beginning/end of its turn.
+-const MOVE_OFFSET: = 40.0
++const MOVE_OFFSET: = 140.0
+ 
+ ## Determines which direction the battler faces on the screen.
+ enum Direction { LEFT, RIGHT }
+@@ -118,9 +118,10 @@ func move_forward(duration: float) -> void:
+ 	_move_tween.tween_property(
+ 		self, 
+ 		"position", 
+-		_rest_position + Vector2.LEFT*scale.x*MOVE_OFFSET,
++		_rest_position + Vector2.LEFT*-scale.x*MOVE_OFFSET,
+ 		duration
+ 	)
++	await _move_tween.finished
+ 
+ 
+ ## Tween the object back to its rest position.
+@@ -135,3 +136,4 @@ func move_to_rest(duration: float) -> void:
+ 		_rest_position,
+ 		duration
+ 	)
++	await _move_tween.finished
+diff --git a/src/combat/battlers/battler_roster.gd b/src/combat/battlers/battler_roster.gd
+index 738c07a..50cc164 100644
+--- a/src/combat/battlers/battler_roster.gd
++++ b/src/combat/battlers/battler_roster.gd
+@@ -1,18 +1,115 @@
+-class_name BattlerRoster extends RefCounted
+-
+-# Battlers searched for by the roster must be descendants (children, grandchildren, etc.) of this
+-# node. They will be found based on type - Battler.
+-var _battler_parent: Node
+-
+-
+-func _init(node: Node) -> void:
+-	_battler_parent = node
++# Participating Battlers must be descendents of this node.
++@icon("icon_turn_queue.png")
++#class_name CombatTurnQueue extends Node
++class_name BattlerRoster extends Node
++
++## Emitted whenever the combat logic has finished, including all animation details.
++#signal finished(has_player_won: bool)
++
++## A list of the combat participants, in [BattlerRoster] form. This object is created by the turn
++## queue from children [Battler]s and then made available to other combat systems.
++#var battler_roster: BattlerRoster
++#
++### Tracks which combat round is currently being played. Every round, all active Actors will get a
++### turn to act.
++#var round_count = 1:
++	#set(value):
++		#round_count = value
++		#print("\nBegin turn %d" % round_count)
++#
++#
++##func _ready() -> void:
++	##battler_roster = BattlerRoster.new(self)
++#
++#
++## Combat occurs in two phases: Battlers choose their actions and then act them out. The first phase
++## sees all AI Battlers choose their action, followed by the player. Player actions are chosen by
++## repeatedly calling _select_next_player_action.
++#func next_round() -> void:
++	#round_count += 1
++	#
++	## First of all, let enemy (necessarily AI) battlers pick their actions.
++	#for battler in battler_roster.find_live_battlers(battler_roster.get_enemy_battlers()):
++		#if battler.ai != null:
++			#battler.ai.select_action(battler, battler_roster)
++		#print("%s picked: " % battler.name, battler.cached_action)
++	#
++	## Secondly, allow player Battlers to pick their action.
++	## This will be iterative as the player selects and cancels their choices. The turn queue will
++	## move to the action phase once all player Battlers have an action selected.
++	#_select_next_player_action()
++#
++#
++## Player Battlers select their actions by repeatedly calling _select_next_player_action. The method
++## looks for player Battlers who have no cached action and prioritizes those further up in the scene
++## tree. This allows the player to go "backwards" and "forwards" between Battlers, choosing actions
++## and cancelling them as needed.
++## At this point, all AI Battlers should have a cached actoin.
++## Once all Battlers have an action cached (see Battler.cached_action), _select_next_player_action
++## calls _next_turn to move into the second phase.
++#func _select_next_player_action() -> void:
++	## Find any remaining player Battlers that need an action selected.
++	#var player_battlers: = battler_roster.get_player_battlers()
++	#var remaining_battlers: = battler_roster.find_battlers_needing_actions(player_battlers)
++	#
++	## If there are no player Battlers needing actions, move on to the second phase of a round:
++	## taking action!
++	#if remaining_battlers.is_empty():
++		#print("No remaining actions, move to execution.")
++		#_play_next_action.call_deferred()
++		#return
++	#
++	## If there are player Battlers needing cached actions, pick the first one and allow it to search
++	## for an action using either its AI controller (if present) or player input.
++	#var next_player_battler: Battler = remaining_battlers.front()
++	#print("%s looking for actions!" % next_player_battler.name)
++	#next_player_battler.action_cached.connect(_select_next_player_action, 
++		#CONNECT_DEFERRED | CONNECT_ONE_SHOT)
++	#CombatEvents.player_battler_selected.emit(next_player_battler)
++#
++#
++## The second phase of combat has each Battler act in order of speed. This is done by repeatedly
++## calling _next_turn until no active Battlers have a cached action waiting to be executed.
++#func _play_next_action() -> void:
++	## Check for battle end conditions, that one side has been downed.
++	#if battler_roster.are_battlers_defeated(battler_roster.get_player_battlers()):
++		#finished.emit.call_deferred(false)
++		#print("Player defeated")
++		#return
++	#elif battler_roster.are_battlers_defeated(battler_roster.get_enemy_battlers()):
++		#finished.emit.call_deferred(true)
++		#print("Enemies defeated")
++		#return
++#
++	## Check for an active Battler. If neither side has lost yet there are no active actors, it's
++	## time to start the next round.
++	#var next_actor: = _get_next_actor()
++	#if next_actor == null:
++		#next_round()
++		#return
++	#
++	## Connect to the actor's turn_finished signal. The actor is guaranteed to emit the signal,
++	## even if it will be freed at the end of this frame.
++	## However, we'll call_defer the next turn, since the current actor may have been downed on its
++	## turn and we need a frame to process the change.
++	#next_actor.turn_finished.connect(_play_next_action, CONNECT_DEFERRED | CONNECT_ONE_SHOT)
++	#next_actor.act()
++#
++#
++#func _get_next_actor() -> Battler:
++	#var battlers: = battler_roster.get_battlers()
++	#var ready_to_act_battlers: = battler_roster.find_ready_to_act_battlers(battlers)
++	#if ready_to_act_battlers.is_empty():
++		#return null
++	#
++	#ready_to_act_battlers.sort_custom(Battler.sort)
++	#return ready_to_act_battlers.front()
+ 
+ 
+ ## Returns all Battlers existing in the current combat.
+ func get_battlers() -> Array[Battler]:
+ 	var battler_list: Array[Battler] = []
+-	battler_list.assign(_battler_parent.find_children("*", "Battler"))
++	battler_list.assign(find_children("*", "Battler"))
+ 	return battler_list
+ 
+ 
+@@ -62,3 +159,14 @@ func are_battlers_defeated(battlers: Array[Battler]) -> bool:
+ 			return false
+ 	
+ 	return true
++
++
++func _to_string() -> String:
++	var battlers: = get_battlers()
++	battlers.sort_custom(Battler.sort)
++
++	#var msg: = "\n%s (CombatTurnQueue) - round %d" % [name, round_count]
++	var msg: = "\n%s - BattlerRoster" % name
++	for battler in battlers:
++		msg += "\n\t" + battler.to_string()
++	return msg
+diff --git a/src/combat/battlers/battler_roster.gd.uid b/src/combat/battlers/battler_roster.gd.uid
+index 376a516..e358c72 100644
+--- a/src/combat/battlers/battler_roster.gd.uid
++++ b/src/combat/battlers/battler_roster.gd.uid
+@@ -1 +1 @@
+-uid://b3cgt2tkdb1ls
++uid://d4iykhcmgf6ox
+diff --git a/src/combat/actors/icon_turn_queue.png b/src/combat/battlers/icon_turn_queue.png
+similarity index 100%
+rename from src/combat/actors/icon_turn_queue.png
+rename to src/combat/battlers/icon_turn_queue.png
+diff --git a/src/combat/actors/icon_turn_queue.png.import b/src/combat/battlers/icon_turn_queue.png.import
+similarity index 75%
+rename from src/combat/actors/icon_turn_queue.png.import
+rename to src/combat/battlers/icon_turn_queue.png.import
+index 7577bb3..702dfff 100644
+--- a/src/combat/actors/icon_turn_queue.png.import
++++ b/src/combat/battlers/icon_turn_queue.png.import
+@@ -3,15 +3,15 @@
+ importer="texture"
+ type="CompressedTexture2D"
+ uid="uid://pvjykd3qllnc"
+-path="res://.godot/imported/icon_turn_queue.png-1d339f0c6de41a179e9f5c7eda2b8387.ctex"
++path="res://.godot/imported/icon_turn_queue.png-b1b6be5ca14a2606ff1bb298791aecf6.ctex"
+ metadata={
+ "vram_texture": false
+ }
+ 
+ [deps]
+ 
+-source_file="res://src/combat/actors/icon_turn_queue.png"
+-dest_files=["res://.godot/imported/icon_turn_queue.png-1d339f0c6de41a179e9f5c7eda2b8387.ctex"]
++source_file="res://src/combat/battlers/icon_turn_queue.png"
++dest_files=["res://.godot/imported/icon_turn_queue.png-b1b6be5ca14a2606ff1bb298791aecf6.ctex"]
+ 
+ [params]
+ 
+diff --git a/src/combat/combat.gd b/src/combat/combat.gd
+index 418c1d7..384a5d8 100644
+--- a/src/combat/combat.gd
++++ b/src/combat/combat.gd
+@@ -1,19 +1,39 @@
+-## Starts and ends combat, and manages the transition between the field and combat states.
++## The Combat class manages combat logic from beginning to end.
+ ##
+-## The battle is composed mainly from a [CombatArena], which contains all necessary subelements such
+-## as battlers, visual effects, music, etc.
++## The battle is composed from several components which should all be wrapped up in a [CombatArena].
++## The Combat class instantiates the arena as a child before instantiating the player battlers and
++## assigning them as descendants of the arena's [BattlerRoster].[br][br]
+ ##
+-## This container handles the logic of switching between the field game state, the combat game
+-## state, and the combat results screen (e.g. experience and levelling up, loot, etc.). It is
+-## responsible for changing the music, playing screen transition animations, and other state-switch
+-## elements.
+-extends CanvasLayer
+-
+-var _active_arena: CombatArena = null
++## The combat logic follows the pattern set by early JRPGs, where each combat round includes two
++## phases:
++## [br]	1) Action selection: each Battler selects an action, AI battlers followed by the player.
++## [br]	2) Action execution: the Battlers carry out their selected actions.[br][br]
++## If the player and enemy sides are both still alive, combat procedes to the next round. Combat
++## logic may be illustrated as follows:[br][br]
++## [method setup] combat with a [CombatArena] (usually triggered by
++## [signal FieldEvents.combat_triggered]).
++## [br]	- Begin new combat round
++## [br]		- AI Battlers select their actions.
++## [br]		- Until all player Battlers have a [member Battler.cached_action]:
++## [br]			- The next player Battler selects their action via the [UICombat].
++## [br]			- If all player Battlers have a [member Battler.cached_action], move to action
++## execution.
++## [br][br]		- For each Battler with a cached action (sorted by speed):
++## [br]			- [method Battler.act]
++## [br]		- If player and enemy Battlers are still alive, go to the next round.[br]
++## [method shutdown] combat, cleaning up combat objects
++## [br]	- Emit the [signal CombatEvents.combat_finished] signal.
++class_name Combat extends CanvasLayer
++
++## Tracks which combat round is currently being played. Every round, all active [Battler]s will get
++## a turn to act.
++var round_count: int = 0
+ 
+ # Keep track of what music track was playing previously, and return to it once combat has finished.
+ var _previous_music_track: AudioStream = null
+ 
++# A reference to 
++@onready var _battler_roster: BattlerRoster
+ @onready var _combat_container: = $CenterContainer as CenterContainer
+ @onready var _transition_delay_timer: = $CenterContainer/TransitionDelay as Timer
+ @onready var _ui: = $UI as UICombat
+@@ -21,15 +41,13 @@ var _previous_music_track: AudioStream = null
+ 
+ func _ready() -> void:
+ 	hide()
+-	FieldEvents.combat_triggered.connect(start)
++	FieldEvents.combat_triggered.connect(setup)
+ 
+ 
+ ## Begin a combat. Takes a PackedScene as its only parameter, expecting it to be a CombatState 
+ ## object once instantiated.
+ ## This is normally a response to [signal FieldEvents.combat_triggered].
+-func start(arena: PackedScene) -> void:
+-	assert(_active_arena == null, "Attempting to start a combat while one is ongoing!")
+-
++func setup(arena: PackedScene) -> void:
+ 	await Transition.cover(0.2)
+ 	show()
+ 
+@@ -39,18 +57,19 @@ func start(arena: PackedScene) -> void:
+ 		"Failed to initiate combat. Provided 'arena' arugment is not a CombatArena."
+ 	)
+ 
+-	_active_arena = new_arena
+-	_combat_container.add_child(_active_arena)
++	var combat_arena: CombatArena = new_arena
++	_combat_container.add_child(combat_arena)
++	_battler_roster = combat_arena.get_battler_roster()
+ 	
+ 	print("Wait")
+ 	# Wait a frame for the arena and its children (VFX, Battlers, etc.) to be ready.
+ 	await get_tree().process_frame
+-	print("Battlers: ", _active_arena.turn_queue.battler_roster.get_battlers())
++	print("Battlers: ", _battler_roster.get_battlers())
+ 	
+-	_ui.setup(_active_arena.turn_queue.battler_roster)
++	_ui.setup(_battler_roster)
+ 
+ 	_previous_music_track = Music.get_playing_track()
+-	Music.play(_active_arena.music)
++	Music.play(combat_arena.music)
+ 
+ 	CombatEvents.combat_initiated.emit()
+ 
+@@ -65,43 +84,145 @@ func start(arena: PackedScene) -> void:
+ 	await _ui.animation.animation_finished
+ 	
+ 	# Begin the combat logic. The turn queue takes over from here.
+-	print(_active_arena.turn_queue)
+-	_active_arena.turn_queue.next_round.call_deferred()
+-	
+-	# Respond to the turn queue's signal the lets us know when the player has won or lost combat.
+-	_active_arena.turn_queue.finished.connect(
+-		func on_combat_finished(is_player_victory: bool):
+-			print("Combat over")
+-			
+-			# Fade out the combat UI elements.
+-			_ui.animation.play("fade_out")
+-			await _ui.animation.animation_finished
+-			
+-			await _display_combat_results_dialog(is_player_victory)
+-			
+-			# Wait a short period of time and then fade the screen to black.
+-			_transition_delay_timer.start()
+-			await _transition_delay_timer.timeout
+-			await Transition.cover(0.2)
+-			hide()
+-
+-			assert(_active_arena != null, "Combat finished but no active arena to clean up!")
+-			_active_arena.queue_free()
+-			_active_arena = null
+-
+-			Music.play(_previous_music_track)
+-			_previous_music_track = null
+-
+-			# Whatever object started the combat will now be responsible for flow of the game. In
+-			# particular, the screen is still covered, so the combat-starting object will want to 
+-			# decide what to do now that the outcome of the combat is known.
+-			CombatEvents.combat_finished.emit(is_player_victory)
+-	)
++	round_count = 0
++	next_round.call_deferred()
++
++
++## Ends combat immediately and gracefully, freeing Combat-related scenes and handing over logic
++## via the [signal CombatEvents.combat_finished] signal.
++func shutdown() -> void:
++	_battler_roster = null
++
++
++# Moves combat to the next round. At the beginning of the round, all Battlers will choose an action.
++func next_round() -> void:
++	round_count += 1
++	
++	# First of all, let enemy (necessarily AI) battlers pick their actions.
++	for battler in _battler_roster.find_live_battlers(_battler_roster.get_enemy_battlers()):
++		if battler.ai != null:
++			battler.ai.select_action(battler, _battler_roster)
++		print("%s picked: " % battler.name, battler.cached_action)
++	
++	# Secondly, allow player Battlers to pick their action.
++	# This will be iterative as the player selects and cancels their choices. The turn queue will
++	# move to the action phase once all player Battlers have an action selected.
++	_select_next_player_action()
++
++
++# Player Battlers select their actions by repeatedly calling _select_next_player_action. The method
++# looks for player Battlers who have no cached action and prioritizes those further up in the scene
++# tree. This allows the player to go "backwards" and "forwards" between Battlers, choosing actions
++# and cancelling them as needed.
++# At this point, all AI Battlers should have a cached actoin.
++# Once all Battlers have an action cached (see Battler.cached_action), _select_next_player_action
++# calls _next_turn to move into the second phase.
++func _select_next_player_action() -> void:
++	# Find any remaining player Battlers that need an action selected.
++	var player_battlers: = _battler_roster.get_player_battlers()
++	var remaining_battlers: = _battler_roster.find_battlers_needing_actions(player_battlers)
++	
++	# If there are no player Battlers needing actions, move on to the second phase of a round:
++	# taking action!
++	if remaining_battlers.is_empty():
++		print("No remaining actions, move to execution.")
++		_play_next_action.call_deferred()
++		return
++	
++	# If there are player Battlers needing cached actions, pick the first one and allow it to search
++	# for an action using either its AI controller (if present) or player input.
++	var next_player_battler: Battler = remaining_battlers.front()
++	print("%s looking for actions!" % next_player_battler.name)
++	
++	# When the player selects an action (or presses 'back'), the current Battler needs to move back
++	# to its rest position before moving on to the next battler, hence the await call below.
++	next_player_battler.action_cached.connect(
++		(func _on_selected_battler_action_cached(battler: Battler) -> void:
++			await battler.anim.move_to_rest(0.2)
++			_select_next_player_action()
++			).bind(next_player_battler), 
++		CONNECT_DEFERRED | CONNECT_ONE_SHOT)
++	
++	await next_player_battler.anim.move_forward(0.2)
++	
++	# Activate the player UI elements for the currently selected battler.
++	CombatEvents.player_battler_selected.emit(next_player_battler)
++
++
++# The second phase of combat has each Battler act in order of speed. This is done by repeatedly
++# calling _next_turn until no active Battlers have a cached action waiting to be executed.
++func _play_next_action() -> void:
++	# Check for battle end conditions, that one side has been downed.
++	if _battler_roster.are_battlers_defeated(_battler_roster.get_player_battlers()):
++		_on_combat_finished.call_deferred(false)
++		print("Player defeated")
++		return
++	elif _battler_roster.are_battlers_defeated(_battler_roster.get_enemy_battlers()):
++		_on_combat_finished.call_deferred(true)
++		print("Enemies defeated")
++		return
++
++	# Check for an active Battler. If neither side has lost yet there are no active actors, it's
++	# time to start the next round.
++	var next_actor: = _get_next_actor()
++	if next_actor == null:
++		next_round()
++		return
++	
++	# Connect to the actor's turn_finished signal. The actor is guaranteed to emit the signal,
++	# even if it will be freed at the end of this frame.
++	# However, we'll call_defer the next turn, since the current actor may have been downed on its
++	# turn and we need a frame to process the change.
++	next_actor.turn_finished.connect(_play_next_action, CONNECT_DEFERRED | CONNECT_ONE_SHOT)
++	next_actor.act()
++
++
++func _get_next_actor() -> Battler:
++	var battlers: = _battler_roster.get_battlers()
++	var ready_to_act_battlers: = _battler_roster.find_ready_to_act_battlers(battlers)
++	if ready_to_act_battlers.is_empty():
++		return null
++	
++	ready_to_act_battlers.sort_custom(Battler.sort)
++	return ready_to_act_battlers.front()
++
++
++func _on_combat_finished(is_player_victory: bool) -> void:
++	print("Combat over")
++	
++	_battler_roster = null
++	
++	# Fade out the combat UI elements.
++	_ui.animation.play("fade_out")
++	await _ui.animation.animation_finished
++	
++	await _display_combat_results_dialog(is_player_victory)
++	
++	# Wait a short period of time and then fade the screen to black.
++	_transition_delay_timer.start()
++	await _transition_delay_timer.timeout
++	await Transition.cover(0.2)
++	hide()
++	
++	# Clean up the combat arena.
++	for child in _combat_container.get_children():
++		child.free()
++	#assert(_active_arena != null, "Combat finished but no active arena to clean up!")
++	#_active_arena.queue_free()
++	#_active_arena = null
++
++	Music.play(_previous_music_track)
++	_previous_music_track = null
++
++	# Whatever object started the combat will now be responsible for flow of the game. In
++	# particular, the screen is still covered, so the combat-starting object will want to 
++	# decide what to do now that the outcome of the combat is known.
++	CombatEvents.combat_finished.emit(is_player_victory)
+ 
+ 
+ ## Displays a series of dialogue bubbles using Dialogic with information about the combat's outcome.
+ func _display_combat_results_dialog(is_player_victory: bool):
+-	var player_party_leader_name: = _active_arena.turn_queue.battler_roster.get_player_battlers()[0].name
++	var player_party_leader_name: = _battler_roster.get_player_battlers()[0].name
+ 
+ 	var timeline_events: Array[String]
+ 	if is_player_victory:
+diff --git a/src/combat/combat_arena.gd b/src/combat/combat_arena.gd
+index 8d6d6cd..d0b1066 100644
+--- a/src/combat/combat_arena.gd
++++ b/src/combat/combat_arena.gd
+@@ -6,5 +6,13 @@ class_name CombatArena extends Control
+ ## The music that will be automatically played during this combat instance.
+ @export var music: AudioStream
+ 
++## A list of the combat participants, in [BattlerRoster] form. This object is created by the turn
++## queue from children [Battler]s and then made available to other combat systems.
++@onready var battlers
++
+ # Keep a reference to the turn queue, which handles combat logic including combat start and end.
+-@onready var turn_queue: = $Battlers as CombatTurnQueue
++#@onready var turn_queue: = $Battlers as CombatTurnQueue
++
++
++func get_battler_roster() -> BattlerRoster:
++	return $Battlers as BattlerRoster
+diff --git a/src/combat/combat_arena.tscn b/src/combat/combat_arena.tscn
+index eb83e29..c68d03c 100644
+--- a/src/combat/combat_arena.tscn
++++ b/src/combat/combat_arena.tscn
+@@ -1,7 +1,7 @@
+ [gd_scene load_steps=3 format=3 uid="uid://b3ciqydkjnkkx"]
+ 
+ [ext_resource type="Script" uid="uid://qqe2l2km3uki" path="res://src/combat/combat_arena.gd" id="1_iqdn5"]
+-[ext_resource type="Script" uid="uid://d4iykhcmgf6ox" path="res://src/combat/actors/combat_turn_queue.gd" id="2_8roha"]
++[ext_resource type="Script" uid="uid://d4iykhcmgf6ox" path="res://src/combat/battlers/battler_roster.gd" id="2_8roha"]
+ 
+ [node name="CombatArena" type="Control"]
+ custom_minimum_size = Vector2(1920, 1080)

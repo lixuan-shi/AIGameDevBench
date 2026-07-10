@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2025-10-24_3bfd80b_120"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "df9c00c4601156fee8cbf846b308cc237318659b"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\Super-Mario-Bros.-Remastered-Public"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: Scripts/Parts/Checkpoint.gd."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2025-10-24_3bfd80b_120"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

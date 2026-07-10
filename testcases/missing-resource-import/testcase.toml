@@ -1,0 +1,19 @@
+[testcase]
+id = "missing-resource-import"
+category = "precise_edit"
+source_kind = "folder"
+task = """
+scenes/main.tscn references a Texture2D resource that does not exist, so the scene fails to load headless ('No loader found for resource ... expected type: Texture2D'). Fix the scene so it loads in headless Godot and shows a player sprite, without depending on a missing external resource.
+"""
+
+[verifier]
+type = "godot_scene_assert"
+entry = "verifier_scene.tscn"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+author = "Claude"
+created = "2026-06-29"
+notes = "precise_edit/easy. Mined from a real Codex Godot session (GameDevFeatsShowcase) where a scene referenced res://assets/player.svg with no import, and headless boot kept failing with 'No loader found for resource ... expected type: Texture2D' + Parse Error. Baseline main.tscn has an ext_resource pointing at a NON-EXISTENT file -> godot --import can't recreate it -> L0 load crashes -> noop=0. Golden swaps the missing external texture for an in-scene PlaceholderTexture2D (64x64) so the scene loads and the Player sprite has a real texture -> patch=1.00."

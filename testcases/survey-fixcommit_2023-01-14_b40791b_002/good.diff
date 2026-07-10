@@ -1,0 +1,43 @@
+diff --git a/source/match/debug/GodModeHud.tscn b/source/match/debug/GodModeHud.tscn
+index decd97f..21e58aa 100644
+--- a/source/match/debug/GodModeHud.tscn
++++ b/source/match/debug/GodModeHud.tscn
+@@ -1,12 +1,11 @@
+-[gd_scene load_steps=6 format=3 uid="uid://b6n7cwv706x5n"]
++[gd_scene load_steps=5 format=3 uid="uid://b6n7cwv706x5n"]
+ 
+ [ext_resource type="Script" path="res://source/match/debug/GodModeHud.gd" id="1_n4lpk"]
+ [ext_resource type="Script" path="res://source/match/debug/PlayerManager.gd" id="2_julod"]
+ [ext_resource type="Script" path="res://source/match/debug/UnitsManager.gd" id="3_1fe88"]
+ 
+ [sub_resource type="ButtonGroup" id="ButtonGroup_0h5ms"]
+-
+-[sub_resource type="ButtonGroup" id="ButtonGroup_yosiq"]
++resource_local_to_scene = false
+ 
+ [node name="GodModeHUD" type="CanvasLayer"]
+ script = ExtResource("1_n4lpk")
+@@ -120,7 +119,7 @@ text = "Selected"
+ 
+ [node name="AllUnitsCheckBox" type="CheckBox" parent="MarginContainer/UnitsManager/MarginContainer/VBoxContainer/HBoxContainer"]
+ layout_mode = 2
+-button_group = SubResource("ButtonGroup_yosiq")
++button_group = SubResource("ButtonGroup_0h5ms")
+ text = "All"
+ 
+ [node name="ActionCaptionToggleButton" type="Button" parent="MarginContainer/UnitsManager/MarginContainer/VBoxContainer"]
+diff --git a/source/match/units/Unit.gd b/source/match/units/Unit.gd
+index 63e2bf3..6c4e364 100644
+--- a/source/match/units/Unit.gd
++++ b/source/match/units/Unit.gd
+@@ -15,8 +15,8 @@ func _set_action(action_node):
+ 	_teardown_current_action()
+ 	action = action_node
+ 	if action != null:
+-		var action_copy = action
+-		action.tree_exited.connect(func(): _on_action_node_tree_exited(action_copy))
++		var action_copy = action  # TODO: check if bind creates copy itself - remove if so
++		action.tree_exited.connect(_on_action_node_tree_exited.bind(action_copy))
+ 		add_child(action_node)
+ 	_action_locked = false
+ 	action_changed.emit(action)

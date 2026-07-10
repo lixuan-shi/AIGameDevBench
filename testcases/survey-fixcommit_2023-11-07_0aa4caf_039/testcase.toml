@@ -1,0 +1,23 @@
+[testcase]
+id = "survey-fixcommit_2023-11-07_0aa4caf_039"
+category = "behavior_logic"
+source_kind = "git"
+baseline_ref = "c2af4146e5b63b6d0a6842323e58a0e69755310f"
+source_repo = "C:\\Users\\WinterZhao\\AppData\\Local\\Temp\\scout\\godot-open-rts"
+task = "Investigate and fix the defect in the following file(s), making the affected feature behave correctly: source/match/players/simple-clairvoyant-ai/EconomyController.gd, tests/manual/TestUnitsFightingEachOther.tscn."
+
+[verifier]
+type = "survey_bad_case"
+entry = "survey_bad_case.json"
+
+[scoring]
+mode = "checkpoints"
+
+[provenance]
+source = "survey"
+source_session = "fixcommit_2023-11-07_0aa4caf_039"
+bad_case_type = "A1"
+captured_harness = "git-history"
+transcript_session_id = ""
+context_file = "survey_bad_case.json"
+bad_diff = "bad.diff"

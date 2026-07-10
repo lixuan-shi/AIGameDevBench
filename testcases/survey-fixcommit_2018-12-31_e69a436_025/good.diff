@@ -1,0 +1,22 @@
+diff --git a/godot/interface/debug/DebugInterface.gd b/godot/interface/debug/DebugInterface.gd
+index eaadd1a..9f77811 100644
+--- a/godot/interface/debug/DebugInterface.gd
++++ b/godot/interface/debug/DebugInterface.gd
+@@ -1,6 +1,6 @@
+ extends Control
+ 
+-onready var spin_box : SpinBox = $Panel/Column/HBoxContainer/SpinBox
++onready var spin_box : SpinBox = $Column/HBoxContainer/SpinBox
+ 
+ var game_saver : Node = null
+ 
+diff --git a/godot/interface/debug/DebugInterface.tscn b/godot/interface/debug/DebugInterface.tscn
+index 04b4115..cad9a95 100644
+--- a/godot/interface/debug/DebugInterface.tscn
++++ b/godot/interface/debug/DebugInterface.tscn
+@@ -45,3 +45,5 @@ margin_bottom = 154.0
+ rect_min_size = Vector2( 100, 40 )
+ text = "Load"
+ 
++[connection signal="pressed" from="Column/SaveButton" to="." method="_on_SaveButton_pressed"]
++[connection signal="pressed" from="Column/LoadButton" to="." method="_on_LoadButton_pressed"]

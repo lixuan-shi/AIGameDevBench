@@ -1,0 +1,1037 @@
+diff --git a/src/Main2.tscn b/src/Main2.tscn
+index b80119f..de62dfb 100644
+--- a/src/Main2.tscn
++++ b/src/Main2.tscn
+@@ -1,4 +1,4 @@
+-[gd_scene load_steps=15 format=4 uid="uid://dve3nxx0ohm1g"]
++[gd_scene load_steps=17 format=4 uid="uid://dve3nxx0ohm1g"]
+ 
+ [ext_resource type="Script" uid="uid://ccm6jxmjt0frp" path="res://src/main_2.gd" id="1_d0xvx"]
+ [ext_resource type="Script" uid="uid://bt8owd5e0ns68" path="res://src/field/gameboard/gameboard_layer.gd" id="2_08ad2"]
+@@ -9,7 +9,9 @@
+ [ext_resource type="Texture2D" uid="uid://dbpvlf2f8ajxy" path="res://assets/terrain/debug_cell_occupancy.png" id="4_u7xvm"]
+ [ext_resource type="Script" uid="uid://27j187rqxg64" path="res://src/field/gameboard/debug_map_boundaries.gd" id="6_ndalr"]
+ [ext_resource type="Resource" uid="uid://k63mv5dbd1uk" path="res://maps/village/gbprops_village.tres" id="7_7v0vs"]
+-[ext_resource type="Script" uid="uid://ht3xm51xvouh" path="res://src/field/gamepieces/controller.gd" id="8_a4m4d"]
++[ext_resource type="TileSet" uid="uid://cnlvvllr0ici" path="res://src/field/gamepieces/controllers/cursor/tileset_cursor.tres" id="8_vw0ml"]
++[ext_resource type="Script" uid="uid://dwq2jtul5j1rc" path="res://src/field/gamepieces/controllers/cursor/field_cursor.gd" id="9_xqwga"]
++[ext_resource type="Script" uid="uid://vnofet0hi8mx" path="res://src/field/gamepieces/player_controller.gd" id="10_7v0vs"]
+ 
+ [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_u7xvm"]
+ texture = ExtResource("2_dsdwj")
+@@ -62,18 +64,24 @@ script = ExtResource("3_ppad8")
+ script = ExtResource("6_ndalr")
+ gameboard_properties = ExtResource("7_7v0vs")
+ 
++[node name="Cursor" type="TileMapLayer" parent="Map"]
++tile_set = ExtResource("8_vw0ml")
++script = ExtResource("9_xqwga")
++
+ [node name="Gamepieces" type="Node2D" parent="."]
+ 
+ [node name="Gamepiece" parent="Gamepieces" instance=ExtResource("2_nevdf")]
+-position = Vector2(88.2, 21.4)
++position = Vector2(72.4, 38.6)
+ animation_scene = ExtResource("3_08ad2")
++move_speed = 128.0
+ 
+ [node name="Camera2D" type="Camera2D" parent="Gamepieces/Gamepiece"]
+ metadata/_edit_lock_ = true
+ 
+ [node name="Controller" type="Node2D" parent="Gamepieces/Gamepiece"]
+-position = Vector2(-1.52588e-05, -7.62939e-06)
+-script = ExtResource("8_a4m4d")
++position = Vector2(-7.62939e-06, -7.62939e-06)
++scale = Vector2(1, 1)
++script = ExtResource("10_7v0vs")
+ metadata/_edit_lock_ = true
+ 
+ [node name="Gamepiece2" parent="Gamepieces" instance=ExtResource("2_nevdf")]
+diff --git a/src/field/gameboard/gameboard.gd b/src/field/gameboard/gameboard.gd
+index 29797b8..c68f2bf 100644
+--- a/src/field/gameboard/gameboard.gd
++++ b/src/field/gameboard/gameboard.gd
+@@ -30,28 +30,6 @@ func _ready() -> void:
+ 	pathfinder = Pathfinder.new()
+ 
+ 
+-## Checks all [TileMapLayers] in the [constant GameboardLayer.GROUP] to see if the cell is clear
+-## (returns true) or blocked (returns false).
+-## [/br][/br]A clear cell must fulfill two criteria:
+-## [/br]- Exists in at least one of the [GameboardLayer]s.
+-## [/br]- None of the layers block movement at this cell, as defined by the
+-## [constant GameboardLayer.BLOCKED_CELL_DATA_LAYER] custom data layer (see
+-## [method TileData.get_custom_data])
+-func is_cell_clear(coord: Vector2i) -> bool:
+-	# Check to make sure that cell exists.
+-	var cell_exists: = false
+-	
+-	for tilemap: GameboardLayer in get_tree().get_nodes_in_group(GameboardLayer.GROUP):
+-		if tilemap and coord in tilemap.get_used_cells():
+-			cell_exists = true
+-			if not tilemap.is_cell_clear(coord):
+-				return false
+-	
+-	# There is no terrain blocking cell movement. However we only want to allow movement if the cell
+-	# actually exists in one of the tilemap layers.
+-	return cell_exists
+-
+-
+ ## Convert cell coordinates to pixel coordinates.
+ func cell_to_pixel(cell_coordinates: Vector2i) -> Vector2:
+ 	return Vector2(cell_coordinates * properties.cell_size) + properties.half_cell_size
+@@ -142,7 +120,7 @@ func _add_cells_to_pathfinder(cleared_cells: Array[Vector2i]) -> Dictionary[int,
+ 	# the pathfinder won't actually be changed.
+ 	for cell in cleared_cells:
+ 		# Note that cleared cells need to have all layers checked for a blocking tile.
+-		if not pathfinder.has_cell(cell) and is_cell_clear(cell):
++		if not pathfinder.has_cell(cell) and _is_cell_clear(cell):
+ 			var uid: = cell_to_index(cell)
+ 			pathfinder.add_point(uid, cell)
+ 			added_cells[uid] = cell
+@@ -158,7 +136,7 @@ func _add_cells_to_pathfinder(cleared_cells: Array[Vector2i]) -> Dictionary[int,
+ func _remove_cells_from_pathfinder(blocked_cells: Array[Vector2i]) -> Array[Vector2i]:
+ 	var removed_cells: Array[Vector2i] = []
+ 	for cell in blocked_cells:
+-		if pathfinder.has_cell(cell) and not is_cell_clear(cell):
++		if pathfinder.has_cell(cell) and not _is_cell_clear(cell):
+ 			pathfinder.remove_point(cell_to_index(cell))
+ 			removed_cells.append(cell)
+ 	return removed_cells
+@@ -173,3 +151,25 @@ func _connect_new_pathfinder_cells(added_cells: Dictionary[int, Vector2i]) -> vo
+ 				var neighbor_id: = Gameboard.cell_to_index(neighbor)
+ 				if pathfinder.has_point(neighbor_id):
+ 					pathfinder.connect_points(uid, neighbor_id)
++
++
++# Checks all [TileMapLayers] in the [constant GameboardLayer.GROUP] to see if the cell is clear
++# (returns true) or blocked (returns false).
++# [/br][/br]A clear cell must fulfill two criteria:
++# [/br]- Exists in at least one of the [GameboardLayer]s.
++# [/br]- None of the layers block movement at this cell, as defined by the
++# [constant GameboardLayer.BLOCKED_CELL_DATA_LAYER] custom data layer (see
++# [method TileData.get_custom_data])
++func _is_cell_clear(coord: Vector2i) -> bool:
++	# Check to make sure that cell exists.
++	var cell_exists: = false
++	
++	for tilemap: GameboardLayer in get_tree().get_nodes_in_group(GameboardLayer.GROUP):
++		if tilemap and coord in tilemap.get_used_cells():
++			cell_exists = true
++			if not tilemap.is_cell_clear(coord):
++				return false
++	
++	# There is no terrain blocking cell movement. However we only want to allow movement if the cell
++	# actually exists in one of the tilemap layers.
++	return cell_exists
+diff --git a/src/field/gameboard/pathfinder.gd b/src/field/gameboard/pathfinder.gd
+index 4cfd459..dee3389 100644
+--- a/src/field/gameboard/pathfinder.gd
++++ b/src/field/gameboard/pathfinder.gd
+@@ -5,10 +5,17 @@ class_name Pathfinder
+ extends AStar2D
+ 
+ 
++## Returns true if the coordinate is found in the Pathfinder.
+ func has_cell(coord: Vector2i) -> bool:
+ 	return has_point(Gameboard.cell_to_index(coord))
+ 
+ 
++## Returns true if the coordinate is found in the Pathfinder and the cell is unoccupied.
++func can_move_to(coord: Vector2i) -> bool:
++	var uid: = Gameboard.cell_to_index(coord)
++	return has_point(uid) and not is_point_disabled(uid)
++
++
+ ## Find a path between two cells. Returns an empty array if no path is available.
+ func get_path_to_cell(source_coord: Vector2i, target_coord: Vector2i) -> Array[Vector2i]:
+ 	var move_path: Array[Vector2i] = []
+@@ -16,8 +23,9 @@ func get_path_to_cell(source_coord: Vector2i, target_coord: Vector2i) -> Array[V
+ 	var source_id: = Gameboard.cell_to_index(source_coord)
+ 	var target_id: = Gameboard.cell_to_index(target_coord)
+ 	if has_point(source_id) and has_point(target_id):
+-		for path_coord in get_point_path(source_id, target_id):
+-			move_path.append(Vector2i(path_coord))
++		for path_coord: Vector2i in get_point_path(source_id, target_id):
++			if path_coord != source_coord: # Don't include the source as the first path element.
++				move_path.append(path_coord)
+ 	
+ 	return move_path
+ 
+diff --git a/src/field/gamepieces/controller.gd b/src/field/gamepieces/controller.gd
+index 3169c78..daa8ef6 100644
+--- a/src/field/gamepieces/controller.gd
++++ b/src/field/gamepieces/controller.gd
+@@ -1,9 +1,16 @@
+ @tool
+-extends Node2D
++@icon("res://assets/editor/icons/IconGamepieceController.svg")
++class_name GamepieceController extends Node2D
+ 
+ # The controller operates on its direct parent, which must be a gamepiece object.
+ var _gamepiece: Gamepiece
+ 
++# Keep track of a move path. The controller will check that the path is clear each time the 
++# gamepiece needs to continue on to the next cell.
++var move_path: Array[Vector2i] = []:
++	set = move_along_path
++var _current_waypoint: Vector2i
++
+ ## An active controller will receive input events and process at idle and physics frames. An
+ ## inactive controller will not.
+ var is_active: = false:
+@@ -22,12 +29,21 @@ func _ready() -> void:
+ 	
+ 	if not Engine.is_editor_hint():
+ 		is_active = true
++		
++		_gamepiece.arriving.connect(_on_gamepiece_arriving)
++		_gamepiece.arrived.connect(_on_gamepiece_arrived)
++		
++		#FieldEvents.input_paused.connect(_on_input_paused)
+ 
+ 
+ func _process(_delta: float) -> void:
++	if _gamepiece.is_moving():
++		return
++	
+ 	var input_direction: = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
+ 	if input_direction:
+ 		if not _gamepiece.is_moving():
++			var source_cell: = GamepieceRegistry.get_cell(_gamepiece)
+ 			var target_cell: = Vector2i.ZERO
+ 			
+ 			# Unless using 8-direction movement, one movement axis must be preferred. 
+@@ -39,10 +55,40 @@ func _process(_delta: float) -> void:
+ 			target_cell = Gameboard.pixel_to_cell(_gamepiece.position) + Vector2i(input_direction)
+ 			
+ 			# Try to get a path to destination (will fail if cell is occupied)
+-			print(Gameboard.is_cell_clear(target_cell))
++			var new_move_path: = Gameboard.pathfinder.get_path_to_cell(source_cell, target_cell)
++			
++			# Path is invalid. Bump animation?
++			if new_move_path.size() <= 1:
++				pass
++			
++			else:
++				GamepieceRegistry.move_gamepiece(_gamepiece, target_cell)
++				_gamepiece.move_to(Gameboard.cell_to_pixel(target_cell))
++			print(new_move_path)
++			#print(Gameboard.pathfinder.get_path_to_cell())
+ 			# If path is valid, move.
+ 
+ 
++#func _unhandled_input(event: InputEvent) -> void:
++	#if event.is_action_released("select"):
++		#var source_cell: = GamepieceRegistry.get_cell(_gamepiece)
++		#var clicked_cell: = Gameboard.pixel_to_cell(get_global_mouse_position()/global_scale)
++		#
++		#var new_move_path: = Gameboard.pathfinder.get_path_to_cell(source_cell, clicked_cell)
++		#if not new_move_path.is_empty():
++			##print("Found path. ", move_path)
++			#move_path = new_move_path
++		#
++		#else:
++			#var adjacent_path: = Gameboard.pathfinder.get_path_cells_to_adjacent_cell(source_cell, clicked_cell)
++			#if adjacent_path:
++				##print("No path, use adjacent instead", adjacent_path)
++				#move_path = adjacent_path
++			#
++			#else:
++				#print("No path found.")
++
++
+ func _get_configuration_warnings() -> PackedStringArray:
+ 	var warnings: PackedStringArray = []
+ 	if not _gamepiece:
+@@ -55,3 +101,43 @@ func _notification(what: int) -> void:
+ 	if what == NOTIFICATION_PARENTED:
+ 		_gamepiece = get_parent() as Gamepiece
+ 		update_configuration_warnings()
++
++
++func move_along_path(value: Array[Vector2i]) -> void:
++	move_path = value
++	if move_path.size() >= 1 and Gameboard.pathfinder.can_move_to(move_path[0]):
++		_current_waypoint = move_path.pop_front()
++		_gamepiece.move_to(Gameboard.cell_to_pixel(_current_waypoint))
++		
++		GamepieceRegistry.move_gamepiece(_gamepiece, _current_waypoint)
++	
++	else:
++		move_path.clear()
++
++
++# The controller's gamepiece will finish travelling this frame unless it is extended. When following
++# a path, the gamepiece will want to travel to the next waypoint.
++# excess_distance covers cases where the gamepiece will move past the current waypoint and prevents
++# stuttering for a single frame (or slower-than-expected movement for *very* fast gamepieces).
++func _on_gamepiece_arriving(excess_distance: float) -> void:
++	if not move_path.is_empty() and is_active:
++		# Fast gamepieces could jump several waypoints at once, so check to see which waypoint is
++		# next in line. 
++		while not move_path.is_empty() and excess_distance > 0:
++			if not Gameboard.pathfinder.can_move_to(move_path[0]):
++				print("Can't move to ", move_path[0])
++				return
++			
++			_current_waypoint = move_path.pop_front()
++			var destination = Gameboard.cell_to_pixel(_current_waypoint)
++			var distance_to_waypoint: = \
++				_gamepiece.position.distance_to(destination)
++			
++			_gamepiece.move_to(destination)
++			GamepieceRegistry.move_gamepiece(_gamepiece, _current_waypoint)
++			
++			excess_distance -= distance_to_waypoint
++
++
++func _on_gamepiece_arrived() -> void:
++	move_path.clear()
+diff --git a/src/field/field_cursor.gd b/src/field/gamepieces/controllers/cursor/field_cursor.gd
+similarity index 60%
+rename from src/field/field_cursor.gd
+rename to src/field/gamepieces/controllers/cursor/field_cursor.gd
+index 788785a..f40f00f 100644
+--- a/src/field/field_cursor.gd
++++ b/src/field/gamepieces/controllers/cursor/field_cursor.gd
+@@ -3,7 +3,7 @@
+ ## The field cursor's role is to determine whether or not the input event occurs over a particular
+ ## cell and how that cell should be highlighted.
+ class_name FieldCursor
+-extends TileMap
++extends TileMapLayer
+ 
+ ## Emitted when the highlighted cell changes to a new value. An invalid cell is indicated by a value
+ ## of [constant Gameboard.INVALID_CELL].
+@@ -12,17 +12,6 @@ signal focus_changed(old_focus: Vector2i, new_focus: Vector2i)
+ ## Emitted when a cell is selected via input event.
+ signal selected(selected_cell: Vector2i)
+ 
+-## The [Gameboard] object used to convert touch/mouse coordinates to game coordinates. The reference
+-## must be valid for the cursor to function properly.
+-@export var gameboard: Gameboard
+-
+-## The cursor may focus on any cell from those included in valid_cells.
+-## The valid cell list may be used to change what is 'highlightable' at any given moment (e.g. an
+-## ability that only affects neighbouring cells or limiting movement to a given direction).
+-## An empty valid_cells list will allow the cursor to select any cell.
+-var valid_cells: Array[Vector2i] = []:
+-	set = set_valid_cells
+-
+ ## The cell currently highlighted by the cursor.
+ ##
+ ## [br][br]A focus of [constant Gameboard.INVALID_CELL] indicates that there is no highlight.
+@@ -31,8 +20,6 @@ var focus: = Gameboard.INVALID_CELL:
+ 
+ 
+ func _ready() -> void:
+-	assert(gameboard, "\n%s::initialize error - Invalid Gameboard reference!" % name)
+-	
+ 	FieldEvents.input_paused.connect(_on_input_paused)
+ 
+ 
+@@ -48,24 +35,11 @@ func _unhandled_input(event: InputEvent) -> void:
+ 		FieldEvents.cell_selected.emit(_get_cell_under_mouse())
+ 
+ 
+-## Limit cursor selection to a particular subset of cells.
+-## [br][br][b]Note:[/b] Providing an empty array will allow any cell to be highlighted (negative to
+-## positive infinity). Default behaviour assumes that all cells are valid.
+-func set_valid_cells(cells: Array[Vector2i]) -> void:
+-	valid_cells = cells
+-	
+-	if _is_cell_invalid(focus):
+-		set_focus(Gameboard.INVALID_CELL)
+-
+-
+ ## Change the highlighted cell to a new value. A value of [constant Gameboard.INVALID_CELL] will
+ ## indicate that there is no highlighted cell.
+ ## [br][br][b]Note:[/b] Values will be limited to [member valid_cells] if valid_cells is not empty.
+ ## Values outside of valid_cells will not be focused.
+ func set_focus(value: Vector2i) -> void:
+-	if _is_cell_invalid(value):
+-		value = Gameboard.INVALID_CELL
+-	
+ 	if value == focus:
+ 		return
+ 	
+@@ -75,7 +49,8 @@ func set_focus(value: Vector2i) -> void:
+ 	clear()
+ 	
+ 	if focus != Gameboard.INVALID_CELL:
+-		set_cell(0, focus, 0, Vector2(1, 5))
++		set_cell(focus, 0, Vector2i(1, 5), 0)
++		#set_cell(0, focus, 0, Vector2(1, 5))
+ 	
+ 	focus_changed.emit(old_focus, focus)
+ 	FieldEvents.cell_highlighted.emit(focus)
+@@ -85,19 +60,14 @@ func set_focus(value: Vector2i) -> void:
+ func _get_cell_under_mouse() -> Vector2i:
+ 	# The mouse coordinates need to be corrected for any scale or position changes in the scene.
+ 	var mouse_position: = ((get_global_mouse_position()-global_position) / global_scale)
+-	var cell_under_mouse: = gameboard.pixel_to_cell(mouse_position)
++	var cell_under_mouse: = Gameboard.pixel_to_cell(mouse_position)
+ 	
+-	if not gameboard.boundaries.has_point(cell_under_mouse):
++	if not Gameboard.pathfinder.has_cell(cell_under_mouse):
+ 		cell_under_mouse = Gameboard.INVALID_CELL
+ 	
+ 	return cell_under_mouse
+ 
+ 
+-# A wrapper for cell validity criteria.
+-func _is_cell_invalid(cell: Vector2i) -> bool:
+-	return not valid_cells.is_empty() and not cell in valid_cells
+-
+-
+ func _on_input_paused(is_paused: bool) -> void:
+ 	set_process_unhandled_input(!is_paused)
+ 	
+diff --git a/src/field/field_cursor.gd.uid b/src/field/gamepieces/controllers/cursor/field_cursor.gd.uid
+similarity index 100%
+rename from src/field/field_cursor.gd.uid
+rename to src/field/gamepieces/controllers/cursor/field_cursor.gd.uid
+diff --git a/src/field/player_path_destination_marker.gd b/src/field/gamepieces/controllers/cursor/player_path_destination_marker.gd
+similarity index 100%
+rename from src/field/player_path_destination_marker.gd
+rename to src/field/gamepieces/controllers/cursor/player_path_destination_marker.gd
+diff --git a/src/field/player_path_destination_marker.gd.uid b/src/field/gamepieces/controllers/cursor/player_path_destination_marker.gd.uid
+similarity index 100%
+rename from src/field/player_path_destination_marker.gd.uid
+rename to src/field/gamepieces/controllers/cursor/player_path_destination_marker.gd.uid
+diff --git a/src/field/gamepieces/controllers/cursor/tileset_cursor.tres b/src/field/gamepieces/controllers/cursor/tileset_cursor.tres
+new file mode 100644
+index 0000000..38e51d6
+--- /dev/null
++++ b/src/field/gamepieces/controllers/cursor/tileset_cursor.tres
+@@ -0,0 +1,13 @@
++[gd_resource type="TileSet" load_steps=3 format=3 uid="uid://cnlvvllr0ici"]
++
++[ext_resource type="Texture2D" uid="uid://dm4h0uo6gjp22" path="res://assets/terrain/dungeon_tilemap.png" id="1_gvcwb"]
++
++[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_orie5"]
++resource_name = "Overlay"
++texture = ExtResource("1_gvcwb")
++separation = Vector2i(1, 1)
++1:5/0 = 0
++0:5/0 = 0
++
++[resource]
++sources/0 = SubResource("TileSetAtlasSource_orie5")
+diff --git a/src/field/gamepieces/controllers/gamepiece_controller.gd b/src/field/gamepieces/controllers/gamepiece_controller.gd
+index 84c5906..e69de29 100644
+--- a/src/field/gamepieces/controllers/gamepiece_controller.gd
++++ b/src/field/gamepieces/controllers/gamepiece_controller.gd
+@@ -1,277 +0,0 @@
+-@tool
+-## Base controller responsible for the pathfinding state and movement of a gamepiece.
+-##
+-## A controller is responsible for all gamepiece behaviour, especially movement. The base controller
+-## provides several utility methods that query the [Gameboard]/[Gamepiece] state. 
+-##
+-## [br][br]Please note that the GamepieceController class doesn't [i]do[/i] anything. Specific 
+-## controllers will usually be subclassed from this base class. See [PlayerController] for a
+-## detailed example.
+-##
+-## [br][br]Requires a gamepiece as parent. The controller is derived from Node2D to account for
+-## [member global_scale] when searching for paths/objects.
+-## [br][br][b]Note:[/b] The controller is an optional component. Only gamepieces requiring player 
+-## input or AI will be controlled.
+-@icon("res://assets/editor/icons/IconGamepieceController.svg")
+-class_name GamepieceController extends Node2D
+-
+-# Colliding objects that have the following property set to true will block movement.
+-const BLOCKING_PROPERTY: = "blocks_movement"
+-
+-## Colliders matching the following mask will be used to determine which cells are walkable. Cells
+-## containing any terrain collider will not be included for pathfinding.
+-@export_flags_2d_physics var terrain_mask: = 0x1
+-
+-## The physics layers which will be used to search for gamepiece-related objects.
+-## Please see the project properties for the specific physics layers. [b]All[/b] collision shapes
+-## matching the mask will be checked regardless of position in the scene tree.
+-@export_flags_2d_physics var gamepiece_mask: = 0
+-
+-# Some controllers may be needed during cutscenes. In this case, they will not be paused.
+-@export var run_during_cutscenes: = false:
+-	set(value):
+-		run_during_cutscenes = value
+-		
+-		if not Engine.is_editor_hint():
+-			if not is_inside_tree():
+-				await ready
+-			
+-			if value and Cutscene.is_cutscene_in_progress():
+-				is_paused = false
+-			
+-			elif not value and Cutscene.is_cutscene_in_progress():
+-				is_paused = true
+-
+-## A pathfinder will be built from and respond to the physics state. This will be used to determine
+-## movement for the parent [Gamepiece].
+-var pathfinder: Pathfinder
+-
+-# Keep track of cells that need an update and do so as a batch before the next path search.
+-var _cells_to_update: PackedVector2Array = []
+-
+-# The controller operates on its direct parent, which must be a gamepiece object.
+-var _gamepiece: Gamepiece
+-
+-# Refer to _gamepiece's gameboard object to prevent repeatedly typing '_gamepiece.gameboard'.
+-var _gameboard: Gameboard
+-
+-# Create two internal collision finders that will search for other objects using Godot's built-in
+-# physics engine.
+-var _gamepiece_searcher: CollisionFinder
+-var _terrain_searcher: CollisionFinder
+-
+-# Controllers are paused on a few conditions:
+-# a) The gamestate changes to something other than the field, where controllers should not run.
+-# b) A cutscene is run, pausing most input.
+-var is_paused: = false:
+-	set = set_is_paused
+-
+-
+-# Keep track of a move path. The controller will check that the path is clear each time the 
+-# gamepiece needs to continue on to the next cell.
+-var _waypoints: Array[Vector2i] = []
+-var _current_waypoint: Vector2i
+-
+-
+-func _ready() -> void:
+-	if not Engine.is_editor_hint():
+-		# A controller must operate on a gamepiece. Obtain the gamepiece reference and pull 
+-		# necessary information from it.
+-		_gamepiece = get_parent() as Gamepiece
+-		assert(_gamepiece, "The GamepieceController must have a Gamepiece as a parent. "
+-			+ "%s is not a gamepiece!" % get_parent().name)
+-		
+-		_gameboard = _gamepiece.gameboard
+-		assert(_gameboard, "%s error: invalid Gameboard object!" % name)
+-		
+-		FieldEvents.input_paused.connect(_on_input_paused)
+-		
+-		_gamepiece.arriving.connect(_on_gamepiece_arriving)
+-		_gamepiece.arrived.connect(_on_gamepiece_arrived)
+-		
+-		# The controller will be notified of any changes in the gameboard and respond accordingly.
+-		FieldEvents.gamepiece_cell_changed.connect(_on_gamepiece_cell_changed)
+-		FieldEvents.terrain_changed.connect(_on_terrain_passability_changed)
+-		
+-		# Create the objects that will be used to query the state of the gamepieces and terrain.
+-		var min_cell_axis: = minf(_gameboard.cell_size.x-1, _gameboard.cell_size.y-1) / 2.0
+-		_gamepiece_searcher = CollisionFinder.new(get_world_2d().direct_space_state, min_cell_axis,
+-			gamepiece_mask)
+-		_terrain_searcher = CollisionFinder.new(get_world_2d().direct_space_state, min_cell_axis,
+-			terrain_mask)
+-		
+-		# Wait a frame for the gameboard and physics engine to be fully setup. Once the physics 
+-		# engine is ready, its state may be queried to setup the pathfinder.
+-		await get_tree().process_frame
+-		_rebuild_pathfinder()
+-
+-
+-func _notification(what: int) -> void:
+-	if what == NOTIFICATION_PARENTED:
+-		update_configuration_warnings()
+-
+-
+-func _get_configuration_warnings() -> PackedStringArray:
+-	var warnings: PackedStringArray = []
+-	if not get_parent() is Gamepiece:
+-		warnings.append("Expects a Gamepiece as parent to correctly function. "
+-			+ "Please only use GamepieceController as a child of a Gamepiece for correct animation.")
+-	
+-	return warnings
+-
+-
+-func travel_to_cell(destination: Vector2i, allow_adjacent_cells: = false) -> void:
+-	_update_changed_cells()
+-	_waypoints = pathfinder.get_path_cells(_gamepiece.cell, destination)
+-	# No path could be found to the destination. If allowed, search for a path to an adjacent cell.
+-	if _waypoints.size() <= 1 and allow_adjacent_cells:
+-		_waypoints = pathfinder.get_path_cells_to_adjacent_cell(_gamepiece.cell, destination)
+-	
+-	# Only follow a valid path with a length greater than 0 (more than one waypoint).
+-	if _waypoints.size() > 1:
+-		# The first waypoint is the focus' current cell and may be discarded.
+-		_waypoints.remove_at(0)
+-		_current_waypoint = _waypoints.pop_front()
+-		
+-		_gamepiece.travel_to_cell(_current_waypoint)
+-	
+-	else:
+-		_waypoints.clear()
+-
+-
+-## Returns true if a given cell is occupied by something that has a collider matching 
+-## [member gamepiece_mask].
+-func is_cell_blocked(cell: Vector2i) -> bool:
+-	var search_coordinates: = Vector2(_gameboard.cell_to_pixel(cell)) * global_scale
+-	var collisions = _gamepiece_searcher.search(search_coordinates)
+-	
+-	# Take advantage of duck typing: any colliding object could block movement. Look at the owner
+-	# of the collision shape for a blocking flag.
+-	# Please see BLOCKING_PROPERTY for more information.
+-	# Note that not all collisions will have this blocking flag. In those cases, assume that the
+-	# collision is a blocking collision.
+-	for collision in collisions:
+-		var blocks_movement = true
+-		if collision.collider.owner.get(BLOCKING_PROPERTY):
+-			blocks_movement = collision.collider.owner.get(BLOCKING_PROPERTY) as bool
+-		
+-		if blocks_movement:
+-			return true
+-	
+-	# There is one last check to make. It is possible that a gamepiece has decided to move to cell 
+-	# THIS frame. It's collision shape will not move until next frame, so the events manager may
+-	# have flagged this cell as 'targeted this frame'.
+-	return FieldEvents.did_gp_move_to_cell_this_frame(cell)
+-
+-
+-## Find all collision matching [member gamepiece_mask] at a given cell.
+-func get_collisions(cell: Vector2i) -> Array:
+-	var search_coordinates: = Vector2(_gameboard.cell_to_pixel(cell)) * global_scale
+-	return _gamepiece_searcher.search(search_coordinates)
+-
+-
+-func set_is_paused(paused: bool) -> void:
+-	is_paused = paused
+-		
+-	if is_inside_tree() and not _waypoints.is_empty():
+-		_current_waypoint = _waypoints.pop_front()
+-		_gamepiece.travel_to_cell(_current_waypoint)
+-
+-
+-# Completely rebuild the pathfinder, searching for all empty terrain within the gameboard 
+-# boundaries.
+-# Empty terrain is considered a cell that is NOT occupied by a collider with a terrain_mask.
+-func _rebuild_pathfinder() -> void:
+-	var pathable_cells: Array[Vector2i] = []
+-	
+-	# Loop through ALL cells within the board boundaries. The only cells that will not be considered
+-	# walkable are those that contain a collision shape matching the terrain layer mask.
+-	for x in range(_gameboard.boundaries.position.x, _gameboard.boundaries.end.x):
+-		for y in range(_gameboard.boundaries.position.y, _gameboard.boundaries.end.y):
+-			var cell: = Vector2i(x, y)
+-			
+-			# To find collision shapes we'll query a PhysicsDirectSpaceState2D (usually that of the
+-			# current viewport's World2D). If there is a collision shape matching terrainn_mask
+-			# then we'll know to discard the cell. Otherwise it may be considered walkable.
+-			var search_coordinates: = Vector2(_gameboard.cell_to_pixel(cell)) * global_scale
+-			var collisions: = _terrain_searcher.search(search_coordinates)
+-			if collisions.is_empty():
+-				pathable_cells.append(cell)
+-	
+-	pathfinder = Pathfinder.new(pathable_cells, _gameboard)
+-	_find_all_blocked_cells()
+-
+-
+-# The following method searches ALL cells contained in the pathfinder for objects that might block
+-# gamepiece movement. 
+-# 
+-# This method may be overwritten depending on the movement behaviour of a controller's focus. For
+-# instance, a teleporting or flying focus will not be blocked by grounded gamepieces.
+-func _find_all_blocked_cells() -> void:
+-	var blocked_cells: Array[Vector2i] = []
+-	
+-	for cell in pathfinder.get_cells():
+-		if is_cell_blocked(cell):
+-			blocked_cells.append(cell)
+-	
+-	pathfinder.set_blocked_cells(blocked_cells)
+-
+-
+-# Go through all cells that have been flagged for updates and determine if they are indeed occupied.
+-# This should usually be called before searching for a move path.
+-func _update_changed_cells() -> void:
+-	# Duplicate entries may be included in _cells_to_update. Filter them by converting the array to
+-	# dictionary keys (which are always unique).
+-	# This ensures that given coordinates are only queried once per update.
+-	var checked_coordinates: = {}
+-	
+-	for cell in _cells_to_update:
+-		if not cell in checked_coordinates:
+-			pathfinder.block_cell(cell, is_cell_blocked(cell))
+-			checked_coordinates[cell] = null
+-	
+-	_cells_to_update.clear()
+-
+-
+-func _on_input_paused(paused: bool) -> void:
+-	if paused and run_during_cutscenes and Cutscene.is_cutscene_in_progress():
+-		return
+-	
+-	is_paused = paused
+-
+-
+-# The controller's focus will finish travelling this frame unless it is extended. When following a
+-# path, the gamepiece will want to travel to the next waypoint.
+-# excess_distance covers cases where the gamepiece will move past the current waypoint and prevents
+-# stuttering for a single frame (or slower-than-expected movement for *very* fast gamepieces).
+-func _on_gamepiece_arriving(excess_distance: float) -> void:
+-	# If the gamepiece is currently following a path, continue moving along the path if it is still
+-	# a valid movement path (since obstacles may shift while in transit).
+-	if not _waypoints.is_empty() and not is_paused:
+-		while not _waypoints.is_empty() and excess_distance > 0:
+-			if is_cell_blocked(_waypoints[0]) \
+-					or FieldEvents.did_gp_move_to_cell_this_frame(_waypoints[0]):
+-				return
+-			
+-			_current_waypoint = _waypoints.pop_front()
+-			var distance_to_waypoint: = \
+-				_gamepiece.position.distance_to(_gameboard.cell_to_pixel(_current_waypoint))
+-			
+-			_gamepiece.travel_to_cell(_current_waypoint)
+-			excess_distance -= distance_to_waypoint
+-
+-
+-func _on_gamepiece_arrived() -> void:
+-	_waypoints.clear()
+-
+-
+-# Whenever a gamepiece moves, flag its destination and origin as in need of an update.
+-func _on_gamepiece_cell_changed(gamepiece: Gamepiece, old_cell: Vector2) -> void:
+-	_cells_to_update.append(old_cell)
+-	_cells_to_update.append(gamepiece.cell)
+-
+-
+-# Various events may trigger a change in the terrain which, in turn, changes which cells are
+-# passable. The pathfinder will need to be rebuilt.
+-func _on_terrain_passability_changed() -> void:
+-	_rebuild_pathfinder()
+diff --git a/src/field/gamepieces/gamepiece.gd b/src/field/gamepieces/gamepiece.gd
+index 2a50e15..2cfef1b 100644
+--- a/src/field/gamepieces/gamepiece.gd
++++ b/src/field/gamepieces/gamepiece.gd
+@@ -22,9 +22,6 @@ signal arriving(remaining_distance: float)
+ ## Emitted when the gamepiece has finished travelling to its destination cell.
+ signal arrived
+ 
+-## Emitted when [member blocks_movement] changes.
+-signal blocks_movement_changed
+-
+ ## Emitted when the gamepiece's [member direction] changes, usually as it travels about the board.
+ signal direction_changed(new_direction: Vector2)
+ 
+@@ -54,14 +51,6 @@ signal direction_changed(new_direction: Vector2)
+ 			
+ 			_follower.add_child(animation)
+ 
+-## A gamepiece may block movement into the cell it currently occupies. To do so, the gamepiece also
+-## requires a descendant [CollisionObject2D] with a valid collision shape. 
+-@export var blocks_movement: = false:
+-	set(value):
+-		if value != blocks_movement:
+-			blocks_movement = value
+-			blocks_movement_changed.emit()
+-
+ ## The gamepiece will traverse a movement path at [code]move_speed[/code] pixels per second.
+ @export var move_speed: = 64.0
+ 
+diff --git a/src/field/gamepieces/gamepiece_registry.gd b/src/field/gamepieces/gamepiece_registry.gd
+index deebd44..bbb2c91 100644
+--- a/src/field/gamepieces/gamepiece_registry.gd
++++ b/src/field/gamepieces/gamepiece_registry.gd
+@@ -54,7 +54,7 @@ func move_gamepiece(gp: Gamepiece, new_cell: Vector2i) -> bool:
+ 	_gamepieces.erase(old_cell)
+ 	_gamepieces[new_cell] = gp
+ 	
+-	#Events.gamepiece_moved.emit(gp, old_cell, new_cell)
++	gamepiece_moved.emit(gp, new_cell, old_cell)
+ 	return true
+ 
+ 
+diff --git a/src/field/gamepieces/player_controller.gd b/src/field/gamepieces/player_controller.gd
+new file mode 100644
+index 0000000..c38b384
+--- /dev/null
++++ b/src/field/gamepieces/player_controller.gd
+@@ -0,0 +1,59 @@
++@tool
++## Applied to any gamepiece to allow player control.
++##
++## The controller responds to player input to handle movement and interaction.
++extends GamepieceController
++
++const GROUP: = "_PLAYER_CONTROLLER_GROUP"
++
++# Keep track of a targeted interaction. Used to face & interact with the object at a path's end.
++# It is reset on cancelling the move path or continuing movement via arrows/gamepad directions.
++var _target: Interaction = null
++
++
++func _ready() -> void:
++	super._ready()
++	
++	if not Engine.is_editor_hint():
++		add_to_group(GROUP)
++	
++		FieldEvents.cell_selected.connect(_on_cell_selected)
++
++
++func _on_cell_selected(cell: Vector2i) -> void:
++	if is_active and not _gamepiece.is_moving():
++		var source_cell: = Gameboard.pixel_to_cell(_gamepiece.position)
++		
++		# Don't move to the cell the focus is standing on.
++		if cell == source_cell:
++			return
++		
++		# Take a look at what's underneath the cursor. If there's an interaction, move towards it
++		# and try to interact with it.
++		
++		# Otherwise it's just the empty gameboard, so we'll try to move the player towards the
++		# selected cell.
++		move_path = Gameboard.pathfinder.get_path_to_cell(source_cell, cell)
++		if not move_path.is_empty():
++			FieldEvents.player_path_set.emit(_gamepiece, move_path.back())
++		
++		# If there is an interaction underneath the cursor the player's gamepiece should flag the
++		# target and move to an adjacent cell.
++		#if not collisions.is_empty():
++			#for collision: Dictionary in collisions:
++				#if collision.collider.owner is Interaction:
++					#_target = collision.collider.owner
++					#break
++		
++		# The following method will move to an empty cell OR adjacent to a blocked cell that has
++		# an interaction located on it.
++		
++		
++		#travel_to_cell(cell, _target != null)
++		#if not _waypoints.is_empty():
++			#FieldEvents.player_path_set.emit(_gamepiece, _waypoints.back())
++		#
++		## There is no path but there is a target, which means that the player is standing right next
++		## to the target interaction.
++		#elif _target:
++			#_on_gamepiece_arrived()
+diff --git a/src/field/gamepieces/player_controller.gd.uid b/src/field/gamepieces/player_controller.gd.uid
+new file mode 100644
+index 0000000..e27f5e3
+--- /dev/null
++++ b/src/field/gamepieces/player_controller.gd.uid
+@@ -0,0 +1 @@
++uid://vnofet0hi8mx
+diff --git a/src/main.tscn b/src/main.tscn
+index c7c12d4..05bafd9 100644
+--- a/src/main.tscn
++++ b/src/main.tscn
+@@ -1,8 +1,8 @@
+-[gd_scene load_steps=90 format=3 uid="uid://p01fb6nvi144"]
++[gd_scene load_steps=88 format=3 uid="uid://p01fb6nvi144"]
+ 
+ [ext_resource type="Script" uid="uid://m3oktjc6gmsb" path="res://src/field/field.gd" id="2_bkxev"]
+-[ext_resource type="Script" uid="uid://dwq2jtul5j1rc" path="res://src/field/field_cursor.gd" id="5_3guor"]
+-[ext_resource type="Resource" uid="uid://cbnicto2l2ur2" path="res://maps/default_gameboard.tres" id="6_kd8tv"]
++[ext_resource type="TileSet" uid="uid://cnlvvllr0ici" path="res://src/field/gamepieces/controllers/cursor/tileset_cursor.tres" id="3_2v5er"]
++[ext_resource type="Script" uid="uid://dwq2jtul5j1rc" path="res://src/field/gamepieces/controllers/cursor/field_cursor.gd" id="5_3guor"]
+ [ext_resource type="TileSet" uid="uid://biq84075xlypd" path="res://assets/terrain/tilesets/kenney_obstacles.tres" id="7_po5fq"]
+ [ext_resource type="Texture2D" uid="uid://dm4h0uo6gjp22" path="res://assets/terrain/dungeon_tilemap.png" id="9_woa3f"]
+ [ext_resource type="PackedScene" uid="uid://b626e0bngfvjj" path="res://src/field/gamepieces/gamepiece.tscn" id="11_yntrj"]
+@@ -11,7 +11,7 @@
+ [ext_resource type="PackedScene" uid="uid://qxua6ekob7fa" path="res://assets/characters/gobot_gfx.tscn" id="12_oablq"]
+ [ext_resource type="Script" uid="uid://ccow10kcmjj04" path="res://maps/town/gang_of_four_conversation.gd" id="13_0rh60"]
+ [ext_resource type="Texture2D" uid="uid://b71dt8n01lhd0" path="res://assets/gui/path_destination_marker.tres" id="13_osl4o"]
+-[ext_resource type="Script" uid="uid://drl6kefixf2hu" path="res://src/field/player_path_destination_marker.gd" id="14_0j4ru"]
++[ext_resource type="Script" uid="uid://drl6kefixf2hu" path="res://src/field/gamepieces/controllers/cursor/player_path_destination_marker.gd" id="14_0j4ru"]
+ [ext_resource type="Resource" uid="uid://2604gnv0ps2b" path="res://maps/town/warrior.dtl" id="14_68y0v"]
+ [ext_resource type="PackedScene" uid="uid://se1wnxu5svgj" path="res://assets/characters/knight_gfx.tscn" id="14_av6f5"]
+ [ext_resource type="Script" uid="uid://jka4efg1wci6" path="res://src/field/cutscenes/templates/conversations/conversation_template.gd" id="14_b3y71"]
+@@ -74,16 +74,6 @@
+ [ext_resource type="Resource" uid="uid://bwjallq2c71rq" path="res://maps/opening_cutscene.dtl" id="68_jcriq"]
+ [ext_resource type="Script" uid="uid://i6j3l72wljdc" path="res://src/combat/combat.gd" id="69_meyff"]
+ 
+-[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_orie5"]
+-resource_name = "Overlay"
+-texture = ExtResource("9_woa3f")
+-separation = Vector2i(1, 1)
+-1:5/0 = 0
+-0:5/0 = 0
+-
+-[sub_resource type="TileSet" id="TileSet_uvju2"]
+-sources/0 = SubResource("TileSetAtlasSource_orie5")
+-
+ [sub_resource type="RectangleShape2D" id="RectangleShape2D_0ughy"]
+ size = Vector2(15, 15)
+ 
+@@ -367,7 +357,6 @@ size = Vector2(15, 15)
+ scale = Vector2(5, 5)
+ script = ExtResource("2_bkxev")
+ focused_game_piece = NodePath("Terrain/Gamepieces/Player")
+-gameboard = ExtResource("6_kd8tv")
+ 
+ [node name="Terrain" type="TileMap" parent="Field"]
+ y_sort_enabled = true
+@@ -384,25 +373,21 @@ layer_2/z_index = 100
+ layer_2/tile_data = PackedInt32Array(589838, 524288, 7, 786440, 262144, 0, 786439, 262144, 0, 917513, 262144, 0, 851972, 262144, 0, 786434, 262144, 0, 917507, 262144, 0, 851983, 262144, 0, 589836, 262144, 0, 589834, 262144, 0, 851989, 262144, 0, 524312, 262144, 0, 327683, 262144, 0, 65554, 262144, 0, 131088, 262144, 0, 20, 262144, 0, 589831, 196608, 5, 655360, 458752, 0, 1703982, 393216, 2, 1835053, 393216, 0, 2031665, 393216, 0, 1835067, 393216, 0, 327738, 196609, 5, 393269, 196609, 5, 1507397, 458752, 0, 1507394, 458752, 0, 1572929, 393216, 0, 1638463, 393216, 0, 1703998, 393216, 0, 1769533, 393216, 0, 1769532, 458752, 0, 1572928, 458752, 0, 1507398, 393216, 0)
+ 
+ [node name="PlayerCursor" type="TileMap" parent="Field/Terrain"]
+-tile_set = SubResource("TileSet_uvju2")
++tile_set = ExtResource("3_2v5er")
+ format = 2
+ script = ExtResource("5_3guor")
+-gameboard = ExtResource("6_kd8tv")
+ 
+ [node name="PlayerPathDestinationMarker" type="Sprite2D" parent="Field/Terrain"]
+ visible = false
+ modulate = Color(0.909804, 0.270588, 0.215686, 0.705882)
+ texture = ExtResource("13_osl4o")
+ script = ExtResource("14_0j4ru")
+-gameboard = ExtResource("6_kd8tv")
+ 
+ [node name="Gamepieces" type="Node2D" parent="Field/Terrain"]
+ y_sort_enabled = true
+ 
+ [node name="Player" parent="Field/Terrain/Gamepieces" instance=ExtResource("11_yntrj")]
+ position = Vector2(24, 200)
+-gameboard = ExtResource("6_kd8tv")
+-blocks_movement = true
+ move_speed = 96.0
+ metadata/_edit_group_ = true
+ 
+@@ -414,8 +399,6 @@ metadata/_edit_lock_ = true
+ 
+ [node name="MoodyHero" parent="Field/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
+ position = Vector2(296, 24)
+-gameboard = ExtResource("6_kd8tv")
+-blocks_movement = true
+ metadata/_edit_group_ = true
+ 
+ [node name="KnightGFX" parent="Field/Terrain/Gamepieces/Town/MoodyHero" instance=ExtResource("14_av6f5")]
+@@ -429,8 +412,6 @@ emote = 1
+ 
+ [node name="Runner" parent="Field/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
+ position = Vector2(296, 184)
+-gameboard = ExtResource("6_kd8tv")
+-blocks_movement = true
+ metadata/_edit_group_ = true
+ 
+ [node name="GenericCharacterAnimation" parent="Field/Terrain/Gamepieces/Town/Runner" instance=ExtResource("12_n5rm1")]
+@@ -445,8 +426,8 @@ timeline = ExtResource("16_ybo02")
+ 
+ [node name="LoopAI" type="Node2D" parent="Field/Terrain/Gamepieces/Town/Runner" node_paths=PackedStringArray("move_path")]
+ script = ExtResource("12_glwd5")
+-move_path = NodePath("MovePath")
+ gamepiece_mask = 2
++move_path = NodePath("MovePath")
+ 
+ [node name="WaitTimer" type="Timer" parent="Field/Terrain/Gamepieces/Town/Runner/LoopAI"]
+ wait_time = 1.5
+@@ -458,8 +439,6 @@ width = 2.0
+ 
+ [node name="Thief" parent="Field/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
+ position = Vector2(248, 8)
+-gameboard = ExtResource("6_kd8tv")
+-blocks_movement = true
+ metadata/_edit_group_ = true
+ 
+ [node name="ThiefGFX" parent="Field/Terrain/Gamepieces/Town/Thief" instance=ExtResource("17_sieyv")]
+@@ -473,8 +452,6 @@ emote = 1
+ 
+ [node name="Monk" parent="Field/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
+ position = Vector2(344, 8)
+-gameboard = ExtResource("6_kd8tv")
+-blocks_movement = true
+ metadata/_edit_group_ = true
+ 
+ [node name="MonkGFX" parent="Field/Terrain/Gamepieces/Town/Monk" instance=ExtResource("17_qgtho")]
+@@ -488,8 +465,6 @@ emote = 1
+ 
+ [node name="Smith" parent="Field/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
+ position = Vector2(136, 88)
+-gameboard = ExtResource("6_kd8tv")
+-blocks_movement = true
+ metadata/_edit_group_ = true
+ 
+ [node name="KnightGFX" parent="Field/Terrain/Gamepieces/Town/Smith" instance=ExtResource("18_2msel")]
+@@ -503,8 +478,6 @@ emote = 1
+ 
+ [node name="Wizard" parent="Field/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
+ position = Vector2(344, 72)
+-gameboard = ExtResource("6_kd8tv")
+-blocks_movement = true
+ metadata/_edit_group_ = true
+ 
+ [node name="WizardGFX" parent="Field/Terrain/Gamepieces/Town/Wizard" instance=ExtResource("19_ius2d")]
+@@ -518,8 +491,6 @@ emote = 1
+ 
+ [node name="AdoringFan" parent="Field/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
+ position = Vector2(280, 104)
+-gameboard = ExtResource("6_kd8tv")
+-blocks_movement = true
+ move_speed = 235.0
+ metadata/_edit_group_ = true
+ 
+@@ -527,12 +498,9 @@ metadata/_edit_group_ = true
+ 
+ [node name="Controller" type="Node2D" parent="Field/Terrain/Gamepieces/Town/AdoringFan"]
+ script = ExtResource("26_p8jrd")
+-gamepiece_mask = 6
+-run_during_cutscenes = true
+ 
+-[node name="Interaction" parent="Field/Terrain/Gamepieces/Town/AdoringFan" node_paths=PackedStringArray("controller") instance=ExtResource("19_sa6jd")]
++[node name="Interaction" parent="Field/Terrain/Gamepieces/Town/AdoringFan" instance=ExtResource("19_sa6jd")]
+ script = ExtResource("29_at3vc")
+-controller = NodePath("../Controller")
+ timeline = ExtResource("30_n17q5")
+ 
+ [node name="InteractionPopup" parent="Field/Terrain/Gamepieces/Town/AdoringFan/Interaction" instance=ExtResource("34_qs25x")]
+@@ -540,7 +508,6 @@ emote = 1
+ 
+ [node name="RoamingEncounter" parent="Field/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
+ position = Vector2(200, 264)
+-gameboard = ExtResource("6_kd8tv")
+ move_speed = 235.0
+ metadata/_edit_group_ = true
+ 
+@@ -556,8 +523,6 @@ radius = 64
+ 
+ [node name="ConversationEncounter" parent="Field/Terrain/Gamepieces/Town" instance=ExtResource("11_yntrj")]
+ position = Vector2(83.2, 6.39999)
+-gameboard = ExtResource("6_kd8tv")
+-blocks_movement = true
+ metadata/_edit_group_ = true
+ 
+ [node name="GhostGFX" parent="Field/Terrain/Gamepieces/Town/ConversationEncounter" instance=ExtResource("36_7n3c5")]
+@@ -643,7 +608,6 @@ metadata/_edit_lock_ = true
+ 
+ [node name="Ghost" parent="Field/Terrain/Gamepieces/Grove" instance=ExtResource("11_yntrj")]
+ position = Vector2(840, 488)
+-gameboard = ExtResource("6_kd8tv")
+ metadata/_edit_group_ = true
+ metadata/_edit_lock_ = true
+ 
+@@ -797,7 +761,6 @@ item_type = 3
+ 
+ [node name="MapBoundaries" type="Node2D" parent="Field"]
+ script = ExtResource("18_cqtg7")
+-gameboard = ExtResource("6_kd8tv")
+ metadata/_edit_lock_ = true
+ 
+ [node name="UI" type="CanvasLayer" parent="Field"]
+diff --git a/src/main_2.gd b/src/main_2.gd
+index 3948795..3fd09f9 100644
+--- a/src/main_2.gd
++++ b/src/main_2.gd
+@@ -39,18 +39,3 @@ func _unhandled_input(event: InputEvent) -> void:
+ 		await get_tree().process_frame
+ 		await get_tree().process_frame
+ 		print(Gameboard.pathfinder)
+-	
+-	elif event.is_action_released("select"):
+-		var clicked_cell: = Gameboard.pixel_to_cell(get_global_mouse_position()/global_scale)
+-		
+-		var move_path: = Gameboard.pathfinder.get_path_to_cell(Vector2i(2,4), clicked_cell)
+-		if move_path:
+-			print("Found path. ", move_path)
+-		
+-		else:
+-			var adjacent_path: = Gameboard.pathfinder.get_path_cells_to_adjacent_cell(Vector2i(2,4), clicked_cell)
+-			if adjacent_path:
+-				print("No path, use adjacent instead", adjacent_path)
+-			
+-			else:
+-				print("No path found.")

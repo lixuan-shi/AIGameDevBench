@@ -1,0 +1,239 @@
+diff --git a/godot/assets/shaders/transition.material b/godot/assets/shaders/transition.material
+index c05cc3ced84917e50ab454472a5cf9d3efeef7df..1dfb542befb934564810c41958c90f1f427346a4 100644
+GIT binary patch
+delta 245
+zcmV<R01E%A0;&R#9s{xsEs-H3f9fGY99q)W)IJXr6-(uBet`1Pz#)ln@Stpbz(WL@
+zjtAmzwrJ3#F?<@Ww5id<$ckU`q&fE3Hq@6k?aN(ENn#(4Jc#MKSbPvx=eU({YOqzA
+z=iIXlV=(STD?O+PDTVisobi}CrjXLSw1e}(R&cgltK3r#F6XFR8o5pVXBU2g9b}ph
+zDKsybvHS)AKjZ@-ATR=B7%O{M0(t@raQ?!=SW7MkwNH>0*}3OyDLioWgi{-~B!t}6
+v>e<A?|B~?@E@D`WWB0)xvI;SP$hVKGS1ku;s}|;;BTGrU$#1xAQd2`i2X%B8
+
+delta 245
+zcmV<R01E%A0;&R#9s^R1ERi82f0`pf*fniiOP>c56-(uB1}Gm59FYhI56Z>|NCcXW
+z2g0I3lg99Aw9=+V4<jr7$dl&SW7|+)+O#isF(rw8_#r=t>AF~a5?1H9rEqGnRhj49
+zvkYS}?nNs-s0gWr_a`{xF?CEKrFm%x=Y!4QY`IpsryN|)QMoj7oBB)sXM!DMnhz;7
+zFPO3X2h9)g0U;nT0)(6@I#&X?7C?jNy*4n?(#^{@wtU%S>?_HB;3x^FGfWED#>&eK
+vg5D-Z_+K#Iql*|#5ZnWMAUebVBi|CLPPLqzEnAo;jx3dSn%@B0Qd2`i>{x8T
+
+diff --git a/godot/src/combat/battlers/stats/GrowthStats.gd b/godot/src/combat/battlers/stats/GrowthStats.gd
+index 8984e46..085253c 100644
+--- a/godot/src/combat/battlers/stats/GrowthStats.gd
++++ b/godot/src/combat/battlers/stats/GrowthStats.gd
+@@ -25,7 +25,7 @@ func create_stats(experience : int) -> CharacterStats:
+ 
+ func get_level(value : int) -> int:
+ 	var max_level : int = len(level_lookup)
+-	assert max_level > 0
++	assert(max_level > 0)
+ 	var level : int = 0
+ 	while level + 1 < max_level && value > level_lookup[level+1]:
+ 		level += 1
+@@ -36,31 +36,31 @@ func _get_interpolated_level(value : int = 0) -> float:
+ 	Calculate level, which updates all stats
+ 	"""
+ 	var max_level = len(level_lookup)
+-	assert max_level > 0
++	assert(max_level > 0)
+ 	var level : int = get_level(value)
+ 	return float(level) / float(max_level)
+ 	
+ func _get_max_health(experience : int)-> int:
+-	assert max_health_curve != null
++	assert(max_health_curve != null)
+ 	var level : float = _get_interpolated_level(experience)
+ 	return int(max_health_curve.interpolate_baked(level))
+ 
+ func _get_max_mana(experience : int)-> int:
+-	assert max_mana_curve != null
++	assert(max_mana_curve != null)
+ 	var level : float = _get_interpolated_level(experience)
+ 	return int(max_mana_curve.interpolate_baked(level))
+ 
+ func _get_strength(experience : int)-> int:
+-	assert strength_curve != null
++	assert(strength_curve != null)
+ 	var level : float = _get_interpolated_level(experience)
+ 	return int(strength_curve.interpolate_baked(level))
+ 
+ func _get_defense(experience : int)-> int:
+-	assert defense_curve != null
++	assert(defense_curve != null)
+ 	var level : float = _get_interpolated_level(experience)
+ 	return int(defense_curve.interpolate_baked(level))
+ 
+ func _get_speed(experience : int)-> int:
+-	assert speed_curve != null
++	assert(speed_curve != null)
+ 	var level : float = _get_interpolated_level(experience)
+ 	return int(speed_curve.interpolate_baked(level))
+diff --git a/godot/src/combat/interface/PopupLabel.gd b/godot/src/combat/interface/PopupLabel.gd
+index c7b9026..e32ef8c 100644
+--- a/godot/src/combat/interface/PopupLabel.gd
++++ b/godot/src/combat/interface/PopupLabel.gd
+@@ -10,7 +10,7 @@ func start(battler : Battler, type : String, message : String) -> void:
+ 	Initializes the node and starts its animation
+ 	@type: either health, mana, missed. Determines the animation the label will use
+ 	"""
+-	assert type in ['missed', 'mana', 'health']
++	assert(type in ['missed', 'mana', 'health'])
+ 	var extents : RectExtents = battler.skin.get_extents()
+ 	label.text = message
+ 	
+diff --git a/godot/src/dialogue/DialogueDatabase.gd b/godot/src/dialogue/DialogueDatabase.gd
+index 1dd5c93..59fa6db 100644
+--- a/godot/src/dialogue/DialogueDatabase.gd
++++ b/godot/src/dialogue/DialogueDatabase.gd
+@@ -5,7 +5,7 @@ var characters : Dictionary
+ 
+ func _ready() -> void:
+ 	var dir = Directory.new()
+-	assert dir.dir_exists(SOURCE_DIRECTORY)
++	assert(dir.dir_exists(SOURCE_DIRECTORY))
+ 	if not dir.open(SOURCE_DIRECTORY) == OK:
+ 		print("Could not read directory %s" % SOURCE_DIRECTORY)
+ 	dir.list_dir_begin()
+@@ -22,6 +22,6 @@ func get_texture(character_name : String, expression : String = "neutral") -> Te
+ 	"""
+ 	Returns the Texture corresponding to a character's name and expression name
+ 	"""
+-	assert character_name in characters
+-	assert expression in characters[character_name].expressions
++	assert(character_name in characters)
++	assert(expression in characters[character_name].expressions)
+ 	return characters[character_name].expressions[expression]
+diff --git a/godot/src/dialogue/DialoguePlayer.gd b/godot/src/dialogue/DialoguePlayer.gd
+index 2be8940..587c7c1 100644
+--- a/godot/src/dialogue/DialoguePlayer.gd
++++ b/godot/src/dialogue/DialoguePlayer.gd
+@@ -24,7 +24,7 @@ func start(dialogue_dict):
+ 
+ func next():
+ 	_index_current += 1
+-	assert _index_current <= _conversation.size()
++	assert(_index_current <= _conversation.size())
+ 	_update()
+ 
+ func _update():
+diff --git a/godot/src/main/Game.tscn b/godot/src/main/Game.tscn
+index 68cb5f2..1828ff1 100644
+--- a/godot/src/main/Game.tscn
++++ b/godot/src/main/Game.tscn
+@@ -35,7 +35,6 @@ stream = ExtResource( 7 )
+ script = ExtResource( 8 )
+ 
+ [node name="Debug" type="CanvasLayer" parent="."]
+-editor/display_folded = true
+ layer = 100
+ 
+ [node name="DebugInterface" parent="Debug" instance=ExtResource( 9 )]
+diff --git a/godot/src/map/LocalMap.gd b/godot/src/map/LocalMap.gd
+index 1035249..f6355bb 100644
+--- a/godot/src/map/LocalMap.gd
++++ b/godot/src/map/LocalMap.gd
+@@ -13,7 +13,7 @@ onready var dialogue_box = $MapInterface/DialogueBox
+ onready var grid = $GameBoard
+ 
+ func _ready() -> void:
+-	assert dialogue_box
++	assert(dialogue_box)
+ 	for action in get_tree().get_nodes_in_group("map_action"):
+ 		(action as MapAction).initialize(self)
+ 
+diff --git a/godot/src/map/pawns/PawnInteractive.gd b/godot/src/map/pawns/PawnInteractive.gd
+index 0fac2e6..92485a4 100644
+--- a/godot/src/map/pawns/PawnInteractive.gd
++++ b/godot/src/map/pawns/PawnInteractive.gd
+@@ -106,7 +106,7 @@ func start_interaction() -> void:
+ 	get_tree().paused = true
+ 	var actions = $Actions.get_children()
+ 	# An interactive pawn should have some interaction
+-	assert actions != []
++	assert(actions != [])
+ 	for action in actions:
+ 		action.interact()
+ 		yield(action, "finished")
+diff --git a/godot/src/map/pawns/actions/CompleteQuestAction.gd b/godot/src/map/pawns/actions/CompleteQuestAction.gd
+index 337c7f2..2764c14 100644
+--- a/godot/src/map/pawns/actions/CompleteQuestAction.gd
++++ b/godot/src/map/pawns/actions/CompleteQuestAction.gd
+@@ -9,7 +9,7 @@ export var quest_reference : PackedScene
+ var quest : Quest = null
+ 
+ func _ready() -> void:
+-	assert quest_reference
++	assert(quest_reference)
+ 	quest = QuestSystem.find_available(quest_reference.instance())
+ 	active = false
+ 	quest.connect("completed", self, "_on_Quest_completed")
+diff --git a/godot/src/map/pawns/actions/DialogueAction.gd b/godot/src/map/pawns/actions/DialogueAction.gd
+index af96d44..2c9d41f 100644
+--- a/godot/src/map/pawns/actions/DialogueAction.gd
++++ b/godot/src/map/pawns/actions/DialogueAction.gd
+@@ -14,9 +14,9 @@ func load_dialogue(file_path) -> Dictionary:
+ 	Parses a JSON file and returns it as a dictionary
+ 	"""
+ 	var file = File.new()
+-	assert file.file_exists(file_path)
++	assert(file.file_exists(file_path))
+ 
+ 	file.open(file_path, file.READ)
+ 	var dialogue = parse_json(file.get_as_text())
+-	assert dialogue.size() > 0
++	assert(dialogue.size() > 0)
+ 	return dialogue
+diff --git a/godot/src/map/pawns/actions/GiveQuestAction.gd b/godot/src/map/pawns/actions/GiveQuestAction.gd
+index 3c034ab..bdc4574 100644
+--- a/godot/src/map/pawns/actions/GiveQuestAction.gd
++++ b/godot/src/map/pawns/actions/GiveQuestAction.gd
+@@ -8,7 +8,7 @@ export var quest_reference : PackedScene
+ var quest : Quest = null
+ 
+ func _ready() -> void:
+-	assert quest_reference
++	assert(quest_reference)
+ 	quest = QuestSystem.find_available(quest_reference.instance())
+ 	quest.connect("started", self, "_on_Quest_started")
+ 
+diff --git a/godot/src/party/Inventory.gd b/godot/src/party/Inventory.gd
+index 6334820..1918a3c 100644
+--- a/godot/src/party/Inventory.gd
++++ b/godot/src/party/Inventory.gd
+@@ -16,8 +16,8 @@ func add(item: Item, amount: int = 1) -> void:
+ 		content[item] = 1 if item.unique else amount
+ 
+ func remove(item: Item, amount: int = 1):
+-	assert item in content
+-	assert amount <= content[item]
++	assert(item in content)
++	assert(amount <= content[item])
+ 
+ 	content[item] -= amount
+ 	if content[item] == 0:
+diff --git a/godot/src/party/PartyMember.gd b/godot/src/party/PartyMember.gd
+index 25681cc..593ed0f 100644
+--- a/godot/src/party/PartyMember.gd
++++ b/godot/src/party/PartyMember.gd
+@@ -19,8 +19,8 @@ onready var battler : Battler = $Battler
+ onready var SAVE_KEY : String = "party_member_" + name
+ 
+ func _ready():
+-	assert pawn_anim_path
+-	assert growth
++	assert(pawn_anim_path)
++	assert(growth)
+ 	stats = growth.create_stats(experience)
+ 	battler.stats = stats
+ 
+diff --git a/godot/src/quest/QuestSystem.gd b/godot/src/quest/QuestSystem.gd
+index 134cdc6..bf66193 100644
+--- a/godot/src/quest/QuestSystem.gd
++++ b/godot/src/quest/QuestSystem.gd
+@@ -59,7 +59,7 @@ func deliver(quest : Quest):
+ 	for party_member in party.get_active_members():
+ 		party_member.experience += rewards['experience']
+ 
+-	assert quest.get_parent() == completed_quests
++	assert(quest.get_parent() == completed_quests)
+ 	completed_quests.remove_child(quest)
+ 	delivered_quests.add_child(quest)
+ 
