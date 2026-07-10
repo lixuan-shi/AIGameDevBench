@@ -80,7 +80,11 @@ cd "$REPO_ROOT"
 
 MODE="${MODE:-http}"
 PORT="${PORT:-8899}"
-IMAGE="${IMAGE:-}"
+# Default to the public beaver_hub-public runner image (pullable with the
+# beaver_hub-public robot creds, and built with the claude CLI baked in). The
+# old xiaojun_private image is NOT pullable here → ImagePullBackOff → every
+# testcase fails. Override with --image / IMAGE only with a known-pullable ref.
+IMAGE="${IMAGE:-harbor.omgwow.ai/beaver_hub-public/aigdbench-runner:latest}"
 HARNESS_SECRET="${HARNESS_SECRET:-aigdbench-harness}"
 JOBS="${JOBS:-16}"
 TESTCASES_DIR="${TESTCASES_DIR:-/app/testcases_filtered}"
