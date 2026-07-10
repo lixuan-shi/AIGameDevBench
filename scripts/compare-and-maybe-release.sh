@@ -1,18 +1,21 @@
 #!/usr/bin/env bash
 # compare-and-maybe-release.sh — after a benchmark batch finishes, compare its
 # mean score against the agentic-game-development plugin's stored baseline (the
-# score the CURRENT release was cut at). If the new run is better by > MIN_DELTA,
-# bump the plugin version, refresh the baseline, and push to main — which triggers
-# the repo's release-on-bump.yml to publish a new release fully automatically.
+# score the CURRENT release was cut at). If the new run is NOT LOWER than baseline
+# (delta >= MIN_DELTA, default 0), bump the plugin version, refresh the baseline,
+# and push to main — which triggers release-on-bump.yml to publish a new release.
+# Per operator requirement: "benchmark 结果不低于上一版本即打出新版本."
 #
 # Baseline is stored in TWO places (in-repo authoritative + release asset):
 #   * $PLUGIN_REPO/workflow/benchmark-baseline.json   <- source of truth, versioned
 #   * uploaded as an asset by release-on-bump.yml on each publish (for provenance)
 # This script reads and writes the in-repo file only; the release asset is a copy.
+# The baseline records the plugin_commit it was cut at; a run whose plugin HEAD
+# matches that commit is NOT re-released (identical content), even if not lower.
 #
-# Decision (per operator choice): improvement => push to main = FULLY AUTOMATIC
-# release (no PR gate). Guard rails: only runs with --auto-release; otherwise it
-# just reports the comparison and what it WOULD do.
+# Decision (per operator choice): not-lower + plugin changed => push to main =
+# FULLY AUTOMATIC release (no PR gate). Guard rails: only writes with
+# --auto-release; otherwise it just reports the comparison and what it WOULD do.
 #
 # Usage:
 #   scripts/compare-and-maybe-release.sh \
@@ -25,14 +28,15 @@
 #   --plugin-repo DIR agentic-game-development checkout    (PLUGIN_REPO, default ../agentic-game-development)
 #   --baseline FILE   baseline json path (rel to plugin repo)
 #                                     (BASELINE_FILE, default workflow/benchmark-baseline.json)
-#   --min-delta N     min mean-score gain to count as improvement    (MIN_DELTA, default 0)
+#   --min-delta N     release gate threshold; release when delta >= this value
+#                     (MIN_DELTA, default 0 => "not lower than baseline")
 #   --bump T          patch|minor|major version bump on release      (BUMP, default patch)
 #   --auto-release    actually bump+commit+push main (else report only, no writes)
 #   --delivery ID     delivery id, recorded in baseline provenance   (DELIVERY, optional)
 #   --dry-run         do everything except git commit/push           (DRY_RUN)
 #   -h                help
 #
-# Exit: 0 always on a clean comparison (improved or not). Non-zero only on error
+# Exit: 0 always on a clean comparison (released or not). Non-zero only on error
 # (missing report, malformed json, git failure).
 set -euo pipefail
 
@@ -84,16 +88,36 @@ log "new run: mean_score=$NEW_SCORE over $NEW_COUNT testcase(s); current plugin 
 if [[ -f "$BASELINE_ABS" ]]; then
   BASE_SCORE="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("mean_score") or 0.0)' "$BASELINE_ABS")"
   BASE_VERSION="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("version") or "?")' "$BASELINE_ABS")"
+  BASE_PLUGIN_COMMIT="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("plugin_commit") or "")' "$BASELINE_ABS")"
   HAVE_BASELINE=1
-  log "baseline: mean_score=$BASE_SCORE (from plugin v$BASE_VERSION)"
+  log "baseline: mean_score=$BASE_SCORE (from plugin v$BASE_VERSION, commit ${BASE_PLUGIN_COMMIT:0:12})"
 else
-  BASE_SCORE=0.0; BASE_VERSION="(none)"; HAVE_BASELINE=0
+  BASE_SCORE=0.0; BASE_VERSION="(none)"; BASE_PLUGIN_COMMIT=""; HAVE_BASELINE=0
   log "no baseline file yet at $BASELINE_FILE — will establish it (no release on first run)"
 fi
 
+# Commit of the plugin content THAT WAS BENCHMARKED. Prefer the report's
+# embedded plugin_change.commit (captured by the orchestrator BEFORE the matrix,
+# from the pulled plugin HEAD) — this is the authoritative "what produced these
+# scores". Fall back to the plugin repo's current HEAD only if the report lacks
+# it. NOTE: we must NOT just use `git rev-parse HEAD` here, because establishing
+# or bumping the baseline commits to the repo and advances HEAD, which would
+# defeat the "did the plugin actually change?" guard below.
+PLUGIN_COMMIT="$(python3 -c 'import json,sys
+try:
+    print((json.load(open(sys.argv[1])).get("plugin_change") or {}).get("commit") or "")
+except Exception:
+    print("")' "$REPORT")"
+if [[ -z "$PLUGIN_COMMIT" ]]; then
+  PLUGIN_COMMIT="$(git -C "$PLUGIN_REPO" rev-parse HEAD 2>/dev/null || echo '')"
+fi
+
 DELTA="$(python3 -c "print(round(float('$NEW_SCORE') - float('$BASE_SCORE'), 6))")"
-IMPROVED="$(python3 -c "print('1' if (float('$NEW_SCORE') - float('$BASE_SCORE')) > float('$MIN_DELTA') else '0')")"
-log "delta = $NEW_SCORE - $BASE_SCORE = $DELTA  (min-delta $MIN_DELTA; improved=$IMPROVED)"
+# Gate: release when the run is NOT LOWER than baseline, i.e. delta >= min-delta
+# (default min-delta 0 => "score did not drop"). Per operator requirement:
+# "benchmark 结果不低于上一版本即打出新版本".
+RELEASE_WORTHY="$(python3 -c "print('1' if (float('$NEW_SCORE') - float('$BASE_SCORE')) >= float('$MIN_DELTA') else '0')")"
+log "delta = $NEW_SCORE - $BASE_SCORE = $DELTA  (min-delta $MIN_DELTA; release_worthy=$RELEASE_WORTHY, gate is >=)"
 
 # --- Compute the next version (semver bump) -----------------------------------
 NEXT_VERSION="$(python3 - "$CUR_VERSION" "$BUMP" <<'PY'
@@ -114,9 +138,9 @@ PY
 # --- Helper: write the baseline json (in-repo source of truth) ----------------
 write_baseline() {
   local version="$1" score="$2"
-  python3 - "$BASELINE_ABS" "$version" "$score" "$NEW_COUNT" "$NEW_IMAGE" "$DELIVERY" "$REPORT" <<'PY'
+  python3 - "$BASELINE_ABS" "$version" "$score" "$NEW_COUNT" "$NEW_IMAGE" "$DELIVERY" "$REPORT" "$PLUGIN_COMMIT" <<'PY'
 import json, sys, os
-path, version, score, count, image, delivery, report = sys.argv[1:8]
+path, version, score, count, image, delivery, report, plugin_commit = sys.argv[1:9]
 # Pull the per-testcase score map from the report for provenance/diffing.
 rep = json.load(open(report))
 cases = {t.get("testcase_id"): t.get("score")
@@ -127,10 +151,12 @@ doc = {
     "count": int(count),
     "image": image,
     "delivery": delivery or None,
+    "plugin_commit": plugin_commit or None,
     "driver": rep.get("driver"),
     "testcases": cases,
     "note": "Benchmark baseline for the CURRENT release. Updated by "
-            "AIGameDevBench/scripts/compare-and-maybe-release.sh on each improving run. "
+            "AIGameDevBench/scripts/compare-and-maybe-release.sh whenever a run scores "
+            "not lower than this baseline (gate: delta >= min-delta). "
             "Timestamps intentionally omitted for deterministic diffs.",
 }
 os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -193,12 +219,21 @@ if [[ "$HAVE_BASELINE" == "0" ]]; then
   exit 0
 fi
 
-if [[ "$IMPROVED" != "1" ]]; then
-  log "NOT improved (delta $DELTA <= min-delta $MIN_DELTA). No release. Baseline unchanged."
+if [[ "$RELEASE_WORTHY" != "1" ]]; then
+  log "score LOWER than baseline (delta $DELTA < min-delta $MIN_DELTA). No release. Baseline unchanged."
   exit 0
 fi
 
-log "IMPROVED (delta $DELTA). Target release: v$CUR_VERSION -> v$NEXT_VERSION (bump=$BUMP)."
+# Guard: don't cut a new release for plugin content identical to the baseline's.
+# The gate is "not lower", so an unchanged plugin re-running would otherwise
+# release forever. Only release when the plugin HEAD differs from the baseline's.
+if [[ -n "$PLUGIN_COMMIT" && -n "$BASE_PLUGIN_COMMIT" && "$PLUGIN_COMMIT" == "$BASE_PLUGIN_COMMIT" ]]; then
+  log "score not lower (delta $DELTA) but plugin commit unchanged (${PLUGIN_COMMIT:0:12}); nothing new to release."
+  exit 0
+fi
+
+log "RELEASE-WORTHY: score not lower than baseline (delta $DELTA >= $MIN_DELTA) and plugin changed."
+log "Target release: v$CUR_VERSION -> v$NEXT_VERSION (bump=$BUMP); plugin ${BASE_PLUGIN_COMMIT:0:12} -> ${PLUGIN_COMMIT:0:12}."
 if [[ "$AUTO_RELEASE" == "0" ]]; then
   log "(no --auto-release) would: bump manifests to v$NEXT_VERSION, refresh baseline, push main."
   exit 0
@@ -228,8 +263,8 @@ fi
     write_baseline "$NEXT_VERSION" "$NEW_SCORE" >/dev/null
   fi
   git add "$CODEX_MANIFEST" "$CLAUDE_MANIFEST" ".claude-plugin/marketplace.json" "$BASELINE_FILE"
-  git commit -m "chore(plugin): bump to v$NEXT_VERSION (benchmark improved +$DELTA over v$BASE_VERSION)" >/dev/null
+  git commit -m "chore(plugin): bump to v$NEXT_VERSION (benchmark $NEW_SCORE, delta $DELTA vs v$BASE_VERSION; not lower)" >/dev/null
   git push origin main >/dev/null 2>&1 || die "push to main failed"
 )
 log "pushed v$NEXT_VERSION to main — release-on-bump.yml will publish the release."
-log "DONE: released v$NEXT_VERSION (mean_score $BASE_SCORE -> $NEW_SCORE, +$DELTA)."
+log "DONE: released v$NEXT_VERSION (mean_score $BASE_SCORE -> $NEW_SCORE, delta $DELTA)."

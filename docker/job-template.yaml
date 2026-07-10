@@ -23,8 +23,13 @@ spec:
   backoffLimit: 0
   # Hard ceiling so a hung harness can't pin a cluster slot forever.
   activeDeadlineSeconds: ${ACTIVE_DEADLINE}
-  # Auto-clean finished Jobs after collection (orchestrator also deletes).
-  ttlSecondsAfterFinished: 600
+  # Auto-clean finished Jobs (the orchestrator also deletes on exit). This is a
+  # backstop, not the primary cleanup, so keep it generous: the collector waits
+  # on Jobs in launch order, so a Job that finishes early may sit completed for
+  # the whole remaining batch before its log is scraped. A short TTL (e.g. 600s)
+  # would GC that Job's pod first, losing its log and scoring it a bogus 0.
+  # 4h comfortably outlives any full batch; override via TTL_AFTER_FINISHED.
+  ttlSecondsAfterFinished: ${TTL_AFTER_FINISHED}
   template:
     metadata:
       labels:
@@ -36,7 +41,11 @@ spec:
       containers:
         - name: runner
           image: ${IMAGE}
-          imagePullPolicy: IfNotPresent
+          # Always: a mutable tag like :latest is re-pushed between runs, and
+          # IfNotPresent would keep a stale cached image on the node (e.g. one
+          # built before the harness CLI was added). Always guarantees each Job
+          # pulls the current image. Use an immutable tag/digest to pin instead.
+          imagePullPolicy: Always
           env:
             - name: TESTCASE
               value: "${TESTCASE}"

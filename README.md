@@ -534,11 +534,14 @@ aigdbench compare --report-a report_claude.json --report-b report_codex.json
 
 ---
 
-## Webhook 自动触发：push → 并行 bench → 优于基线则自动发布
+## Webhook 自动触发：push → 拉取插件 → 并行 bench → 不低于基线则自动发布
 
-一条 GitHub webhook 投递可以自动跑一次**全量并行 benchmark**（每个 testcase 一个隔离的
-k8s Job，harness = **claude + `agentic-game-development` 插件最新 skill**），跑完自动和
-`agentic-game-development` **上一个 release 的成绩**对比——**优于就在插件仓自动打新 release**。
+一条 GitHub webhook 投递可以自动跑一次**全量并行 benchmark**。触发时**先把
+`../agentic-game-development` 仓库 `git pull` 到最新、并据此重建 runner 镜像**，
+所以被测的就是**该路径下当前的插件**（每个 testcase 一个隔离 k8s Job，harness =
+**claude + 该插件**）。跑完把**本次插件改动**写进 `report.json`，再和
+`agentic-game-development` **上一个 release 的成绩**对比——**成绩不低于上一版本
+（delta ≥ min-delta）就在插件仓自动打新 release**。
 
 ### 端到端流程
 
@@ -552,28 +555,37 @@ game repo push
         POST $BENCH_TRIGGER_URL/trigger  {delivery, repo, ref, after}
               └─▶ bench-orchestrator.sh（常驻本机，tmux）
                     ① x-bench-token 校验 + 按 delivery id 去重
-                    ② run_k8s_matrix.sh：一 testcase 一 Job（-j 并发 gated）
+                    ② (--rebuild) build_runner_image.sh：git pull 插件仓 →
+                    │     vendor 最新 skills → 重建镜像 → 导入本地 k3s containerd
+                    │     并记录本次插件改动（commit + diff vs origin/main）
+                    ③ run_k8s_matrix.sh：一 testcase 一 Job（-j 并发 gated）
                     │     · 镜像内 claude -p {task} --plugin-dir /opt/agd-plugin
                     │     · 凭证来自 k8s Secret aigdbench-harness
                     │     · 从每个 pod 日志收集 report → 聚合 report.{json,md}
-                    ③ compare-and-maybe-release.sh：
+                    ④ 把 trigger + plugin_change（commit/文件/diff）写进 report.json
+                    ⑤ compare-and-maybe-release.sh：
                           · 读 report.json 的 mean_score
                           · 对比 agentic-game-development/workflow/benchmark-baseline.json
-                          · 若 delta > MIN_DELTA：bump 插件版本 + 刷新基线 + push main
+                          · 若 delta ≥ MIN_DELTA（默认 0，即不低于）**且插件 commit
+                            与基线不同**：bump 版本 + 刷新基线 + push main
                           · release-on-bump.yml 检测到版本变更 → 自动打 release
 ```
 
-每次投递的产物落在 `results/<delivery>/`：`report.json` / `report.md` / 各 pod 日志 /
-`batch.log`（fan-out 日志）/ `release.log`（对比+发布日志）/ `trigger.meta`（触发溯源）。
+每次投递的产物落在 `results/<delivery>/`：`report.json`（含 `trigger` 与
+`plugin_change` 两个字段——本次修改的 commit、改动文件、log、diff）/ `report.md` /
+各 pod 日志 / `rebuild.log`（拉取+重建日志）/ `batch.log`（fan-out 日志）/
+`release.log`（对比+发布日志）/ `plugin_change.json` / `trigger.meta`（触发溯源）。
 
 ### 前置准备（各做一次）
 
-1. **runner 镜像**（含 claude + 插件）：
+1. **runner 镜像**（含 claude + 插件）—— **走 registry**：
    ```bash
-   scripts/build_runner_image.sh -i harbor.omgwow.ai/<proj>/aigdbench-runner:latest --push
+   scripts/build_runner_image.sh -i harbor.omgwow.ai/beaver_hub-public/aigdbench-runner:latest --push
    ```
-   > 若目标集群是本机单节点 k3s、且无 registry 推送权限，可改为导入本地 containerd：
-   > `docker save <img> | sudo k3s ctr -n k8s.io images import -`（Job 用 `imagePullPolicy: IfNotPresent`）。
+   `beaver_hub-public` 是 public 项目，**pod 无需 imagePullSecret** 即可拉取；Job 用
+   `imagePullPolicy: Always`，所以每次重推 `:latest` 后 pod 都会拉到最新镜像（不会用到陈旧缓存）。
+   > 备选（无 registry push 权限、单节点 k3s）：`build_runner_image.sh ... --import-k3s`
+   > 直接导入本机 containerd，并把 Job 的 `imagePullPolicy` 改回 `IfNotPresent`。
 
 2. **harness 凭证 Secret**（default ns）：
    ```bash
@@ -592,16 +604,18 @@ game repo push
 
 ```bash
 scripts/bench-orchestrator.sh --mode http --port 8899 --token <shared-token> \
-  --image harbor.omgwow.ai/<proj>/aigdbench-runner:latest \
+  --image harbor.omgwow.ai/beaver_hub-public/aigdbench-runner:latest \
   --secret aigdbench-harness --jobs 16 \
   --testcases-dir /app/testcases_filtered \
   --plugin-repo ../agentic-game-development \
-  --auto-release --min-delta 0 --bump patch
+  --rebuild --auto-release --min-delta 0 --bump patch
 ```
 
 - `--mode http`：收 receiver 转发的 `POST /trigger`（`GET /healthz` 探活）。
+- `--rebuild`：**每次触发**先 `git pull` 插件仓、重建 runner 镜像并导入本地 k3s，
+  确保被测的是插件仓当前内容；同时记录本次改动（commit + diff）写进 report。
 - `--auto-release`：**打开**才会真正 bump+push；不加则只对比、打印结论、不动 release（安全默认）。
-- `--min-delta N`：mean_score 至少要涨这么多才算「优于」（默认 0，即严格 > 基线）。
+- `--min-delta N`：发版门槛，`delta ≥ N` 即发（默认 0 = **不低于**基线就发）。
 
 ### 无需改 receiver 的 fallback
 
@@ -618,13 +632,20 @@ scripts/bench-orchestrator.sh --mode watch-logs \
 ### 对比与发布判定
 
 `compare-and-maybe-release.sh` 读取 `agentic-game-development/workflow/benchmark-baseline.json`
-（**仓内文件为准**，同时每次发布会把它作为 release 资产上传做溯源）：
+（**仓内文件为准**，同时每次发布会把它作为 release 资产上传做溯源）。基线里记了它对应的
+`mean_score` 和 `plugin_commit`（被测的那次插件 commit，取自 report 的 `plugin_change.commit`）：
 
 - **无基线**（首次）：以当前插件版本建立基线，**不发布**。
-- **未优于基线**（`delta <= min-delta`）：不动任何东西。
-- **优于基线**：bump 两个 manifest（`.codex-plugin` / `.claude-plugin`）+ 刷新基线 →
-  commit + **push main** → `release-on-bump.yml` 自动打包并发布新 release。
-  Claude Code 订阅了 marketplace 的客户端下次启动即自动拉到新版。
+- **成绩低于基线**（`delta < min-delta`）：不动任何东西。
+- **插件 commit 与基线相同**（内容没变、只是重跑）：即便不低于也**不重复发版**。
+- **不低于基线且插件有改动**：bump 两个 manifest（`.codex-plugin` / `.claude-plugin`）+
+  刷新基线（记新 `mean_score` 与 `plugin_commit`）→ commit + **push main** →
+  `release-on-bump.yml` 自动打包并发布新 release。Claude Code 订阅了 marketplace 的
+  客户端下次启动即自动拉到新版。
+
+> report.json 里的 `plugin_change` 字段记录了**本次修改**：`commit` / `branch` /
+> `changed_files` / `log` / `diff`（diff 截断到 ~4000 行，超出置 `diff_truncated:true`），
+> 便于在 dashboard 或 PR 里核对「这次跑的到底是哪版插件、改了什么」。
 
 ---
 

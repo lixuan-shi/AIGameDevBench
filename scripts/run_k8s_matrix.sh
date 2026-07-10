@@ -61,6 +61,9 @@ OUT_DIR="${OUT_DIR:-$REPO_ROOT/results}"
 GODOT_VERSION="${GODOT_VERSION:-4.5-stable}"
 TIMEOUT="${TIMEOUT:-900}"
 ACTIVE_DEADLINE="${ACTIVE_DEADLINE:-}"
+# TTL for finished Jobs. Generous by default (4h) so early-finishing Jobs aren't
+# GC'd before the collector (which waits in launch order) scrapes their logs.
+TTL_AFTER_FINISHED="${TTL_AFTER_FINISHED:-14400}"
 HARNESS_SECRET="${HARNESS_SECRET:-}"
 HARNESS_INSTALL="${HARNESS_INSTALL:-}"
 CPU_REQ="${CPU_REQ:-500m}"; MEM_REQ="${MEM_REQ:-1Gi}"
@@ -162,7 +165,7 @@ else
   ENV_FROM='[]'
 fi
 export IMAGE DRIVER TIMEOUT GODOT_BINARY="godot" TESTCASES_DIR NAMESPACE
-export ACTIVE_DEADLINE CPU_REQ MEM_REQ CPU_LIM MEM_LIM ENV_FROM RUN_ID
+export ACTIVE_DEADLINE TTL_AFTER_FINISHED CPU_REQ MEM_REQ CPU_LIM MEM_LIM ENV_FROM RUN_ID
 HARNESS_ID="$DRIVER"; export HARNESS_ID
 
 sanitize() { echo "$1" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | cut -c1-40; }
@@ -207,20 +210,14 @@ for tc in "${TC_ARR[@]}"; do
   launch "$tc"
 done
 
-# --- 5. Wait for all Jobs to finish ------------------------------------------
-echo ">>> waiting for ${#JOBNAME[@]} Job(s) to complete..."
+# --- 5+6. Wait AND collect per Job, together --------------------------------
+# CRITICAL: collect each Job's log the moment it finishes, NOT after waiting for
+# the whole batch. Jobs carry ttlSecondsAfterFinished, so a Job that completed
+# early would be garbage-collected (pod + logs gone) before a deferred "collect
+# everything at the end" pass runs — yielding empty logs and bogus 0 scores.
+# Waiting and collecting in the same loop keeps collection inside the TTL window.
+echo ">>> waiting for and collecting ${#JOBNAME[@]} Job(s) as they finish..."
 deadline_wait=$((ACTIVE_DEADLINE + 120))
-for tc in "${TC_ARR[@]}"; do
-  jn="${JOBNAME[$tc]}"
-  # Wait for either complete or failed; whichever lands first.
-  kubectl -n "$NAMESPACE" wait --for=condition=complete "job/$jn" \
-      --timeout="${deadline_wait}s" >/dev/null 2>&1 \
-    || kubectl -n "$NAMESPACE" wait --for=condition=failed "job/$jn" \
-      --timeout=30s >/dev/null 2>&1 || true
-done
-
-# --- 6. Collect per-testcase report from pod logs ----------------------------
-echo ">>> collecting results from pod logs..."
 extract_report() {
   # stdin: full pod log. stdout: the JSON between the markers (first match).
   awk '
@@ -229,8 +226,9 @@ extract_report() {
     grab {print}
   '
 }
-for tc in "${TC_ARR[@]}"; do
-  jn="${JOBNAME[$tc]}"; tcl="$(sanitize "$tc")"
+collect_one() {
+  local tc="$1" jn="$2" tcl raw rep st
+  tcl="$(sanitize "$tc")"
   raw="$OUT_DIR/logs/${tcl}.pod.log"
   kubectl -n "$NAMESPACE" logs "job/$jn" --tail=-1 > "$raw" 2>/dev/null || true
   rep="$OUT_DIR/${tcl}.json"
@@ -250,6 +248,15 @@ print(json.dumps({"harness":"k8s","count":1,"mean_score":0.0,"testcases":[
 PY
     echo "    !! ${tc}: no report in log (job=$st) — see $raw"
   fi
+}
+for tc in "${TC_ARR[@]}"; do
+  jn="${JOBNAME[$tc]}"
+  # Wait for either complete or failed; whichever lands first, then collect NOW.
+  kubectl -n "$NAMESPACE" wait --for=condition=complete "job/$jn" \
+      --timeout="${deadline_wait}s" >/dev/null 2>&1 \
+    || kubectl -n "$NAMESPACE" wait --for=condition=failed "job/$jn" \
+      --timeout=30s >/dev/null 2>&1 || true
+  collect_one "$tc" "$jn"
 done
 
 # --- 7. Aggregate ------------------------------------------------------------

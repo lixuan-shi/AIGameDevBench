@@ -88,16 +88,21 @@ def _workspace_for(repo_root: Path | None, testcase: Testcase,
                    workspace_name: str | None = None,
                    keep_workspace: bool = False):
     if testcase.source_kind == "folder":
+        # A folder-type case normally carries its own baseline/ dir. When it names
+        # a shared `snapshot`, the baseline instead comes from
+        # <testcases-dir>/_snapshots/<snapshot>/ — one offline project tree reused
+        # by many git-derived bug-fix cases (see Testcase.snapshot). Either way we
+        # go through folder_workspace (copytree + throwaway git init), so change
+        # detection and git-apply work identically.
         if testcase.snapshot:
             baseline_dir = testcase.dir.parent / "_snapshots" / testcase.snapshot
             if not baseline_dir.is_dir() or not any(baseline_dir.iterdir()):
                 raise FileNotFoundError(
                     f"testcase '{testcase.id}' references snapshot "
                     f"'{testcase.snapshot}' which is not present at {baseline_dir}. "
-                    f"Snapshots are generated on demand (not committed) - run:\n"
+                    f"Snapshots are generated on demand (not committed) — run:\n"
                     f"    python3 scripts/make_snapshots.py "
-                    f"--testcases-dir {testcase.dir.parent}"
-                )
+                    f"--testcases-dir {testcase.dir.parent}")
         else:
             baseline_dir = testcase.dir / "baseline"
         with folder_workspace(
@@ -140,7 +145,12 @@ def run_testcase(repo_root: Path | None, testcase: Testcase, driver: HarnessDriv
         driver.run(testcase.task, workspace)
         if on_state is not None:
             on_state("verifying")
+        # Capture the driver's outcome immediately (before validation) so it
+        # travels on the result — safe under parallelism, unlike reading
+        # driver.last_outcome from the CLI after the fact. noop/patch have none.
         harness_outcome = dict(getattr(driver, "last_outcome", None) or {})
+        # A command harness that timed out / stalled / blocked / hung / exited
+        # non-zero is a harness_error regardless of what the (empty) diff implies.
         harness_failed = bool(
             harness_outcome.get("timed_out") or harness_outcome.get("stalled")
             or harness_outcome.get("blocked_on_approval")

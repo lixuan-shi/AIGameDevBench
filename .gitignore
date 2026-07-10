@@ -11,7 +11,6 @@ artifacts/
 harness-artifacts/
 harness-logs/
 harness-*-logs/
-results/
 report.json
 report_*.json
 *.report.json
