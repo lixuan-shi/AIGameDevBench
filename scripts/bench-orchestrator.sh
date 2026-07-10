@@ -46,16 +46,25 @@
 #   --no-build          pass through: reuse pushed image, skip build/push in matrix
 #   --plugin-repo DIR   agentic-game-development checkout for baseline compare/release
 #                                                            (PLUGIN_REPO, default ../agentic-game-development)
-#   --auto-release      if the run beats the stored baseline, bump the plugin
-#                       version + push main (release-on-bump.yml then publishes).
+#   --rebuild           per trigger: git-pull the plugin repo and rebuild+import the
+#                       runner image so the LATEST plugin is benchmarked (REBUILD=1)
+#   --plugin-base-ref R diff base for "this run's plugin changes" recorded in the
+#                       report (PLUGIN_BASE_REF, default origin/main)
+#   --auto-release      if the run is NOT LOWER than the stored baseline, bump the
+#                       plugin version + push main (release-on-bump.yml publishes).
 #                       OFF by default: without it, the compare step only reports.
-#   --min-delta N       min mean-score gain to count as an improvement (MIN_DELTA, default 0)
+#   --min-delta N       min mean-score delta to count as release-worthy; the gate is
+#                       delta >= min-delta, so the default 0 means "not lower than
+#                       baseline releases" (MIN_DELTA, default 0)
 #   --bump T            patch|minor|major bump on release       (BUMP, default patch)
 #   -h                  help
 #
-# After each batch, scripts/compare-and-maybe-release.sh compares the run's mean
-# score to $PLUGIN_REPO/workflow/benchmark-baseline.json and, on improvement with
-# --auto-release, cuts a new release. Per-batch release log: results/<id>/release.log.
+# Per trigger (with --rebuild): pull plugin -> rebuild+import runner image ->
+# fan out one Job per testcase -> aggregate report -> embed the plugin change
+# (commit + diff) and trigger info into report.json -> compare-and-maybe-release.sh
+# compares the run's mean score to $PLUGIN_REPO/workflow/benchmark-baseline.json
+# and, if not lower (delta >= min-delta) with --auto-release, cuts a new release.
+# Per-batch logs: results/<id>/{batch,rebuild,release}.log, plugin_change.json.
 #
 # Each triggered batch runs run_k8s_matrix.sh with --no-build/--no-push (the
 # image is built once ahead of time by build_runner_image.sh), driver=command,
@@ -89,6 +98,11 @@ PLUGIN_REPO="${PLUGIN_REPO:-$REPO_ROOT/../agentic-game-development}"
 AUTO_RELEASE=0          # off unless --auto-release given (safety)
 MIN_DELTA="${MIN_DELTA:-0}"
 BUMP="${BUMP:-patch}"
+# Per-trigger rebuild: pull the plugin repo and rebuild+import the runner image so
+# the LATEST plugin is what gets benchmarked. On => matrix reuses the freshly
+# imported local image (implies --no-build in the matrix). Off => reuse $IMAGE as-is.
+REBUILD=0
+PLUGIN_BASE_REF="${PLUGIN_BASE_REF:-origin/main}"  # diff base for "this run's plugin changes"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -111,6 +125,8 @@ while [[ $# -gt 0 ]]; do
     --auto-release) AUTO_RELEASE=1; shift;;
     --min-delta) MIN_DELTA="$2"; shift 2;;
     --bump) BUMP="$2"; shift 2;;
+    --rebuild) REBUILD=1; shift;;
+    --plugin-base-ref) PLUGIN_BASE_REF="$2"; shift 2;;
     -h|--help) sed -n '2,60p' "$0"; exit 0;;
     *) echo "unknown option: $1" >&2; exit 2;;
   esac
@@ -125,6 +141,55 @@ log() { echo "[orchestrator] $*" >&2; }
 
 # id must be a safe token so it's usable in a path/label.
 sanitize_id() { printf '%s' "$1" | tr -c 'A-Za-z0-9._-' '-' | cut -c1-64; }
+
+# Capture the plugin repo's git state + THIS run's plugin changes (vs base ref)
+# into a JSON file. Embedded into report.json so the report records exactly what
+# plugin content produced the scores. Safe if the base ref is unknown (falls back
+# to last-commit only). Truncates the diff so a huge changeset can't bloat report.
+PLUGIN_SKILL_SUBDIR="plugins/agentic-game-development-superpowers"
+capture_plugin_change() {
+  local outfile="$1"
+  local pr="$PLUGIN_REPO" base="$PLUGIN_BASE_REF"
+  [[ -d "$pr/.git" ]] || { echo '{}' > "$outfile"; return 1; }
+  local commit branch subject files difftext logtext base_sha
+  commit="$(git -C "$pr" rev-parse HEAD 2>/dev/null || echo '')"
+  branch="$(git -C "$pr" rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
+  subject="$(git -C "$pr" log -1 --pretty=%s 2>/dev/null || echo '')"
+  base_sha="$(git -C "$pr" rev-parse "$base" 2>/dev/null || echo '')"
+  local range
+  if [[ -n "$base_sha" && "$base_sha" != "$commit" ]]; then
+    range="$base_sha..HEAD"
+  else
+    range="HEAD~1..HEAD"   # fall back to just the last commit
+  fi
+  files="$(git -C "$pr" diff --name-only "$range" -- "$PLUGIN_SKILL_SUBDIR" 2>/dev/null || true)"
+  logtext="$(git -C "$pr" log --pretty='%h %s' "$range" -- "$PLUGIN_SKILL_SUBDIR" 2>/dev/null | head -50 || true)"
+  # Cap the diff at ~4000 lines so report.json stays sane.
+  difftext="$(git -C "$pr" diff "$range" -- "$PLUGIN_SKILL_SUBDIR" 2>/dev/null | head -4000 || true)"
+  PC_COMMIT="$commit" PC_BRANCH="$branch" PC_SUBJECT="$subject" \
+  PC_BASE="$base" PC_BASE_SHA="$base_sha" PC_RANGE="$range" \
+  PC_FILES="$files" PC_LOG="$logtext" PC_DIFF="$difftext" \
+  python3 - "$outfile" <<'PY'
+import json, os, sys
+out = sys.argv[1]
+files = [f for f in (os.environ.get("PC_FILES") or "").splitlines() if f.strip()]
+doc = {
+    "repo": "agentic-game-development",
+    "commit": os.environ.get("PC_COMMIT") or None,
+    "branch": os.environ.get("PC_BRANCH") or None,
+    "subject": os.environ.get("PC_SUBJECT") or None,
+    "base_ref": os.environ.get("PC_BASE") or None,
+    "base_sha": os.environ.get("PC_BASE_SHA") or None,
+    "range": os.environ.get("PC_RANGE") or None,
+    "changed_files": files,
+    "log": os.environ.get("PC_LOG") or "",
+    "diff": os.environ.get("PC_DIFF") or "",
+    "diff_truncated": len((os.environ.get("PC_DIFF") or "").splitlines()) >= 4000,
+}
+with open(out, "w", encoding="utf-8") as f:
+    json.dump(doc, f, indent=2)
+PY
+}
 
 # --- Launch ONE benchmark batch for a delivery (de-duped, backgrounded) -------
 launch_batch() {
@@ -147,6 +212,27 @@ launch_batch() {
   cat > "$out/trigger.meta" <<EOF
 {"delivery":"$delivery","repo":"$repo","ref":"$ref","after":"$sha","image":"$IMAGE"}
 EOF
+
+  # --- Per-trigger: pull the plugin repo + rebuild the runner image ------------
+  # So the LATEST agentic-game-development plugin is what this run benchmarks.
+  # build_runner_image.sh does the git pull + vendors the plugin + builds +
+  # imports into local k3s. We capture the plugin's git state (commit + the diff
+  # of THIS run's plugin changes vs $PLUGIN_BASE_REF) to embed in report.json.
+  # .meta (not .json) so run_k8s_matrix.sh's `rm -f $out/*.json` doesn't wipe it.
+  local plugin_change_file="$out/plugin_change.meta"
+  if [[ "$REBUILD" == "1" ]]; then
+    log "delivery=$id: pulling plugin + rebuilding runner image $IMAGE ..."
+    if "$REPO_ROOT/scripts/build_runner_image.sh" -i "$IMAGE" --import-k3s \
+         -P "$PLUGIN_REPO" > "$out/rebuild.log" 2>&1; then
+      log "delivery=$id: runner image rebuilt + imported into k3s"
+    else
+      log "delivery=$id: REBUILD FAILED (see $out/rebuild.log); using existing image"
+    fi
+  fi
+  # Capture plugin change metadata (works whether or not we rebuilt). NOTE: it
+  # must NOT be a *.json in $out — run_k8s_matrix.sh wipes $out/*.json on startup.
+  # Use .meta; the injection step below reads it back after the matrix.
+  capture_plugin_change "$plugin_change_file" || true
 
   # Enumerate testcase ids locally (docker-free) so the orchestrator host needs no
   # docker; pass them explicitly via -t. The image's $TESTCASES_DIR must contain
@@ -178,6 +264,30 @@ EOF
     ec=$?
     echo "EXIT=$ec" >> "$out/batch.log"
     log "batch delivery=$id finished exit=$ec (report: $out/report.md)"
+
+    # --- Embed this run's plugin changes into report.json --------------------
+    # The report must record exactly what plugin content produced the scores:
+    # the trigger delivery + the plugin git commit and the diff of this run's
+    # changes (captured pre-matrix into plugin_change.meta, which survives the
+    # matrix's $out/*.json wipe). Also surface it as the documented artifact
+    # plugin_change.json now that the matrix is done wiping.
+    [[ -f "$plugin_change_file" ]] && cp "$plugin_change_file" "$out/plugin_change.json"
+    if [[ -f "$out/report.json" && -f "$plugin_change_file" ]]; then
+      python3 - "$out/report.json" "$plugin_change_file" "$delivery" "$repo" "$ref" "$sha" <<'PY'
+import json, sys
+report_path, pc_path, delivery, repo, ref, sha = sys.argv[1:7]
+rep = json.load(open(report_path))
+try:
+    pc = json.load(open(pc_path))
+except Exception:
+    pc = {}
+rep["trigger"] = {"delivery": delivery, "repo": repo, "ref": ref, "after": sha}
+rep["plugin_change"] = pc
+with open(report_path, "w", encoding="utf-8") as f:
+    json.dump(rep, f, indent=2)
+PY
+      log "batch delivery=$id: embedded plugin_change into report.json"
+    fi
 
     # --- Post-benchmark: compare vs plugin baseline, maybe auto-release -------
     # Only when the batch produced a report. Non-improving runs are a no-op; an

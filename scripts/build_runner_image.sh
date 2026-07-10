@@ -17,6 +17,8 @@
 # Options (env in parens):
 #   -i IMAGE      full registry ref                              (IMAGE, required)
 #   -p, --push    docker push after build                        (PUSH=1)
+#   --import-k3s  import the built image into local k3s containerd (no registry)
+#                                                                (IMPORT_K3S=1)
 #   -P DIR        agentic-game-development checkout to vendor from
 #                                    (PLUGIN_REPO, default: ../agentic-game-development)
 #   --no-pull     skip `git pull` in the plugin repo (use as-is)
@@ -33,6 +35,7 @@ cd "$REPO_ROOT"
 
 IMAGE="${IMAGE:-}"
 PUSH="${PUSH:-0}"
+IMPORT_K3S="${IMPORT_K3S:-0}"
 PLUGIN_REPO="${PLUGIN_REPO:-$REPO_ROOT/../agentic-game-development}"
 DO_PULL=1
 GODOT_VERSION="${GODOT_VERSION:-4.5-stable}"
@@ -43,6 +46,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     -i) IMAGE="$2"; shift 2;;
     -p|--push) PUSH=1; shift;;
+    --import-k3s) IMPORT_K3S=1; shift;;
     -P) PLUGIN_REPO="$2"; shift 2;;
     --no-pull) DO_PULL=0; shift;;
     -g) GODOT_VERSION="$2"; shift 2;;
@@ -101,6 +105,16 @@ if [[ "$PUSH" == "1" ]]; then
   run_docker push "$IMAGE"
 else
   echo ">>> built (not pushed). Re-run with --push to publish."
+fi
+
+# --- 4. Import into local k3s containerd (no registry needed) -----------------
+# For a single-node k3s on this host: pipe the image straight into containerd's
+# k8s.io namespace so Jobs with imagePullPolicy: IfNotPresent use it without a
+# registry pull. This is what the orchestrator's per-trigger rebuild relies on.
+if [[ "$IMPORT_K3S" == "1" ]]; then
+  echo ">>> importing $IMAGE into local k3s containerd (k8s.io namespace)..."
+  run_docker save "$IMAGE" | sudo k3s ctr -n k8s.io images import -
+  echo ">>> imported into k3s."
 fi
 
 echo ">>> done: $IMAGE  (plugin $PLUGIN_VER)"
