@@ -269,13 +269,26 @@ PY
     echo "    !! ${tc}: no report in log (job=$st) — see $raw"
   fi
 }
+# Wait for a job to reach ANY terminal condition (Complete OR Failed), then
+# return. Do NOT use `kubectl wait --for=condition=complete` alone: it blocks the
+# full timeout for a job that FAILED (the Complete condition never arrives), so a
+# single DeadlineExceeded job would stall collection ~47 min before the fallback
+# runs. Poll both conditions cheaply so a failed job is detected immediately.
+wait_terminal() {
+  local jn="$1" waited=0 cond
+  while [[ "$waited" -lt "$deadline_wait" ]]; do
+    cond="$(kubectl -n "$NAMESPACE" get "job/$jn" \
+      -o jsonpath='{range .status.conditions[*]}{.type}={.status} {end}' 2>/dev/null)"
+    case "$cond" in
+      *Complete=True*|*Failed=True*|*FailureTarget=True*) return 0 ;;
+    esac
+    sleep 5; waited=$((waited + 5))
+  done
+  return 1   # timed out; collect_one will synthesize an error record
+}
 for tc in "${TC_ARR[@]}"; do
   jn="${JOBNAME[$tc]}"
-  # Wait for either complete or failed; whichever lands first, then collect NOW.
-  kubectl -n "$NAMESPACE" wait --for=condition=complete "job/$jn" \
-      --timeout="${deadline_wait}s" >/dev/null 2>&1 \
-    || kubectl -n "$NAMESPACE" wait --for=condition=failed "job/$jn" \
-      --timeout=30s >/dev/null 2>&1 || true
+  wait_terminal "$jn"
   collect_one "$tc" "$jn"
 done
 

@@ -149,10 +149,19 @@ git -C "$PLUGIN_REPO" fetch origin "$COMMIT" --quiet 2>/dev/null || true
 # Remember where the plugin repo was so we can restore it afterward.
 ORIG_REF="$(git -C "$PLUGIN_REPO" rev-parse --abbrev-ref HEAD)"
 restore_repo() {
+  # Abort any in-progress cherry-pick, discard the uncommitted -bench marker
+  # edits (else `checkout` refuses), leave the candidate branch, and delete it.
+  # Idempotent + safe on every exit path: if we already merged and moved to
+  # main, switching back to ORIG_REF and dropping bench-<sha> is still correct.
   git -C "$PLUGIN_REPO" cherry-pick --abort >/dev/null 2>&1 || true
+  git -C "$PLUGIN_REPO" reset --hard --quiet >/dev/null 2>&1 || true
   git -C "$PLUGIN_REPO" checkout --quiet "$ORIG_REF" 2>/dev/null || true
   git -C "$PLUGIN_REPO" branch -D "$CAND_BRANCH" >/dev/null 2>&1 || true
 }
+# Always leave the plugin repo clean, however we exit (success, die, or kill).
+# Without this a failed/interrupted candidate stranded the repo on bench-<sha>
+# with dirty manifests, breaking the next run's checkout.
+trap restore_repo EXIT
 # If the commit object still isn't available, this is NOT a conflict -- the head
 # was never pushed/reachable (deleted branch, force-push, private fork, etc.).
 # Record a distinct status so the dashboard shows the real reason.
@@ -320,6 +329,14 @@ if [[ -f "$BASELINE_ABS" ]]; then
     exit 0
   fi
 fi
+
+# Step 2 wrote the temporary -bench version + _bench_source into the manifests as
+# UNCOMMITTED working-tree edits on the candidate branch. They were only needed
+# to build the candidate image; leaving them dirty makes the upcoming
+# `git checkout main` fail ("local changes would be overwritten"). Discard them
+# now — step 7 rewrites the real version on main anyway.
+git -C "$PLUGIN_REPO" checkout -- "$CODEX_MANIFEST" "$CLAUDE_MANIFEST" 2>/dev/null || true
+git -C "$PLUGIN_REPO" reset --hard --quiet 2>/dev/null || true
 
 if [[ -n "$PR_NUMBER" ]]; then
   # v2: the commit lives in a PR — merge the PR itself (squash) so the merge is
