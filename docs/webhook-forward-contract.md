@@ -144,3 +144,44 @@ if (url && ['opened','synchronize','reopened','ready_for_review'].includes(paylo
   fetch(url, { method:'POST', headers, body }).catch(e => log.warn(String(e)));
 }
 ```
+
+---
+
+## ⚠️ 现行镜像 `1.0.3-amd64` 的实测缺陷（待 xiaojun 修复）
+
+在 mc-winter-zhao 集群 `webhook` ns 抓 `deployment/github-webhook` 日志实测（2026-07-13）：
+
+- `ALLOWED_GITHUB_EVENTS=push,workflow_run,ping,pull_request` ✅ 已含 `pull_request`；
+- `BENCH_TRIGGER_URL=http://10.0.1.135:8899/trigger` ✅ 已配；
+- `pull_request` / `action=opened` **能被 accept**：
+  ```json
+  {"message":"accepted GitHub webhook delivery","event":"pull_request",
+   "action":"opened","delivery":"10bc0530-...","repository":"omgwowai/agentic-game-development"}
+  ```
+- **但转发的 body 仍是旧 push 契约的 4 字段**，且 `opened` 时 `after` 为 null：
+  ```json
+  {"message":"forwarded benchmark trigger","status":202,
+   "delivery":"10bc0530-...","repo":"omgwowai/agentic-game-development",
+   "ref":null,"after":null}
+  ```
+  即 **没有 `event` / `action` / `pr_number` / `head_sha` / `base_ref`**。
+
+**后果**：orchestrator 收到后拿不到 `head_sha`（去重键 + 候选 commit），`launch_candidate`
+以 `PR event without head_sha; skipping` 直接跳过 → **benchmark 不启动**。这正是当前
+“PR webhook 正常触发、却没跑 benchmark” 的根因。
+
+**根因**：现行 1.0.3 的转发逻辑只读 push payload 的 `after`，未按上面的 v2 片段读
+`payload.pull_request.head.sha`。请按「Node 参考片段（PR 分支）」补全转发 body 后重打镜像。
+
+### 修复后自检（镜像更新 + 重新触发一个 PR opened 后）
+
+```bash
+KC=~/mc-winter-zhao-kubeconfig
+# 转发行应出现 event/action/pr_number/head_sha/base_ref，且 head_sha 非空：
+kubectl --kubeconfig $KC -n webhook logs deployment/github-webhook --since=10m \
+  | grep 'forwarded benchmark trigger' | tail -1
+# orchestrator 侧应新增去重键 pr-<num>-<head_sha>，并生成候选目录：
+tail -n 3 .orchestrator/seen; ls -dt results/cand-* 2>/dev/null | head -1
+```
+
+判定通过：`forwarded` 行带非空 `head_sha`，且 `.orchestrator/seen` 出现 `pr-<num>-<sha>`。

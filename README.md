@@ -19,6 +19,7 @@ harness 的改动由自动验证器打分。核心契约：**什么都不做必�
 - [验证器类型](#验证器类型)
 - [命令速查](#命令速查)
 - [脚本一览](#脚本一览scripts)
+- [Webhook 自动触发](#webhook-自动触发pr-opened--gated-候选--自动合并发布)
 - [运行测试](#运行测试)
 
 ---
@@ -525,8 +526,9 @@ aigdbench compare --report-a report_claude.json --report-b report_codex.json
 | `run_bench50.sh` | 用 `claude -p` 跑整套 `testcases_filtered/`，结果/代码/日志落在 `bench_runs/` |
 | `run_k8s_matrix.sh` | 构建/推送 runner 镜像，一 testcase 一 k8s Job 并行 fan-out，聚合 `report.{json,md}` |
 | `build_runner_image.sh` | 构建含 **claude CLI + 最新 agentic-game-development 插件**的 runner 镜像 |
-| `bench-orchestrator.sh` | 由 GitHub webhook 触发一次全量并行 bench（见下方「webhook 自动触发」） |
-| `compare-and-maybe-release.sh` | bench 完成后对比插件基线，优于则自动打新 release |
+| `bench-orchestrator.sh` | 常驻服务：监听 GitHub webhook，**仅 PR opened** 事件触发一次 gated 候选 bench（见下方「Webhook 自动触发」） |
+| `bench-candidate.sh` | 把一个 PR head 隔离到候选镜像上 bench，**严格优于历史最高分**才自动合并 + 发布 |
+| `compare-and-maybe-release.sh` | 候选/批次完成后对比插件基线，达标则 bump 版本并发布 |
 | `import_gamedevbench.py` | 把 GameDevBench 的自包含 task 导入成本仓 folder 型 testcase |
 | `mine_retry_sessions.py` | 扫本地 Claude/Codex 对话历史，挖掘"反复重试"的真实开发会话 |
 | `audit_testcases.py` | 门禁整套 testcase，写机器可读健康快照 |
@@ -534,47 +536,51 @@ aigdbench compare --report-a report_claude.json --report-b report_codex.json
 
 ---
 
-## Webhook 自动触发：push → 拉取插件 → 并行 bench → 不低于基线则自动发布
+## Webhook 自动触发：PR opened → gated 候选 → 自动合并/发布
 
-一条 GitHub webhook 投递可以自动跑一次**全量并行 benchmark**。触发时**先把
-`../agentic-game-development` 仓库 `git pull` 到最新、并据此重建 runner 镜像**，
-所以被测的就是**该路径下当前的插件**（每个 testcase 一个隔离 k8s Job，harness =
-**claude + 该插件**）。跑完把**本次插件改动**写进 `report.json`，再和
-`agentic-game-development` **上一个 release 的成绩**对比——**成绩不低于上一版本
-（delta ≥ min-delta）就在插件仓自动打新 release**。
+`agentic-game-development` 仓**新开一个 PR** 时（GitHub `pull_request` 事件、
+`action=opened`），自动把该 PR 的 head commit 隔离到一个**候选镜像**上跑一次全量并行
+benchmark（每个 testcase 一个 k8s Job，harness = **claude + 候选插件**）。只有当候选成绩
+**严格优于 main 历史最高分**时，才自动 `gh pr merge` 进 main 并发布新 release；不达标的 PR
+不进 main。main 成为 benchmark 守护的受保护分支（完整设计见
+[`docs/spec-v2.md`](docs/spec-v2.md)）。
+
+> **只在 PR opened 触发。** `synchronize`（PR 有新 push）/ `reopened` / `ready_for_review`
+> 以及所有 `push` 事件都**不触发** benchmark——orchestrator 收到后回 `202 {skipped:...}` 忽略。
+> 如需对已开 PR 的更新重新评测，关闭再重新开一个 PR。
 
 ### 端到端流程
 
 ```text
-game repo push
+agentic-game-development 仓 PR opened
   └─▶ https://hook.omgwow.tech/github            (GitHub webhook)
         └─▶ github-webhook receiver (k8s webhook ns，已部署)
-              │  ① 校验 HMAC；② 仅 push 事件
+              │  ① 校验 HMAC；② pull_request 事件
               │  ③ fire-and-forget 转发（不阻塞、照常回 202）
               ▼
-        POST $BENCH_TRIGGER_URL/trigger  {delivery, repo, ref, after}
+        POST $BENCH_TRIGGER_URL/trigger
+          {delivery, repo, event:"pull_request", action:"opened",
+           pr_number, head_sha, base_ref}
               └─▶ bench-orchestrator.sh（常驻本机，tmux）
-                    ① x-bench-token 校验 + 按 delivery id 去重
-                    ② (--rebuild) build_runner_image.sh：git pull 插件仓 →
-                    │     vendor 最新 skills → 重建镜像 → 导入本地 k3s containerd
-                    │     并记录本次插件改动（commit + diff vs origin/main）
-                    ③ run_k8s_matrix.sh：一 testcase 一 Job（-j 并发 gated）
-                    │     · 镜像内 claude -p {task} --plugin-dir /opt/agd-plugin
-                    │     · 凭证来自 k8s Secret aigdbench-harness
-                    │     · 从每个 pod 日志收集 report → 聚合 report.{json,md}
-                    ④ 把 trigger + plugin_change（commit/文件/diff）写进 report.json
-                    ⑤ compare-and-maybe-release.sh：
-                          · 读 report.json 的 mean_score
-                          · 对比 agentic-game-development/workflow/benchmark-baseline.json
-                          · 若 delta ≥ MIN_DELTA（默认 0，即不低于）**且插件 commit
-                            与基线不同**：bump 版本 + 刷新基线 + push main
-                          · release-on-bump.yml 检测到版本变更 → 自动打 release
+                    ① x-bench-token 校验；action≠opened / 非 PR → 忽略
+                    ② 按 head.sha 去重（key = pr-<num>-<sha>）
+                    ③ bench-candidate.sh --commit <head_sha> --pr <num> ...：
+                          · checkout PR head 到候选分支 bench-<sha>
+                          · 打临时版本 <ver>-bench.<sha8> + vendor 候选插件
+                          · build → push 不可变 tag image:<sha>
+                          · run_k8s_matrix.sh 一 testcase 一 Job 并行跑
+                          · 聚合 report.json（记 trigger + plugin_change + mean_score）
+                    ④ 门禁：mean_score > baseline.best_score（main 历史最高）？
+                          ├ 否 → 丢弃候选、保留 report、给 PR 评论分数、结束
+                          └ 是（且 --auto-release）↓
+                    ⑤ gh pr merge <num> --squash → 基于 main 重打包（去 -bench 后缀 +
+                       semver bump）→ 刷新 baseline.best_score → push main
+                    ⑥ release-on-bump.yml 检测版本变更 → 自动发布 release
+                       （release notes 贴 PR 来源 + 测试数据）
 ```
 
-每次投递的产物落在 `results/<delivery>/`：`report.json`（含 `trigger` 与
-`plugin_change` 两个字段——本次修改的 commit、改动文件、log、diff）/ `report.md` /
-各 pod 日志 / `rebuild.log`（拉取+重建日志）/ `batch.log`（fan-out 日志）/
-`release.log`（对比+发布日志）/ `plugin_change.json` / `trigger.meta`（触发溯源）。
+每次触发的产物落在 `results/<delivery>/`（含 `report.json` 的 `trigger` /
+`plugin_change` 字段、`report.md`、各 pod 日志、`candidate.log`、`release.log` 等）。
 
 ### 前置准备（各做一次）
 
@@ -582,10 +588,8 @@ game repo push
    ```bash
    scripts/build_runner_image.sh -i harbor.omgwow.ai/beaver_hub-public/aigdbench-runner:latest --push
    ```
-   `beaver_hub-public` 是 public 项目，**pod 无需 imagePullSecret** 即可拉取；Job 用
-   `imagePullPolicy: Always`，所以每次重推 `:latest` 后 pod 都会拉到最新镜像（不会用到陈旧缓存）。
-   > 备选（无 registry push 权限、单节点 k3s）：`build_runner_image.sh ... --import-k3s`
-   > 直接导入本机 containerd，并把 Job 的 `imagePullPolicy` 改回 `IfNotPresent`。
+   `beaver_hub-public` 是 public 项目，**pod 无需 imagePullSecret** 即可拉取。候选流每次会为
+   PR head 另建一个不可变 `:<sha>` tag，避免 `:latest` 缓存陈旧问题。
 
 2. **harness 凭证 Secret**（default ns）：
    ```bash
@@ -597,55 +601,70 @@ game repo push
    （网关部署可再加 `ANTHROPIC_BASE_URL` / `ANTHROPIC_MODEL`。）
 
 3. **receiver 转发**：由 receiver 镜像作者按 [`docs/webhook-forward-contract.md`](docs/webhook-forward-contract.md)
-   加两个 env（`BENCH_TRIGGER_URL` / `BENCH_TRIGGER_TOKEN`）并重建镜像；部署侧按
-   `../winter-update-runbook.md` 更新镜像并 `kubectl -n webhook set env` 注入这两个 env。
+   订阅 `pull_request` webhook、转发 `event/action/pr_number/head_sha/base_ref` 等字段，
+   并配置两个 env（`BENCH_TRIGGER_URL` / `BENCH_TRIGGER_TOKEN`）；部署侧按
+   `../winter-update-runbook.md` 更新镜像并 `kubectl -n webhook set env` 注入。
 
-### 常驻 orchestrator（tmux）
+### 启动常驻 webhook 端口监控（tmux）
+
+监听 receiver 转发的 `POST /trigger`：
 
 ```bash
 scripts/bench-orchestrator.sh --mode http --port 8899 --token <shared-token> \
   --image harbor.omgwow.ai/beaver_hub-public/aigdbench-runner:latest \
+  --image-repo harbor.omgwow.ai/beaver_hub-public/aigdbench-runner \
   --secret aigdbench-harness --jobs 16 \
   --testcases-dir /app/testcases_filtered \
+  --local-testcases-dir ./testcases_filtered \
   --plugin-repo ../agentic-game-development \
-  --rebuild --auto-release --min-delta 0 --bump patch
+  --auto-release --bump patch
 ```
 
-- `--mode http`：收 receiver 转发的 `POST /trigger`（`GET /healthz` 探活）。
-- `--rebuild`：**每次触发**先 `git pull` 插件仓、重建 runner 镜像并导入本地 k3s，
-  确保被测的是插件仓当前内容；同时记录本次改动（commit + diff）写进 report。
-- `--auto-release`：**打开**才会真正 bump+push；不加则只对比、打印结论、不动 release（安全默认）。
-- `--min-delta N`：发版门槛，`delta ≥ N` 即发（默认 0 = **不低于**基线就发）。
+- `--mode http`：在 `0.0.0.0:$PORT` 起一个零依赖 HTTP 服务，收 receiver 转发的
+  `POST /trigger`；`GET /healthz` 返回 `{"ok":true}` 可做连通性探活。
+- `--token`：与 receiver 侧共享的 `x-bench-token`，校验来源防误触（不传则不校验，仅测试用）。
+- `--image-repo`：候选镜像仓（不带 tag），候选流会追加不可变 `:<sha>` tag。
+- `--auto-release`：**打开**才会真正 `gh pr merge` + bump + push；不加则跑到门禁为止、只
+  上报候选是否达标、不改动 main（安全默认）。
+
+探活与手动触发（本机自测）：
+
+```bash
+curl -s localhost:8899/healthz                       # -> {"ok":true}
+curl -s -XPOST localhost:8899/trigger \
+  -H 'x-bench-token: <shared-token>' -H 'content-type: application/json' \
+  -d '{"delivery":"manual-1","repo":"o/agentic-game-development",
+       "event":"pull_request","action":"opened",
+       "pr_number":"42","head_sha":"<sha>","base_ref":"main"}'
+```
 
 ### 无需改 receiver 的 fallback
 
-若 receiver 到本机网络不通、或暂时不改 receiver 源码，用 `--mode watch-logs`：
-orchestrator 直接 tail receiver 的 pod 日志（凭 `pods/log` 权限），对每条 `accepted GitHub
-webhook delivery`（仅 `push` 事件、按 delivery id 去重）触发同一套 bench + 对比 + 发布。
+若 receiver 到本机网络不通、或 receiver 暂不转发，用 `--mode watch-logs`：orchestrator 直接
+tail receiver pod 日志（凭 `pods/log` 权限），对每条 `accepted GitHub webhook delivery`
+中 `action=opened` 的 `pull_request` 行触发同一套候选流（按 head.sha 去重）：
 
 ```bash
 scripts/bench-orchestrator.sh --mode watch-logs \
   --webhook-kubeconfig ~/mc-winter-zhao-kubeconfig --webhook-ns webhook \
-  --image ... --secret aigdbench-harness --plugin-repo ../agentic-game-development --auto-release
+  --image ... --image-repo harbor.omgwow.ai/beaver_hub-public/aigdbench-runner \
+  --secret aigdbench-harness --plugin-repo ../agentic-game-development --auto-release
 ```
 
-### 对比与发布判定
+### 门禁与发布判定
 
-`compare-and-maybe-release.sh` 读取 `agentic-game-development/workflow/benchmark-baseline.json`
-（**仓内文件为准**，同时每次发布会把它作为 release 资产上传做溯源）。基线里记了它对应的
-`mean_score` 和 `plugin_commit`（被测的那次插件 commit，取自 report 的 `plugin_change.commit`）：
+候选流读取 `agentic-game-development/workflow/benchmark-baseline.json` 里的 `best_score`
+（main 历史最高分）与 `best_version` 作为门禁基准：
 
-- **无基线**（首次）：以当前插件版本建立基线，**不发布**。
-- **成绩低于基线**（`delta < min-delta`）：不动任何东西。
-- **插件 commit 与基线相同**（内容没变、只是重跑）：即便不低于也**不重复发版**。
-- **不低于基线且插件有改动**：bump 两个 manifest（`.codex-plugin` / `.claude-plugin`）+
-  刷新基线（记新 `mean_score` 与 `plugin_commit`）→ commit + **push main** →
-  `release-on-bump.yml` 自动打包并发布新 release。Claude Code 订阅了 marketplace 的
-  客户端下次启动即自动拉到新版。
+- **候选 mean_score ≤ best_score**：不达标——不合并 PR，仅回填一条 comment（分数/对比），
+  保留 report，结束。
+- **候选 mean_score > best_score 且 `--auto-release`**：`gh pr merge <num> --squash` 进
+  main → 去掉 `-bench` 后缀重打包 + semver bump → 刷新 `best_score`/`best_version` →
+  push main → `release-on-bump.yml` 自动发布新 release（notes 贴 PR 来源 + 测试数据）。
+- **未加 `--auto-release`**：跑到门禁为止，只报告是否达标，不写 main。
 
-> report.json 里的 `plugin_change` 字段记录了**本次修改**：`commit` / `branch` /
-> `changed_files` / `log` / `diff`（diff 截断到 ~4000 行，超出置 `diff_truncated:true`），
-> 便于在 dashboard 或 PR 里核对「这次跑的到底是哪版插件、改了什么」。
+> `report.json` 的 `plugin_change` 字段记录本次候选的 `commit` / `branch` /
+> `changed_files` / `log` / `diff`，便于在 dashboard 或 PR 里核对「跑的是哪版插件、改了什么」。
 
 ---
 

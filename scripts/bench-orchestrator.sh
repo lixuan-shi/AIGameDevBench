@@ -1,27 +1,35 @@
 #!/usr/bin/env bash
-# bench-orchestrator.sh — turn a GitHub webhook delivery into ONE full
-# AIGameDevBench parallel benchmark run (one k8s Job per testcase, claude +
-# agentic-game-development plugin as the harness).
+# bench-orchestrator.sh — turn a GitHub `pull_request` (action=opened) webhook
+# delivery into ONE full AIGameDevBench parallel benchmark run of the PR head
+# (one k8s Job per testcase, claude + agentic-game-development plugin as the
+# harness), gated behind a strict "beats historical best" check.
+#
+# ONLY a freshly-OPENED pull request triggers a run. synchronize / reopened /
+# ready_for_review, and all `push` events, are intentionally ignored.
 #
 # Two trigger sources, pick with --mode:
 #
-#   http   (default) — run a tiny HTTP endpoint on :$PORT/trigger. The modified
-#                      github-webhook receiver POSTs here after a validated push:
+#   http   (default) — run a tiny HTTP endpoint on :$PORT/trigger. The
+#                      github-webhook receiver POSTs here after a validated,
+#                      HMAC-checked pull_request delivery:
 #                        POST /trigger
 #                        Header: x-bench-token: <BENCH_TRIGGER_TOKEN>
-#                        Body:   {"repo":"o/r","ref":"refs/heads/main",
-#                                 "after":"<sha>","delivery":"<uuid>"}
+#                        Body:   {"delivery":"<uuid>","repo":"o/r",
+#                                 "event":"pull_request","action":"opened",
+#                                 "pr_number":"42","head_sha":"<sha>",
+#                                 "base_ref":"main"}
 #                      See docs/webhook-forward-contract.md for the exact contract.
 #
 #   watch-logs      — no receiver change needed. tail the receiver pod's logs on
 #                      the mc-winter-zhao cluster (winter has pods/log there) and
-#                      trigger on each `accepted GitHub webhook delivery` line,
-#                      de-duped by its delivery id. Robust fallback when the
-#                      receiver cannot reach this host or its source is untouched.
+#                      trigger on each `accepted GitHub webhook delivery` line
+#                      that is a pull_request opened, de-duped by head.sha. Robust
+#                      fallback when the receiver cannot reach this host.
 #
-# Both paths de-dupe by delivery id (persisted in $STATE_DIR/seen) so a redelivery
-# or a log re-read never launches a second batch, and both invoke the SAME
-# benchmark launcher: scripts/run_k8s_matrix.sh.
+# Both paths de-dupe (http by delivery id, PR path by head.sha; persisted in
+# $STATE_DIR/seen) so a redelivery or log re-read never launches a second run,
+# and both dispatch a PR opened to the SAME gated candidate flow:
+# scripts/bench-candidate.sh.
 #
 # Usage:
 #   scripts/bench-orchestrator.sh --mode http        [options]
@@ -113,11 +121,11 @@ REBUILD=0
 REBUILD_IMPORT_K3S="${REBUILD_IMPORT_K3S:-0}"  # 0 => --rebuild pushes to registry; 1 => import into local k3s instead
 PLUGIN_BASE_REF="${PLUGIN_BASE_REF:-origin/main}"  # diff base for "this run's plugin changes"
 # --- v2: PR-triggered gated candidate flow (see docs/spec-v2.md) --------------
-# A `pull_request` webhook is dispatched to scripts/bench-candidate.sh, which
-# benchmarks the PR head in isolation and (with --auto-release) merges+releases
-# only if it strictly beats the historical best. `push` events keep the legacy
-# post-hoc path (launch_batch). IMAGE_REPO is the repo WITHOUT tag; the candidate
-# appends an immutable :<sha> tag itself.
+# A `pull_request` (action=opened) webhook is dispatched to
+# scripts/bench-candidate.sh, which benchmarks the PR head in isolation and
+# (with --auto-release) merges+releases only if it strictly beats the historical
+# best. All other events (push, other PR actions) are ignored. IMAGE_REPO is the
+# repo WITHOUT tag; the candidate appends an immutable :<sha> tag itself.
 IMAGE_REPO="${IMAGE_REPO:-harbor.omgwow.ai/beaver_hub-public/aigdbench-runner}"
 CANDIDATE_ENGINE="${CANDIDATE_ENGINE:-auto}"   # docker|podman|auto for candidate image build
 # Reuse AUTO_RELEASE/MIN_DELTA/BUMP (declared above) for the candidate gate too.
@@ -213,6 +221,9 @@ PY
 }
 
 # --- Launch ONE benchmark batch for a delivery (de-duped, backgrounded) -------
+# LEGACY / UNREACHABLE: this was the v1 push-triggered post-hoc path. Since the
+# orchestrator now only acts on `pull_request` (action=opened) -> launch_candidate,
+# nothing dispatches here anymore. Kept for reference and possible manual reuse.
 launch_batch() {
   local delivery="$1" repo="${2:-}" ref="${3:-}" sha="${4:-}"
   local id; id="$(sanitize_id "$delivery")"
@@ -392,19 +403,18 @@ prnum = str(o.get("pr_number") or pr.get("number") or "")
 head = str(o.get("head_sha") or (pr.get("head") or {}).get("sha") or "")
 base = str(o.get("base_ref") or (pr.get("base") or {}).get("ref") or "main")
 action = (o.get("action") or "").lower()
+# Only a freshly-OPENED pull request triggers a benchmark. Everything else
+# (synchronize/reopened/ready_for_review, and all push events) is ignored.
 if ev in ("pull_request","pr") or (prnum and head):
-    if action and action not in ("opened","synchronize","reopened","ready_for_review"):
+    if action and action != "opened":
         sys.exit(0)
     if not (prnum and head):
         sys.exit(0)
     print("EV=pr D=%s R=%s PR=%s HEAD=%s BASE=%s" % tuple(
         shlex.quote(x) for x in (d, r, prnum, head, base)))
-elif ev == "push":
-    print("EV=push D=%s R=%s" % (shlex.quote(d), shlex.quote(r)))
 ')"
       case "${EV:-}" in
         pr)   [[ -n "${HEAD:-}" ]] && launch_candidate "$D" "${R:-}" "$PR" "$HEAD" "${BASE:-main}" ;;
-        push) [[ -n "${D:-}" ]] && launch_batch "$D" "${R:-}" "" "" ;;
       esac
       unset EV D R PR HEAD BASE
     done
@@ -430,7 +440,6 @@ run_http() {
     IFS=$'\t' read -r ev d r ref sha pr head_sha base_ref <<<"$cmdline"
     case "$ev" in
       pr)   launch_candidate "$d" "$r" "$pr" "$head_sha" "${base_ref:-main}" ;;
-      *)    launch_batch "$d" "$r" "$ref" "$sha" ;;
     esac
   done < <(python3 - <<'PY'
 import json, os, sys
@@ -468,6 +477,23 @@ class H(BaseHTTPRequestHandler):
                 self._send(401, {"error": "bad token"}); return
         n = int(self.headers.get("Content-Length", "0") or "0")
         raw = self.rfile.read(n) if n > 0 else b"{}"
+        # Print the full received webhook request to stderr (stdout is reserved
+        # for the TAB-separated dispatch line consumed by the bash reader).
+        sys.stderr.write(
+            "[orchestrator] === incoming POST %s from %s ===\n"
+            % (self.path, self.client_address[0])
+        )
+        sys.stderr.write(
+            "[orchestrator] headers:\n%s\n" % "".join(
+                "[orchestrator]   %s: %s\n" % (k, v) for k, v in self.headers.items()
+            )
+        )
+        try:
+            pretty = json.dumps(json.loads(raw or b"{}"), indent=2, ensure_ascii=False)
+        except Exception:
+            pretty = (raw or b"").decode("utf-8", "replace")
+        sys.stderr.write("[orchestrator] body:\n%s\n" % pretty)
+        sys.stderr.flush()
         try:
             o = json.loads(raw or b"{}")
         except Exception:
@@ -486,18 +512,17 @@ class H(BaseHTTPRequestHandler):
         action = str(o.get("action") or "").strip().lower()
         is_pr = event in ("pull_request", "pr") or bool(pr_number and head_sha)
         if is_pr:
-            # Only act on states where the head is a fresh candidate.
-            if action and action not in ("opened", "synchronize", "reopened", "ready_for_review"):
+            # Only a freshly-OPENED PR is a benchmark trigger. synchronize /
+            # reopened / ready_for_review are intentionally ignored.
+            if action and action != "opened":
                 self._send(202, {"accepted": False, "skipped": action}); return
             if not (pr_number and head_sha):
                 self._send(400, {"error": "pull_request missing pr_number/head_sha"}); return
             emit("pr", delivery, str(o.get("repo") or ""), "", "", pr_number, head_sha, base_ref)
             self._send(202, {"accepted": True, "event": "pull_request", "pr": pr_number})
             return
-        # Default: push event (legacy post-hoc path).
-        emit("push", delivery, str(o.get("repo") or ""), str(o.get("ref") or ""),
-             str(o.get("after") or o.get("sha") or ""))
-        self._send(202, {"accepted": True, "event": "push", "delivery": delivery})
+        # Non-PR events (push, etc.) no longer trigger a benchmark.
+        self._send(202, {"accepted": False, "skipped": event or "non-pull_request"})
 
 HTTPServer(("0.0.0.0", PORT), H).serve_forever()
 PY
