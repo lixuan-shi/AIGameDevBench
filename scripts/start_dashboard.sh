@@ -192,6 +192,33 @@ fi
 RECV_ARGS=("$REPO_ROOT/scripts/webhook_receiver.py"
            --host 0.0.0.0 --port "$WEBHOOK_RECV_PORT" --log "$WEBHOOK_LOG")
 [[ -n "$WEBHOOK_TOKEN" ]] && RECV_ARGS+=(--token "$WEBHOOK_TOKEN")
+# Ensure local docker can PUSH candidate images to Harbor. bench-candidate.sh
+# builds :<sha> per PR and pushes it for the k8s Jobs to pull; if docker is
+# logged in as a pull-only human account the push fails and every candidate
+# aborts (this bit us on PR #31). Reuse the SAME robot the cluster's harbor-cred
+# pull secret uses (it has pull+push+delete). Idempotent: skip if a push-scoped
+# token is already obtainable. HARBOR_HOST/HARBOR_PULL_SECRET override the source.
+HARBOR_HOST="${HARBOR_HOST:-harbor.omgwow.ai}"
+HARBOR_PULL_SECRET="${HARBOR_PULL_SECRET:-harbor-cred}"
+ensure_harbor_push_login() {
+  command -v docker >/dev/null 2>&1 || return 1
+  command -v kubectl >/dev/null 2>&1 || return 1
+  local creds user pass
+  creds="$(kubectl -n "$K8S_NAMESPACE" get secret "$HARBOR_PULL_SECRET" \
+             -o jsonpath='{.data.\.dockerconfigjson}' 2>/dev/null | base64 -d 2>/dev/null)"
+  [[ -n "$creds" ]] || { echo "WARNING: cannot read $HARBOR_PULL_SECRET for docker push login." >&2; return 1; }
+  user="$(printf '%s' "$creds" | python3 -c "import sys,json;print(json.load(sys.stdin)['auths']['$HARBOR_HOST']['username'])" 2>/dev/null)"
+  pass="$(printf '%s' "$creds" | python3 -c "import sys,json;print(json.load(sys.stdin)['auths']['$HARBOR_HOST']['password'])" 2>/dev/null)"
+  [[ -n "$user" && -n "$pass" ]] || { echo "WARNING: $HARBOR_PULL_SECRET missing $HARBOR_HOST username/password." >&2; return 1; }
+  # NOTE: never let the shell interpolate the robot name (contains a literal '$').
+  if printf '%s' "$pass" | docker login "$HARBOR_HOST" -u "$user" --password-stdin >/dev/null 2>&1; then
+    echo "    docker: logged in to $HARBOR_HOST as $user (push enabled)"
+    return 0
+  fi
+  echo "WARNING: docker login to $HARBOR_HOST as $user failed; candidate push may fail." >&2
+  return 1
+}
+
 # Resolve the effective auto-run mode. candidate needs a plugin git checkout +
 # docker + kubectl; if any is missing, fall back to record-only (off).
 AUTORUN_MODE="$WEBHOOK_AUTORUN_MODE"
@@ -202,6 +229,8 @@ if [[ "$AUTORUN_MODE" == "candidate" ]]; then
   elif ! command -v docker >/dev/null 2>&1 || ! command -v kubectl >/dev/null 2>&1; then
     echo "WARNING: docker/kubectl missing; candidate auto-run disabled." >&2
     AUTORUN_MODE="off"
+  else
+    ensure_harbor_push_login || true   # warn but still run; push may be pre-authed
   fi
 elif [[ "$AUTORUN_MODE" == "matrix" && "$ALLOW_RUN" != "1" ]]; then
   AUTORUN_MODE="off"   # no /api/runs/start to hit
