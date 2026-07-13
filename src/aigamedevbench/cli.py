@@ -1479,6 +1479,280 @@ def _scores_by_category(report: dict) -> dict:
     return out
 
 
+class BenchJobManager:
+    """Run one real (docker + Kubernetes) benchmark matrix at a time.
+
+    The dashboard's Run tab launches ``scripts/run_k8s_matrix.sh``: it fans out
+    one k8s Job per testcase on the shared runner image (harness = the k8s
+    Secret) — exactly the same production path the orchestrator/candidate flow
+    uses — NOT a local ``aigdbench run``. Stdout/stderr of the matrix stream into
+    a log file the UI tails. When the matrix finishes it writes
+    ``<out>/report.json``; we stamp the user's custom run name into it (as the
+    ``harness`` label the dashboard groups by) and copy it into the scanned
+    reports dir so the run shows up in the Reports tab like any normal run.
+
+    Single-job by design: a second Start is refused while one is in flight.
+    """
+
+    def __init__(self, reports_dir: Path, *, repo_root: Path,
+                 runner_image: str, namespace: str, harness_secret: str,
+                 image_testcases_dir: str, local_testcases_dir: Path | None,
+                 default_jobs: int = 16):
+        import threading as _threading
+        self._reports_dir = Path(reports_dir)
+        self._runs_dir = self._reports_dir / "_runs"
+        self._repo_root = Path(repo_root)
+        self._runner_image = runner_image
+        self._namespace = namespace
+        self._harness_secret = harness_secret
+        self._image_testcases_dir = image_testcases_dir
+        self._local_testcases_dir = (
+            Path(local_testcases_dir) if local_testcases_dir else None)
+        self._default_jobs = default_jobs
+        self._lock = _threading.Lock()
+        self._proc = None          # subprocess.Popen | None
+        self._logf = None
+        self._state = "idle"       # idle | running | done | failed
+        self._cmd: list[str] = []
+        self._label = ""
+        self._name = ""
+        self._testcases: list[str] = []
+        self._started_at = 0.0
+        self._started_mono = 0.0
+        self._ended_at = 0.0
+        self._returncode = None
+        self._log_path: Path | None = None
+        self._out_dir: Path | None = None
+        self._report_path: Path | None = None   # final copy in reports dir
+        self._error = ""
+
+    def _monotonic(self) -> float:
+        import time
+        return time.monotonic()
+
+    def config(self) -> dict:
+        """Infra defaults surfaced to the UI (read-only)."""
+        return {
+            "runner_image": self._runner_image,
+            "namespace": self._namespace,
+            "harness_secret": self._harness_secret,
+            "image_testcases_dir": self._image_testcases_dir,
+            "local_testcases_dir": (
+                str(self._local_testcases_dir) if self._local_testcases_dir else ""),
+            "default_jobs": self._default_jobs,
+        }
+
+    def _enumerate_local_ids(self) -> list[str]:
+        """Testcase ids from the local dir (skip _snapshots/README), for -t."""
+        d = self._local_testcases_dir
+        if not d or not d.is_dir():
+            return []
+        ids = []
+        for p in sorted(d.iterdir()):
+            if p.is_dir() and not p.name.startswith("_") and p.name != "README":
+                ids.append(p.name)
+        return ids
+
+    def start(self, opts: dict) -> dict:
+        """Launch a matrix run. ValueError on bad input, RuntimeError if busy."""
+        import subprocess
+        import time
+        with self._lock:
+            if self._state == "running":
+                raise RuntimeError("a benchmark run is already in progress")
+
+            name = str(opts.get("name") or "").strip()
+            if not name:
+                raise ValueError("a run name is required")
+            # The name becomes the harness label + part of filenames/paths.
+            safe = "".join(c if c.isalnum() or c in "-_" else "-" for c in name)
+            safe = safe.strip("-") or "run"
+
+            def _num(key, default, cast):
+                val = opts.get(key)
+                if val in (None, ""):
+                    return default
+                try:
+                    return cast(val)
+                except (TypeError, ValueError):
+                    raise ValueError(f"{key} must be a number")
+
+            jobs = _num("jobs", self._default_jobs, int)
+            timeout = _num("timeout", int(DEFAULT_TIMEOUT), int)
+
+            # Testcase selection: explicit ids (space/comma separated) or all.
+            raw_tc = str(opts.get("testcases") or opts.get("testcase") or "").strip()
+            if raw_tc:
+                ids = [t for t in raw_tc.replace(",", " ").split() if t]
+            else:
+                ids = self._enumerate_local_ids()
+            self._testcases = ids
+
+            matrix = self._repo_root / "scripts" / "run_k8s_matrix.sh"
+            if not matrix.is_file():
+                raise RuntimeError(f"matrix script not found: {matrix}")
+
+            self._runs_dir.mkdir(parents=True, exist_ok=True)
+            stamp = time.strftime("%Y%m%d-%H%M%S")
+            base = f"{stamp}-{safe}"
+            log_path = self._runs_dir / f"{base}.log"
+            out_dir = self._runs_dir / f"{base}-matrix"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            report_path = self._reports_dir / f"report-{base}.json"
+
+            # Reuse the pushed :latest image (no build/push), harness via Secret,
+            # one k8s Job per testcase. Mirrors bench-candidate.sh's invocation.
+            cmd = [
+                "bash", str(matrix),
+                "-i", self._runner_image,
+                "-d", "command",
+                "-s", self._harness_secret,
+                "-j", str(jobs),
+                "-n", self._namespace,
+                "-T", str(timeout),
+                "-D", self._image_testcases_dir,
+                "-o", str(out_dir),
+                "--no-build", "--no-push",
+            ]
+            if ids:
+                cmd += ["-t", " ".join(ids)]
+
+            logf = open(log_path, "wb")
+            try:
+                proc = subprocess.Popen(
+                    cmd, cwd=str(self._repo_root),
+                    stdout=logf, stderr=subprocess.STDOUT,
+                )
+            except OSError as e:
+                logf.close()
+                raise RuntimeError(f"failed to launch matrix: {e}")
+
+            self._proc = proc
+            self._logf = logf
+            self._state = "running"
+            self._cmd = cmd
+            self._name = name
+            n = len(ids) if ids else 0
+            self._label = (f"{name} · docker/k8s · ns={self._namespace} · "
+                           f"{n if n else 'all'} testcase(s)")
+            self._started_at = time.time()
+            self._started_mono = self._monotonic()
+            self._ended_at = 0.0
+            self._returncode = None
+            self._log_path = log_path
+            self._out_dir = out_dir
+            self._report_path = report_path
+            self._error = ""
+
+            import threading as _threading
+            watcher = _threading.Thread(target=self._wait, args=(proc,), daemon=True)
+            watcher.start()
+
+        return self.status()
+
+    def _finalize_report(self) -> None:
+        """Stamp the run name into the matrix report.json and copy it into the
+        scanned reports dir so it appears in the Reports tab."""
+        import json as _json
+        import time
+        if not self._out_dir or not self._report_path:
+            return
+        src = self._out_dir / "report.json"
+        if not src.is_file():
+            self._error = "matrix produced no report.json (see log)"
+            return
+        try:
+            data = _json.loads(src.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as e:
+            self._error = f"could not read matrix report: {e}"
+            return
+        # The dashboard groups runs by the top-level "harness" field.
+        data["harness"] = self._name
+        data.setdefault("run_name", self._name)
+        data["executor"] = "k8s-matrix"
+        data["created_at"] = time.time()
+        try:
+            self._report_path.write_text(
+                _json.dumps(data, indent=2), encoding="utf-8")
+        except OSError as e:
+            self._error = f"could not write report copy: {e}"
+
+    def _wait(self, proc) -> None:
+        import time
+        rc = proc.wait()
+        with self._lock:
+            if proc is not self._proc:
+                return
+            self._returncode = rc
+            try:
+                self._logf.close()
+            except Exception:
+                pass
+            # Even on nonzero exit the matrix may have produced a partial report
+            # (aggregate always runs); copy whatever exists.
+            self._finalize_report()
+            ok = (rc == 0) and self._report_path and self._report_path.is_file()
+            self._state = "done" if ok else "failed"
+            self._ended_at = time.time()
+
+    def stop(self) -> dict:
+        with self._lock:
+            proc = self._proc
+            running = self._state == "running" and proc is not None
+        if running:
+            proc.terminate()
+            try:
+                proc.wait(timeout=10)
+            except Exception:
+                proc.kill()
+        return self.status()
+
+    def _log_tail(self, max_bytes: int = 20000) -> str:
+        if not self._log_path or not self._log_path.exists():
+            return ""
+        try:
+            with open(self._log_path, "rb") as f:
+                f.seek(0, 2)
+                size = f.tell()
+                f.seek(max(0, size - max_bytes))
+                data = f.read()
+        except OSError:
+            return ""
+        text = data.decode("utf-8", "replace")
+        if len(data) >= max_bytes and "\n" in text:
+            text = text.split("\n", 1)[1]
+        return text
+
+    def status(self) -> dict:
+        with self._lock:
+            if self._state == "running" and self._started_mono:
+                elapsed = self._monotonic() - self._started_mono
+            elif self._ended_at and self._started_at:
+                elapsed = self._ended_at - self._started_at
+            else:
+                elapsed = 0.0
+            report_name = self._report_path.name if self._report_path else None
+            report_exists = bool(self._report_path and self._report_path.is_file())
+            return {
+                "state": self._state,
+                "label": self._label,
+                "name": self._name,
+                "executor": "k8s-matrix",
+                "image": self._runner_image,
+                "namespace": self._namespace,
+                "harness_secret": self._harness_secret,
+                "testcase_count": len(self._testcases),
+                "cmd": " ".join(self._cmd),
+                "started_at": self._started_at or None,
+                "elapsed": round(elapsed, 1),
+                "returncode": self._returncode,
+                "report_file": report_name,
+                "report_ready": report_exists,
+                "error": self._error,
+                "log_tail": self._log_tail(),
+            }
+
+
 @main.command("serve")
 @click.option("--reports-dir", default=".", type=click.Path(exists=True),
               help="Directory to scan for *.json benchmark reports (default: cwd)")
@@ -1493,13 +1767,40 @@ def _scores_by_category(report: dict) -> dict:
               help="Enable in-dashboard testcase create/edit/delete (writes to "
                    "--testcases-dir). Off by default: the dashboard is read-only "
                    "unless this flag is passed.")
+@click.option("--allow-run/--no-allow-run", default=True,
+              help="Enable the in-dashboard Run tab to launch a real (docker + "
+                   "k8s) benchmark matrix (one at a time). On by default.")
+@click.option("--webhook-log", "webhook_log", default=None, type=click.Path(),
+              help="JSONL file of webhooks received by bench-orchestrator.sh "
+                   "(e.g. .orchestrator/webhooks.jsonl). When set, the dashboard "
+                   "shows them in a Webhooks tab.")
+@click.option("--runner-image", "runner_image",
+              default="harbor.omgwow.ai/beaver_hub-public/aigdbench-runner:latest",
+              help="Runner image the Run tab fans out on k8s (reused as-is, "
+                   "--no-build --no-push).")
+@click.option("--k8s-namespace", "k8s_namespace", default="default",
+              help="Kubernetes namespace for Run-tab benchmark Jobs.")
+@click.option("--harness-secret", "harness_secret", default="aigdbench-harness",
+              help="k8s Secret carrying HARNESS_CMD + API keys for Run-tab runs.")
+@click.option("--image-testcases-dir", "image_testcases_dir",
+              default="/app/testcases_filtered",
+              help="Testcases dir path INSIDE the runner image (matrix -D).")
+@click.option("--jobs", "default_jobs", default=16, type=int,
+              help="Default max concurrent k8s Jobs for a Run-tab run.")
 def serve_cmd(reports_dir: str, testcases_dir: str | None, port: int, host: str,
-              open_browser: bool, editable: bool):
+              open_browser: bool, editable: bool, allow_run: bool,
+              webhook_log: str | None, runner_image: str, k8s_namespace: str,
+              harness_secret: str, image_testcases_dir: str, default_jobs: int):
     """Serve a local web dashboard to view and compare benchmark reports.
 
     Scans --reports-dir for report JSON files on every request, so re-running a
     benchmark and refreshing the page shows the new run immediately. Pure
     stdlib, fully offline; charts are drawn with native SVG/CSS.
+
+    The Run tab launches the real production matrix (scripts/run_k8s_matrix.sh):
+    one Kubernetes Job per testcase on --runner-image, harness from
+    --harness-secret. The aggregated report.json is copied into --reports-dir
+    (stamped with the run's custom name) so it shows up like any normal run.
     """
     import json
     import webbrowser
@@ -1510,8 +1811,10 @@ def serve_cmd(reports_dir: str, testcases_dir: str | None, port: int, host: str,
         INDEX_HTML, load_reports, build_summary, report_detail,
         load_testcase_catalog, load_testcase_detail,
         create_testcase, save_testcase_file, delete_testcase_file,
-        editor_enums, EditError,
+        editor_enums, EditError, load_webhooks,
     )
+
+    webhook_log_path = Path(webhook_log) if webhook_log else None
 
     root = Path(reports_dir)
     if testcases_dir:
@@ -1519,6 +1822,16 @@ def serve_cmd(reports_dir: str, testcases_dir: str | None, port: int, host: str,
     else:
         default_tc = root / "testcases"
         tc_root = default_tc if default_tc.is_dir() else None
+
+    # repo root = two levels up from this file (src/aigamedevbench/cli.py).
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    job_manager = (
+        BenchJobManager(
+            root, repo_root=repo_root, runner_image=runner_image,
+            namespace=k8s_namespace, harness_secret=harness_secret,
+            image_testcases_dir=image_testcases_dir,
+            local_testcases_dir=tc_root, default_jobs=default_jobs)
+        if allow_run else None)
 
     class Handler(BaseHTTPRequestHandler):
         def _send(self, code: int, body: bytes, content_type: str) -> None:
@@ -1542,7 +1855,31 @@ def serve_cmd(reports_dir: str, testcases_dir: str | None, port: int, host: str,
             if path == "/api/config":
                 self._json({"editable": editable and tc_root is not None,
                             "has_testcases": tc_root is not None,
+                            "allow_run": job_manager is not None,
+                            "has_webhooks": webhook_log_path is not None,
+                            "default_testcases_dir": (
+                                str(tc_root) if tc_root is not None else ""),
+                            "run": (job_manager.config()
+                                    if job_manager is not None else None),
                             "enums": editor_enums()})
+                return
+            if path == "/api/webhooks":
+                if webhook_log_path is None:
+                    self._json({"disabled": True, "webhooks": [], "count": 0})
+                    return
+                q = parse_qs(parsed.query)
+                try:
+                    limit = int((q.get("limit") or ["500"])[0])
+                except ValueError:
+                    limit = 500
+                hooks = load_webhooks(webhook_log_path, limit=limit)
+                self._json({"webhooks": hooks, "count": len(hooks)})
+                return
+            if path == "/api/runs/status":
+                if job_manager is None:
+                    self._json({"state": "disabled"})
+                else:
+                    self._json(job_manager.status())
                 return
             if path == "/api/summary":
                 self._json(build_summary(load_reports(root)))
@@ -1586,6 +1923,23 @@ def serve_cmd(reports_dir: str, testcases_dir: str | None, port: int, host: str,
         def do_POST(self) -> None:  # noqa: N802 (http.server API)
             parsed = urlparse(self.path)
             path = parsed.path
+            # Run-control endpoints are gated on --allow-run only.
+            if path in ("/api/runs/start", "/api/runs/stop"):
+                if job_manager is None:
+                    self._json({"error": "running is disabled "
+                                "(run serve with --allow-run)"}, code=403)
+                    return
+                if path == "/api/runs/stop":
+                    self._json(job_manager.stop())
+                    return
+                body = self._read_json_body()
+                try:
+                    self._json(job_manager.start(body))
+                except ValueError as e:
+                    self._json({"error": str(e)}, code=400)
+                except RuntimeError as e:
+                    self._json({"error": str(e)}, code=409)
+                return
             # Every write endpoint is gated on --editable AND a known testcases dir.
             if not (editable and tc_root is not None):
                 self._json({"error": "editing is disabled (run serve with --editable)"},
@@ -1626,6 +1980,14 @@ def serve_cmd(reports_dir: str, testcases_dir: str | None, port: int, host: str,
         click.echo(f"--- testcases from {tc_root.resolve()} ({mode})")
     elif editable:
         click.echo("--- --editable ignored: no --testcases-dir")
+    click.echo(f"--- Run tab: {'enabled' if allow_run else 'disabled'}"
+               + (f" (docker+k8s matrix; image={runner_image} ns={k8s_namespace} "
+                  f"secret={harness_secret})" if allow_run else ""))
+    if webhook_log_path is not None:
+        click.echo(f"--- Webhooks tab: {webhook_log_path}")
+    if host in ("0.0.0.0", "::"):
+        click.echo("--- WARNING: bound to all interfaces with no auth; anyone "
+                   "who can reach this port can start benchmark runs.")
     if open_browser:
         webbrowser.open(url)
     try:
@@ -1634,3 +1996,7 @@ def serve_cmd(reports_dir: str, testcases_dir: str | None, port: int, host: str,
         click.echo("\n--- stopped")
     finally:
         server.server_close()
+
+
+if __name__ == "__main__":
+    main()

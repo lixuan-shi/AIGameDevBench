@@ -88,6 +88,9 @@ cd "$REPO_ROOT"
 
 MODE="${MODE:-http}"
 PORT="${PORT:-8899}"
+# Received webhooks are appended to $WEBHOOK_LOG (see below) and shown in the
+# AIGameDevBench dashboard's Webhooks tab (aigdbench serve --webhook-log ...).
+# There is no separate viewer process anymore.
 # Default to the public beaver_hub-public runner image (pullable with the
 # beaver_hub-public robot creds, and built with the claude CLI baked in). The
 # old xiaojun_private image is NOT pullable here → ImagePullBackOff → every
@@ -165,6 +168,11 @@ done
 mkdir -p "$STATE_DIR" "$RESULTS_ROOT"
 SEEN_FILE="$STATE_DIR/seen"
 touch "$SEEN_FILE"
+# JSONL log of every webhook received (both http and watch-logs paths append
+# here). The AIGameDevBench dashboard shows it in its Webhooks tab; start the
+# dashboard with:  aigdbench serve --webhook-log "$STATE_DIR/webhooks.jsonl"
+WEBHOOK_LOG="$STATE_DIR/webhooks.jsonl"
+touch "$WEBHOOK_LOG"
 
 log() { echo "[orchestrator] $*" >&2; }
 
@@ -381,6 +389,7 @@ run_watch_logs() {
     || { echo "ERROR: cannot read WEBHOOK_KUBECONFIG=$WEBHOOK_KUBECONFIG" >&2; exit 1; }
   log "watch-logs mode: tailing deployment/github-webhook logs in ns=$WEBHOOK_NS"
   log "  (cluster from $WEBHOOK_KUBECONFIG; de-dupe by delivery id)"
+  log "  webhooks logged to $WEBHOOK_LOG (view in dashboard: serve --webhook-log ...)"
   # --tail=0 so we only react to NEW deliveries after startup. Each accepted line
   # is JSON: {"message":"accepted GitHub webhook delivery","event":"push",
   #           "delivery":"...","repository":"o/r", ...}. Extract fields with python.
@@ -388,9 +397,10 @@ run_watch_logs() {
       logs -f --tail=0 deployment/github-webhook 2>/dev/null \
   | while IFS= read -r line; do
       case "$line" in *'accepted GitHub webhook delivery'*) ;; *) continue;; esac
-      # Parse the JSON line safely; dispatch push vs pull_request.
-      eval "$(printf '%s' "$line" | python3 -c '
-import sys, json, shlex
+      # Parse the JSON line safely; record EVERY delivery to the webhook log for
+      # the viewer, then dispatch only freshly-OPENED pull requests.
+      eval "$(printf '%s' "$line" | WEBHOOK_LOG="$WEBHOOK_LOG" python3 -c '
+import sys, json, shlex, os, time
 try:
     o = json.loads(sys.stdin.readline())
 except Exception:
@@ -403,13 +413,27 @@ prnum = str(o.get("pr_number") or pr.get("number") or "")
 head = str(o.get("head_sha") or (pr.get("head") or {}).get("sha") or "")
 base = str(o.get("base_ref") or (pr.get("base") or {}).get("ref") or "main")
 action = (o.get("action") or "").lower()
+is_pr = ev in ("pull_request","pr") or bool(prnum and head)
 # Only a freshly-OPENED pull request triggers a benchmark. Everything else
 # (synchronize/reopened/ready_for_review, and all push events) is ignored.
-if ev in ("pull_request","pr") or (prnum and head):
-    if action and action != "opened":
-        sys.exit(0)
-    if not (prnum and head):
-        sys.exit(0)
+decision, reason = "skipped", (ev or "non-pull_request")
+if is_pr and (not action or action == "opened") and prnum and head:
+    decision, reason = "accepted", ""
+elif is_pr:
+    decision, reason = "skipped", (action or "missing pr_number/head_sha")
+log = os.environ.get("WEBHOOK_LOG", "")
+if log:
+    rec = {"time": time.time(), "source": "watch-logs", "decision": decision,
+           "skipped_reason": reason, "delivery": d,
+           "event": ev or ("pull_request" if is_pr else "?"), "action": action,
+           "repo": r, "pr_number": prnum, "head_sha": head, "base_ref": base,
+           "body": o}
+    try:
+        with open(log, "a", encoding="utf-8") as f:
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    except OSError:
+        pass
+if decision == "accepted":
     print("EV=pr D=%s R=%s PR=%s HEAD=%s BASE=%s" % tuple(
         shlex.quote(x) for x in (d, r, prnum, head, base)))
 ')"
@@ -424,35 +448,52 @@ if ev in ("pull_request","pr") or (prnum and head):
 run_http() {
   log "http mode: listening on 0.0.0.0:$PORT  (POST /trigger)"
   [[ -n "$BENCH_TRIGGER_TOKEN" ]] || log "WARN: no --token set; /trigger is unauthenticated"
+  log "  webhooks logged to $WEBHOOK_LOG (view in dashboard: serve --webhook-log ...)"
   # A minimal, dependency-free HTTP server. We export what the handler needs and
   # call back into this script's launch_batch via a fifo-free approach: the
   # python server writes a compact command line to stdout lines that the bash
   # reader turns into launch_batch calls. This keeps k8s/launch logic in bash.
-  export BENCH_TRIGGER_TOKEN PORT
+  export BENCH_TRIGGER_TOKEN PORT WEBHOOK_LOG
   # The python server validates + emits one TAB-separated line per accepted
   # trigger; the bash while-loop turns each into a launch_batch call. Process
   # substitution keeps k8s/launch logic in bash and avoids heredoc-in-pipeline
   # ordering hazards.
   while IFS= read -r cmdline; do
-    # cmdline is TAB-separated, first column is the event:
-    #   push          EVENT=push  \t d \t repo \t ref \t sha \t \t \t
-    #   pull_request  EVENT=pr    \t d \t repo \t \t \t prnum \t head_sha \t base_ref
-    IFS=$'\t' read -r ev d r ref sha pr head_sha base_ref <<<"$cmdline"
+    # cmdline is \x1f-separated (unit separator), first column is the event:
+    #   pull_request  EV=pr  \x1f d \x1f repo \x1f \x1f \x1f prnum \x1f head_sha \x1f base_ref
+    # \x1f (not tab) so the empty ref/sha fields don't collapse under IFS.
+    IFS=$'\x1f' read -r ev d r ref sha pr head_sha base_ref <<<"$cmdline"
     case "$ev" in
       pr)   launch_candidate "$d" "$r" "$pr" "$head_sha" "${base_ref:-main}" ;;
     esac
   done < <(python3 - <<'PY'
-import json, os, sys
+import json, os, sys, time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 TOKEN = os.environ.get("BENCH_TRIGGER_TOKEN", "")
 PORT = int(os.environ.get("PORT", "8899"))
+WEBHOOK_LOG = os.environ.get("WEBHOOK_LOG", "")
 
 def emit(ev, delivery, repo, ref, sha, pr="", head_sha="", base_ref=""):
-    # One tab-separated line to stdout -> bash dispatch. Flush immediately.
-    sys.stdout.write("\t".join([ev, delivery, repo or "", ref or "", sha or "",
-                                pr or "", head_sha or "", base_ref or ""]) + "\n")
+    # One \x1f (unit separator) delimited line to stdout -> bash dispatch. NOT
+    # tab: tab is IFS-whitespace so consecutive empty fields (ref+sha are empty
+    # for PR events) would collapse and shift head_sha/base_ref. \x1f never
+    # appears in webhook fields and is not IFS-whitespace, so empties survive.
+    sys.stdout.write("\x1f".join([ev, delivery, repo or "", ref or "", sha or "",
+                                  pr or "", head_sha or "", base_ref or ""]) + "\n")
     sys.stdout.flush()
+
+def record(rec):
+    # Append one JSON line to the webhook log so the viewer can render it.
+    if not WEBHOOK_LOG:
+        return
+    rec.setdefault("time", time.time())
+    rec.setdefault("source", "http")
+    try:
+        with open(WEBHOOK_LOG, "a", encoding="utf-8") as f:
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    except OSError:
+        pass
 
 class H(BaseHTTPRequestHandler):
     def _send(self, code, obj):
@@ -494,12 +535,17 @@ class H(BaseHTTPRequestHandler):
             pretty = (raw or b"").decode("utf-8", "replace")
         sys.stderr.write("[orchestrator] body:\n%s\n" % pretty)
         sys.stderr.flush()
+        client = self.client_address[0]
         try:
             o = json.loads(raw or b"{}")
         except Exception:
+            record({"decision": "error", "error": "bad json", "client": client,
+                    "event": "?", "body": (raw or b"").decode("utf-8", "replace")})
             self._send(400, {"error": "bad json"}); return
         delivery = str(o.get("delivery") or "").strip()
         if not delivery:
+            record({"decision": "error", "error": "missing delivery",
+                    "client": client, "event": str(o.get("event") or "?"), "body": o})
             self._send(400, {"error": "missing delivery"}); return
         # Event type: explicit "event" field, else infer from payload shape.
         # A pull_request delivery carries pr_number/head_sha (see spec-v2 contract);
@@ -511,17 +557,28 @@ class H(BaseHTTPRequestHandler):
         base_ref = str(o.get("base_ref") or (pr.get("base") or {}).get("ref") or "main").strip()
         action = str(o.get("action") or "").strip().lower()
         is_pr = event in ("pull_request", "pr") or bool(pr_number and head_sha)
+        base = {"delivery": delivery, "client": client,
+                "event": event or ("pull_request" if is_pr else "?"),
+                "action": action, "repo": str(o.get("repo") or ""),
+                "pr_number": pr_number, "head_sha": head_sha,
+                "base_ref": base_ref, "body": o}
         if is_pr:
             # Only a freshly-OPENED PR is a benchmark trigger. synchronize /
             # reopened / ready_for_review are intentionally ignored.
             if action and action != "opened":
+                record({**base, "decision": "skipped", "skipped_reason": action})
                 self._send(202, {"accepted": False, "skipped": action}); return
             if not (pr_number and head_sha):
+                record({**base, "decision": "error",
+                        "error": "missing pr_number/head_sha"})
                 self._send(400, {"error": "pull_request missing pr_number/head_sha"}); return
+            record({**base, "decision": "accepted"})
             emit("pr", delivery, str(o.get("repo") or ""), "", "", pr_number, head_sha, base_ref)
             self._send(202, {"accepted": True, "event": "pull_request", "pr": pr_number})
             return
         # Non-PR events (push, etc.) no longer trigger a benchmark.
+        record({**base, "decision": "skipped",
+                "skipped_reason": event or "non-pull_request"})
         self._send(202, {"accepted": False, "skipped": event or "non-pull_request"})
 
 HTTPServer(("0.0.0.0", PORT), H).serve_forever()

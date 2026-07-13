@@ -378,9 +378,34 @@ aigdbench serve --reports-dir . --testcases-dir ./testcases_filtered
   以及（survey 行）AI 活动记录。
 - **Testcases** —— 来自 `--testcases-dir` 的 testcase 库：每个 case 的任务文本、验证器类型、打分模式、文件清单。
 - **Contents** —— 直接查看每个 testcase 的文件内容。
+- **Run** —— **在网页上手动发起一次正式 benchmark**（默认开启，`--allow-run`）。**跑的是真实的
+  docker + Kubernetes 并行**（`scripts/run_k8s_matrix.sh`：一 testcase 一 k8s Job，跑在共享 runner
+  镜像上，harness 取自集群 Secret），**不是本机跑**——与 PR 候选流走同一条生产路径。表单里填：
+  **run 名称（必填，自定义）**、可选 `testcases`（留空=全部，空格/逗号分隔 id）、`jobs`（k8s 并发上限）、
+  单 testcase `timeout`。点 **Start benchmark**（一次只允许一个），**Live status** 每 2 秒轮询显示
+  状态徽章 / 经过秒数 / **docker 环境信息**（镜像、namespace、Secret、testcase 数）/ matrix 日志 tail，
+  可随时 **Stop**。跑完把聚合出的 `report.json` **打上你的自定义 run 名称**（作为 `harness` 标签）复制进
+  `--reports-dir`，于是和正常流程一样出现在 Reports tab——「正在跑 / 已经跑过」的数据和报告都能实时看到。
 
 参数：`--testcases-dir` 缺省用 `./testcases`（若存在）；`--port` / `--host` / `--no-open-browser` 可选；
-`--editable` 开启后可在 dashboard 内新建/编辑/删除 testcase（默认只读）。
+`--editable` 开启后可在 dashboard 内新建/编辑/删除 testcase（默认只读）；
+`--allow-run/--no-allow-run` 控制 Run tab（默认开启）；Run tab 的 docker/k8s 参数：
+`--runner-image`（默认 `harbor.omgwow.ai/beaver_hub-public/aigdbench-runner:latest`，复用不重建）、
+`--k8s-namespace`（默认 `default`）、`--harness-secret`（默认 `aigdbench-harness`）、
+`--image-testcases-dir`（默认 `/app/testcases_filtered`）、`--jobs`（默认 16）；
+`--webhook-log` 指向 orchestrator 的 `webhooks.jsonl` 以启用 Webhooks tab。
+
+**对外开放端口**（其它机器/公网访问）——把 host 绑到 `0.0.0.0` 并放开防火墙即可：
+
+```bash
+aigdbench serve --host 0.0.0.0 --port 8000 \
+  --reports-dir ./dashboard_reports --testcases-dir ./testcases_filtered --no-open-browser
+# 其它节点访问 http://<本机IP>:8000/
+```
+
+> ⚠️ 绑到 `0.0.0.0` + 默认开启的 Run tab **没有鉴权**：能连到该端口的任何人都能发起 benchmark
+> 甚至停止运行。仅在可信内网使用，或用 `--no-allow-run` 关掉手动起跑、或在前面加一层反向代理鉴权。
+> 启动时若检测到绑定所有网卡会打印一条 WARNING 提醒。
 
 ---
 
@@ -626,6 +651,22 @@ scripts/bench-orchestrator.sh --mode http --port 8899 --token <shared-token> \
 - `--image-repo`：候选镜像仓（不带 tag），候选流会追加不可变 `:<sha>` tag。
 - `--auto-release`：**打开**才会真正 `gh pr merge` + bump + push；不加则跑到门禁为止、只
   上报候选是否达标、不改动 main（安全默认）。
+
+### Webhook 消息查看（集成在 dashboard 的 Webhooks tab）
+
+orchestrator（`--mode http` 和 `--mode watch-logs` 都一样）把收到的每一条 webhook 追加到
+JSONL（`<state-dir>/webhooks.jsonl`，默认 `.orchestrator/webhooks.jsonl`）。**不再单独起一个查看进程**——
+直接用 dashboard 的 **Webhooks tab** 查看：启动 dashboard 时把这个日志传进去即可：
+
+```bash
+aigdbench serve --host 0.0.0.0 --port 8000 \
+  --reports-dir ./dashboard_reports --testcases-dir ./testcases_filtered \
+  --webhook-log ./.orchestrator/webhooks.jsonl --no-open-browser
+# 或直接:  scripts/start_dashboard.sh   （已默认带上 --webhook-log）
+```
+
+Webhooks tab 每 3 秒自动刷新，每条显示**判定**（accepted / skipped+原因 / error）、event/action、
+delivery id、来源 IP、时间，点开看完整 body。JSON 接口在 `GET /api/webhooks`。
 
 探活与手动触发（本机自测）：
 
