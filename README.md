@@ -666,9 +666,20 @@ scripts/bench-orchestrator.sh --mode http --port 8899 --token <shared-token> \
 （默认 `.orchestrator/webhooks.jsonl`，全量长期保存）。若这个端口没有进程在听，转发会
 `fetch failed` 而丢弃——这正是「触发了 webhook 但页面为空」的根因。
 
-- **自动触发 benchmark**：接收器收到 `action=opened` 的 PR 时，默认会 fire-and-forget 调用
-  dashboard 的 `/api/runs/start`，对**全部** testcase 跑一次 docker/k8s matrix（run 名 `pr-<号>-<sha8>`）。
-  dashboard 一次只跑一个，重复触发返回 409 被忽略。用 `WEBHOOK_AUTORUN=0` 可只记录不执行。
+- **自动触发 benchmark**（`WEBHOOK_AUTORUN_MODE`，默认 `candidate`）：接收器收到 `action=opened`
+  的 PR 时——
+  - `candidate`（**默认，推荐**）：跑 `scripts/bench-candidate.sh`，它把插件按
+    **`origin/main` + cherry-pick(PR commit)** 重建（= **PR 合并进 main 之后的插件**），
+    构建候选镜像 → 一 testcase 一 k8s Job 评测 → 记 `report.json`。默认带
+    `--auto-release`（`WEBHOOK_AUTO_RELEASE=1`）：候选**严格优于历史最高分**才 `gh pr merge` +
+    version bump + push main（release-on-bump 发新版）；否则只上报不动 main。一次只跑一个候选，
+    同一 PR head 去重。跑完把 report 复制进 `--reports-dir`（`harness=pr-<号>-<sha8>`），出现在 Reports tab。
+  - `matrix`：POST dashboard 的 `/api/runs/start`，用**固定 `:latest` 镜像**跑全部 testcase
+    （**不反映 PR 的插件改动**，仅用于快速冒烟）。
+  - `off`：只记录不执行。
+  > 说明：harness 的「secret default」指 k8s Secret `aigdbench-harness` 里的 `HARNESS_CMD`
+  > （`claude -p {task} --plugin-dir /opt/agd-plugin` + `ANTHROPIC_API_KEY` 等）。因含密钥且面板
+  > 无鉴权公开，故 status 只显示 `(secret default)` 不回显内容。
 - **查看**：dashboard 的 **Webhooks tab** 每 3 秒自动刷新，每条显示**判定**
   （accepted / skipped+原因 / error）、event/action、delivery id、来源 IP、时间，点开看完整 body。
   默认展示最新 200 条；点 **Load all** 加载全部（`GET /api/webhooks?limit=all`，响应含 `total`）。

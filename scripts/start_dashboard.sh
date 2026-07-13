@@ -29,8 +29,10 @@
 #   PORT(8000) HOST(0.0.0.0) REPORTS_DIR TESTCASES_DIR SESSION(aigdbench-web)
 #   ALLOW_RUN(1) WEBHOOK_LOG(.orchestrator/webhooks.jsonl)
 #   WEBHOOK_RECV_PORT(8899; 0=off) WEBHOOK_TOKEN(empty=accept all)
+#   WEBHOOK_AUTORUN_MODE(candidate|matrix|off) WEBHOOK_AUTO_RELEASE(1)
+#   PLUGIN_REPO(../agentic-game-development) IMAGE_REPO RESULTS_ROOT
 #   RUNNER_IMAGE K8S_NAMESPACE(default) HARNESS_SECRET(aigdbench-harness)
-#   IMAGE_TESTCASES_DIR(/app/testcases_filtered) JOBS(16)
+#   IMAGE_TESTCASES_DIR(/app/testcases_filtered) LOCAL_TESTCASES_DIR JOBS(16)
 #   ALLOW_CIDR(0.0.0.0/0 => open to everyone; set e.g. 10.0.21.0/24 to restrict)
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -51,14 +53,23 @@ ALLOW_CIDR="${ALLOW_CIDR:-0.0.0.0/0}"
 # port is already firewalled to the receiver subnet).
 WEBHOOK_RECV_PORT="${WEBHOOK_RECV_PORT:-8899}"
 WEBHOOK_TOKEN="${WEBHOOK_TOKEN:-}"
-# WEBHOOK_AUTORUN=1 -> on each accepted opened PR, the receiver kicks the
-# dashboard's /api/runs/start (real docker/k8s matrix over all filtered
-# testcases). 0 -> record only. AUTORUN_JOBS/AUTORUN_TIMEOUT tune the run.
-WEBHOOK_AUTORUN="${WEBHOOK_AUTORUN:-1}"
+# WEBHOOK_AUTORUN_MODE on each accepted opened PR:
+#   candidate (default) -> run scripts/bench-candidate.sh, which builds the
+#     plugin from origin/main + cherry-pick(PR commit) (== the plugin AS IF the
+#     PR were merged), benchmarks it, and (with WEBHOOK_AUTO_RELEASE=1) merges +
+#     releases only if it beats the historical best. Correct "merged plugin" eval.
+#   matrix -> POST /api/runs/start (shared :latest image; does NOT reflect the PR).
+#   off -> record only.
+WEBHOOK_AUTORUN_MODE="${WEBHOOK_AUTORUN_MODE:-candidate}"
+WEBHOOK_AUTO_RELEASE="${WEBHOOK_AUTO_RELEASE:-1}"   # candidate: merge+release winners
 AUTORUN_JOBS="${AUTORUN_JOBS:-16}"
 AUTORUN_TIMEOUT="${AUTORUN_TIMEOUT:-1200}"
 # Run tab = real docker + k8s matrix (one Job per testcase on this image).
 RUNNER_IMAGE="${RUNNER_IMAGE:-harbor.omgwow.ai/beaver_hub-public/aigdbench-runner:latest}"
+IMAGE_REPO="${IMAGE_REPO:-harbor.omgwow.ai/beaver_hub-public/aigdbench-runner}"
+PLUGIN_REPO="${PLUGIN_REPO:-$REPO_ROOT/../agentic-game-development}"
+RESULTS_ROOT="${RESULTS_ROOT:-$REPO_ROOT/results}"
+LOCAL_TESTCASES_DIR="${LOCAL_TESTCASES_DIR:-$TESTCASES_DIR}"
 K8S_NAMESPACE="${K8S_NAMESPACE:-default}"
 HARNESS_SECRET="${HARNESS_SECRET:-aigdbench-harness}"
 IMAGE_TESTCASES_DIR="${IMAGE_TESTCASES_DIR:-/app/testcases_filtered}"
@@ -175,13 +186,32 @@ fi
 RECV_ARGS=("$REPO_ROOT/scripts/webhook_receiver.py"
            --host 0.0.0.0 --port "$WEBHOOK_RECV_PORT" --log "$WEBHOOK_LOG")
 [[ -n "$WEBHOOK_TOKEN" ]] && RECV_ARGS+=(--token "$WEBHOOK_TOKEN")
-# Auto-run: only when the Run tab is enabled (there is a /api/runs/start to hit).
-# Target the dashboard over loopback (same host).
-AUTORUN_ON=0
-if [[ "$WEBHOOK_AUTORUN" == "1" && "$ALLOW_RUN" == "1" ]]; then
-  AUTORUN_ON=1
-  RECV_ARGS+=(--autorun-url "http://127.0.0.1:$PORT/api/runs/start"
-              --autorun-jobs "$AUTORUN_JOBS" --autorun-timeout "$AUTORUN_TIMEOUT")
+# Resolve the effective auto-run mode. candidate needs a plugin git checkout +
+# docker + kubectl; if any is missing, fall back to record-only (off).
+AUTORUN_MODE="$WEBHOOK_AUTORUN_MODE"
+if [[ "$AUTORUN_MODE" == "candidate" ]]; then
+  if [[ ! -d "$PLUGIN_REPO/.git" ]]; then
+    echo "WARNING: PLUGIN_REPO ($PLUGIN_REPO) is not a git checkout; auto-run disabled." >&2
+    AUTORUN_MODE="off"
+  elif ! command -v docker >/dev/null 2>&1 || ! command -v kubectl >/dev/null 2>&1; then
+    echo "WARNING: docker/kubectl missing; candidate auto-run disabled." >&2
+    AUTORUN_MODE="off"
+  fi
+elif [[ "$AUTORUN_MODE" == "matrix" && "$ALLOW_RUN" != "1" ]]; then
+  AUTORUN_MODE="off"   # no /api/runs/start to hit
+fi
+RECV_ARGS+=(--autorun-mode "$AUTORUN_MODE"
+            --autorun-jobs "$AUTORUN_JOBS" --autorun-timeout "$AUTORUN_TIMEOUT")
+if [[ "$AUTORUN_MODE" == "matrix" ]]; then
+  RECV_ARGS+=(--autorun-url "http://127.0.0.1:$PORT/api/runs/start")
+elif [[ "$AUTORUN_MODE" == "candidate" ]]; then
+  RECV_ARGS+=(--repo-root "$REPO_ROOT" --plugin-repo "$PLUGIN_REPO"
+              --image-repo "$IMAGE_REPO" --secret "$HARNESS_SECRET"
+              --image-testcases-dir "$IMAGE_TESTCASES_DIR"
+              --local-testcases-dir "$LOCAL_TESTCASES_DIR"
+              --namespace "$K8S_NAMESPACE" --results-root "$RESULTS_ROOT"
+              --reports-dir "$REPORTS_DIR")
+  [[ "$WEBHOOK_AUTO_RELEASE" == "1" ]] && RECV_ARGS+=(--auto-release)
 fi
 
 banner() {
@@ -193,11 +223,14 @@ banner() {
   echo "    webhooks: $WEBHOOK_LOG"
   if [[ "$RECV_ON" == "1" ]]; then
     echo "    receiver: POST http://$url_host:$WEBHOOK_RECV_PORT/trigger -> Webhooks tab"
-    if [[ "$AUTORUN_ON" == "1" ]]; then
-      echo "    auto-run: opened PR -> benchmark all testcases (jobs=$AUTORUN_JOBS)"
-    else
-      echo "    auto-run: off (record only; run manually from the Run tab)"
-    fi
+    case "$AUTORUN_MODE" in
+      candidate)
+        echo "    auto-run: opened PR -> bench-candidate.sh (main+PR merged plugin)"$'\n'"              gate$([[ "$WEBHOOK_AUTO_RELEASE" == "1" ]] && echo " + auto-merge/release" || echo " only") · plugin=$PLUGIN_REPO" ;;
+      matrix)
+        echo "    auto-run: opened PR -> matrix over all testcases (:latest, jobs=$AUTORUN_JOBS)" ;;
+      *)
+        echo "    auto-run: off (record only; run manually from the Run tab)" ;;
+    esac
   else
     echo "    receiver: off (webhooks only appear if something else writes the log)"
   fi

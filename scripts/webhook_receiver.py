@@ -2,19 +2,28 @@
 """Standalone webhook receiver for the AIGameDevBench dashboard.
 
 Listens for the k8s github-webhook receiver's forwarded deliveries
-(POST /trigger) and appends each one to a JSONL log that the dashboard's
-Webhooks tab reads. This is the "record only" half of bench-orchestrator.sh's
-http mode -- it does NOT launch any benchmark; it just captures what arrived so
-the dashboard shows it.
+(POST /trigger), appends each one to a JSONL log that the dashboard's Webhooks
+tab reads, and (optionally) launches a benchmark on an opened PR.
 
 Why this exists: the k8s receiver forwards to BENCH_TRIGGER_URL
 (e.g. http://<this-host>:8899/trigger). If nothing listens there, the receiver
 logs "benchmark trigger forward failed: fetch failed" and the delivery is lost.
 Running this keeps the port alive and captures every delivery.
 
+Auto-run modes (per opened PR):
+  * candidate (default via start_dashboard.sh) -- run scripts/bench-candidate.sh
+    which builds the plugin from origin/main + cherry-pick(PR commit), i.e. the
+    plugin AS IF the PR were merged, benchmarks it, and (with --auto-release)
+    merges + releases only if it strictly beats the historical best. This is the
+    correct "evaluate the merged plugin" behavior.
+  * matrix -- POST the dashboard's /api/runs/start to run the shared :latest
+    image over all testcases (does NOT reflect the PR's plugin changes).
+  * off -- record only.
+
 Usage:
     python3 scripts/webhook_receiver.py --port 8899 \
-        --log .orchestrator/webhooks.jsonl [--token <shared-secret>]
+        --log .orchestrator/webhooks.jsonl [--token <shared-secret>] \
+        --autorun-mode candidate --plugin-repo ../agentic-game-development ...
 
 Pure stdlib. The record format matches bench-orchestrator.sh exactly, so the
 dashboard renders receiver-captured and orchestrator-captured deliveries the
@@ -24,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 import threading
 import time
@@ -32,8 +42,15 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 
-def make_handler(log_path: Path, token: str, autorun_url: str = "",
-                 autorun_jobs: int = 16, autorun_timeout: int = 1200):
+def make_handler(log_path: Path, token: str, autorun_mode: str = "off",
+                 autorun_url: str = "", autorun_jobs: int = 16,
+                 autorun_timeout: int = 1200, candidate_opts: dict | None = None):
+    candidate_opts = candidate_opts or {}
+    # Single in-flight candidate at a time + de-dupe by head sha across the
+    # receiver's lifetime (a PR's redelivery / reopen shouldn't double-run).
+    cand_lock = threading.Lock()
+    cand_state = {"running": False, "seen": set()}
+
     def record(rec: dict) -> None:
         rec.setdefault("time", time.time())
         rec.setdefault("source", "receiver")
@@ -45,9 +62,8 @@ def make_handler(log_path: Path, token: str, autorun_url: str = "",
 
     def kick_benchmark(delivery: str, pr_number: str, head_sha: str,
                        repo: str) -> None:
-        """Fire-and-forget POST to the dashboard's /api/runs/start so an opened
-        PR launches the real docker/k8s matrix over all filtered testcases. The
-        dashboard runs one at a time, so a 409 (busy) is expected and ignored."""
+        """matrix mode: fire-and-forget POST to /api/runs/start (shared :latest
+        image over all testcases). Does NOT reflect the PR's plugin changes."""
         if not autorun_url:
             return
         sha8 = (head_sha or "")[:8]
@@ -77,6 +93,89 @@ def make_handler(log_path: Path, token: str, autorun_url: str = "",
                 sys.stderr.write(f"[receiver] auto-run {name} failed: {e}\n")
 
         threading.Thread(target=_post, daemon=True).start()
+
+    def kick_candidate(delivery: str, pr_number: str, head_sha: str,
+                       repo: str) -> str:
+        """candidate mode: run scripts/bench-candidate.sh for this PR head. It
+        builds the plugin from origin/main + cherry-pick(head_sha) (== merged
+        plugin), benchmarks it, and with --auto-release merges+releases if it
+        beats the historical best. Returns a short status note for the reply."""
+        repo_root = Path(candidate_opts["repo_root"])
+        script = repo_root / "scripts" / "bench-candidate.sh"
+        if not script.is_file():
+            sys.stderr.write(f"[receiver] candidate script missing: {script}\n")
+            return "candidate script missing"
+        key = f"{pr_number}-{head_sha}"
+        with cand_lock:
+            if key in cand_state["seen"]:
+                return "already processed this PR head"
+            if cand_state["running"]:
+                return "a candidate benchmark is already in progress"
+            cand_state["seen"].add(key)
+            cand_state["running"] = True
+
+        results_root = Path(candidate_opts["results_root"])
+        out_dir = results_root / (delivery or key)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        cand_log = out_dir / "candidate.log"
+
+        cmd = [
+            "bash", str(script),
+            "--commit", head_sha,
+            "--pr", pr_number or "",
+            "--repo", repo or "",
+            "--delivery", delivery or key,
+            "--plugin-repo", candidate_opts["plugin_repo"],
+            "--image-repo", candidate_opts["image_repo"],
+            "--secret", candidate_opts["secret"],
+            "--jobs", str(autorun_jobs),
+            "--timeout", str(autorun_timeout),
+            "--testcases-dir", candidate_opts["image_testcases_dir"],
+            "--local-testcases-dir", candidate_opts["local_testcases_dir"],
+            "--namespace", candidate_opts["namespace"],
+            "--results-root", str(results_root),
+            "--bump", candidate_opts.get("bump", "patch"),
+        ]
+        if candidate_opts.get("auto_release"):
+            cmd.append("--auto-release")
+
+        def _run():
+            try:
+                with open(cand_log, "wb") as lf:
+                    rc = subprocess.call(cmd, cwd=str(repo_root),
+                                         stdout=lf, stderr=subprocess.STDOUT)
+                sys.stderr.write(
+                    f"[receiver] candidate PR#{pr_number} rc={rc} (log {cand_log})\n")
+                # Surface the candidate's report in the dashboard Reports tab.
+                _publish_report(out_dir, pr_number, head_sha)
+            except Exception as e:  # noqa: BLE001
+                sys.stderr.write(f"[receiver] candidate PR#{pr_number} failed: {e}\n")
+            finally:
+                with cand_lock:
+                    cand_state["running"] = False
+
+        threading.Thread(target=_run, daemon=True).start()
+        return "candidate benchmark launched (main + PR plugin)"
+
+    def _publish_report(out_dir: Path, pr_number: str, head_sha: str) -> None:
+        """Copy bench-candidate's report.json into --reports-dir, stamped with a
+        pr-<n>-<sha8> harness label so it shows in the Reports tab like any run."""
+        reports_dir = candidate_opts.get("reports_dir")
+        src = out_dir / "report.json"
+        if not reports_dir or not src.is_file():
+            return
+        sha8 = (head_sha or "")[:8]
+        name = f"pr-{pr_number or '?'}-{sha8 or 'cand'}"
+        try:
+            data = json.loads(src.read_text(encoding="utf-8"))
+            data["harness"] = name
+            data.setdefault("run_name", name)
+            data["executor"] = "bench-candidate"
+            dest = Path(reports_dir) / f"report-{name}.json"
+            dest.write_text(json.dumps(data, indent=2), encoding="utf-8")
+            sys.stderr.write(f"[receiver] candidate report published: {dest}\n")
+        except (OSError, ValueError) as e:
+            sys.stderr.write(f"[receiver] could not publish candidate report: {e}\n")
 
     class Handler(BaseHTTPRequestHandler):
         def _send(self, code: int, obj: dict) -> None:
@@ -158,9 +257,12 @@ def make_handler(log_path: Path, token: str, autorun_url: str = "",
                     return
                 record({**base, "decision": "accepted"})
                 note = "recorded (no auto-run)"
-                if autorun_url:
+                if autorun_mode == "candidate":
+                    note = "recorded; " + kick_candidate(
+                        delivery, pr_number, head_sha, base["repo"])
+                elif autorun_mode == "matrix" and autorun_url:
                     kick_benchmark(delivery, pr_number, head_sha, base["repo"])
-                    note = "recorded; benchmark auto-run kicked"
+                    note = "recorded; benchmark auto-run kicked (matrix :latest)"
                 self._send(202, {"accepted": True, "event": "pull_request",
                                  "pr": pr_number, "note": note})
                 return
@@ -182,30 +284,67 @@ def main() -> None:
                          "(the dashboard reads this via --webhook-log)")
     ap.add_argument("--token", default="",
                     help="Shared x-bench-token to require (empty = no auth)")
+    ap.add_argument("--autorun-mode", default="off",
+                    choices=["off", "matrix", "candidate"],
+                    help="off = record only; matrix = POST /api/runs/start "
+                         "(shared :latest image); candidate = run "
+                         "scripts/bench-candidate.sh (main + PR merged plugin).")
     ap.add_argument("--autorun-url", default="",
-                    help="If set, POST here (the dashboard's /api/runs/start) to "
-                         "auto-launch a benchmark on each accepted opened PR. "
-                         "Empty = record only.")
+                    help="matrix mode: the dashboard's /api/runs/start URL")
     ap.add_argument("--autorun-jobs", type=int, default=16,
                     help="jobs (max concurrent k8s Jobs) for auto-run")
     ap.add_argument("--autorun-timeout", type=int, default=1200,
                     help="per-testcase timeout (s) for auto-run")
+    # candidate-mode plumbing (passed straight through to bench-candidate.sh):
+    ap.add_argument("--repo-root", default=".")
+    ap.add_argument("--plugin-repo", default="../agentic-game-development")
+    ap.add_argument("--image-repo",
+                    default="harbor.omgwow.ai/beaver_hub-public/aigdbench-runner")
+    ap.add_argument("--secret", default="aigdbench-harness")
+    ap.add_argument("--image-testcases-dir", default="/app/testcases_filtered")
+    ap.add_argument("--local-testcases-dir", default="./testcases_filtered")
+    ap.add_argument("--namespace", default="default")
+    ap.add_argument("--results-root", default="./results")
+    ap.add_argument("--reports-dir", default="./dashboard_reports")
+    ap.add_argument("--bump", default="patch")
+    ap.add_argument("--auto-release", action="store_true",
+                    help="candidate mode: merge+release if it beats the best")
     args = ap.parse_args()
 
     log_path = Path(args.log)
     log_path.parent.mkdir(parents=True, exist_ok=True)
     log_path.touch(exist_ok=True)
 
+    candidate_opts = {
+        "repo_root": args.repo_root,
+        "plugin_repo": args.plugin_repo,
+        "image_repo": args.image_repo,
+        "secret": args.secret,
+        "image_testcases_dir": args.image_testcases_dir,
+        "local_testcases_dir": args.local_testcases_dir,
+        "namespace": args.namespace,
+        "results_root": args.results_root,
+        "reports_dir": args.reports_dir,
+        "bump": args.bump,
+        "auto_release": args.auto_release,
+    }
+
     server = ThreadingHTTPServer(
         (args.host, args.port),
-        make_handler(log_path, args.token, autorun_url=args.autorun_url,
-                     autorun_jobs=args.autorun_jobs,
-                     autorun_timeout=args.autorun_timeout))
+        make_handler(log_path, args.token, autorun_mode=args.autorun_mode,
+                     autorun_url=args.autorun_url, autorun_jobs=args.autorun_jobs,
+                     autorun_timeout=args.autorun_timeout,
+                     candidate_opts=candidate_opts))
+    mode_note = {
+        "off": "record only",
+        "matrix": f"auto-run matrix -> {args.autorun_url}",
+        "candidate": "auto-run candidate (main+PR plugin)"
+        + (" +auto-release" if args.auto_release else " (gate only)"),
+    }.get(args.autorun_mode, args.autorun_mode)
     print(f"[receiver] listening on http://{args.host}:{args.port}/trigger "
           f"-> {log_path}"
           + ("  (token required)" if args.token else "  (no auth)")
-          + (f"  (auto-run -> {args.autorun_url})" if args.autorun_url
-             else "  (record only)"), flush=True)
+          + f"  ({mode_note})", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
