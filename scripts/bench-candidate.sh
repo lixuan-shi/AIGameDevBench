@@ -140,6 +140,12 @@ log "candidate: commit=$SHA8 branch=$CAND_BRANCH image=$IMAGE out=$OUT"
 # --- 1. Build candidate branch: origin/main + this commit --------------------
 log "[1] building candidate branch $CAND_BRANCH from origin/main + $SHA8"
 git -C "$PLUGIN_REPO" fetch origin main --quiet || die "fetch origin main failed"
+# The PR head commit lives on a PR branch, not on main, so `fetch origin main`
+# alone does NOT bring the object into the local repo. Without it `cherry-pick`
+# fails with "bad object" -- which used to be mis-reported as a conflict and the
+# benchmark silently skipped. Fetch the commit explicitly (best-effort; GitHub
+# serves reachable SHAs), then verify the object is present before proceeding.
+git -C "$PLUGIN_REPO" fetch origin "$COMMIT" --quiet 2>/dev/null || true
 # Remember where the plugin repo was so we can restore it afterward.
 ORIG_REF="$(git -C "$PLUGIN_REPO" rev-parse --abbrev-ref HEAD)"
 restore_repo() {
@@ -147,15 +153,25 @@ restore_repo() {
   git -C "$PLUGIN_REPO" checkout --quiet "$ORIG_REF" 2>/dev/null || true
   git -C "$PLUGIN_REPO" branch -D "$CAND_BRANCH" >/dev/null 2>&1 || true
 }
+# If the commit object still isn't available, this is NOT a conflict -- the head
+# was never pushed/reachable (deleted branch, force-push, private fork, etc.).
+# Record a distinct status so the dashboard shows the real reason.
+if ! git -C "$PLUGIN_REPO" cat-file -e "${COMMIT}^{commit}" 2>/dev/null; then
+  log "[1] COMMIT UNAVAILABLE: $SHA8 could not be fetched from origin (not on any reachable ref?)"
+  echo '{"status":"commit_unavailable","commit":"'"$COMMIT"'","note":"PR head commit not fetchable from origin (fetch origin <sha> failed); no benchmark run"}' > "$OUT/candidate.json"
+  exit 0
+fi
 git -C "$PLUGIN_REPO" checkout -B "$CAND_BRANCH" origin/main --quiet || die "cannot create $CAND_BRANCH"
 MAIN_SHA="$(git -C "$PLUGIN_REPO" rev-parse origin/main)"
 if git -C "$PLUGIN_REPO" merge-base --is-ancestor "$COMMIT" origin/main 2>/dev/null; then
   log "commit $SHA8 already in origin/main — evaluating main as-is (no cherry-pick)"
 else
+  # The commit object exists (verified above), so a non-zero cherry-pick here is
+  # a GENUINE merge conflict against origin/main -- distinct from "bad object".
   if ! git -C "$PLUGIN_REPO" cherry-pick "$COMMIT" >/dev/null 2>&1; then
     git -C "$PLUGIN_REPO" cherry-pick --abort >/dev/null 2>&1 || true
     log "[1] CHERRY-PICK CONFLICT: $SHA8 does not apply cleanly onto origin/main"
-    echo '{"status":"conflict","commit":"'"$COMMIT"'","note":"cherry-pick onto origin/main failed"}' > "$OUT/candidate.json"
+    echo '{"status":"conflict","commit":"'"$COMMIT"'","note":"cherry-pick onto origin/main hit a real merge conflict"}' > "$OUT/candidate.json"
     restore_repo
     exit 0
   fi
