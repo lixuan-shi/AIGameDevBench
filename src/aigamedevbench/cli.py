@@ -1526,6 +1526,11 @@ class BenchJobManager:
         self._out_dir: Path | None = None
         self._report_path: Path | None = None   # final copy in reports dir
         self._error = ""
+        # Externally-launched run (the webhook receiver's bench-candidate), which
+        # the dashboard does not spawn itself. The receiver POSTs lifecycle
+        # updates to /api/runs/external; when the manager is otherwise idle,
+        # status() surfaces this so the Live status / Status tab shows it.
+        self._external: dict | None = None
 
     def _monotonic(self) -> float:
         import time
@@ -1773,8 +1778,113 @@ class BenchJobManager:
         return {"total": total, "completed": completed, "percent": pct,
                 "results": done}
 
+    def _scan_progress(self, out_dir: Path | None, total: int) -> dict:
+        """Same as _progress but for an arbitrary matrix out dir (used for the
+        externally-launched candidate run)."""
+        import json as _json
+        done: list[dict] = []
+        if out_dir and out_dir.is_dir():
+            for p in sorted(out_dir.glob("*.json")):
+                if p.name == "report.json":
+                    continue
+                try:
+                    d = _json.loads(p.read_text(encoding="utf-8"))
+                except (OSError, ValueError):
+                    continue
+                rec = None
+                if isinstance(d, dict) and isinstance(d.get("testcases"), list) \
+                        and d["testcases"]:
+                    rec = d["testcases"][0]
+                elif isinstance(d, dict):
+                    rec = d
+                if not isinstance(rec, dict):
+                    continue
+                done.append({"testcase_id": rec.get("testcase_id") or p.stem,
+                             "score": rec.get("score"),
+                             "status": rec.get("status")})
+        completed = len(done)
+        if not total:
+            total = completed
+        pct = round(100.0 * completed / total, 1) if total else 0.0
+        return {"total": total, "completed": completed, "percent": pct,
+                "results": done}
+
+    def register_external(self, info: dict) -> dict:
+        """Record/refresh a run launched OUTSIDE this manager (the webhook
+        receiver's bench-candidate). Fields: name, state(running|done|failed),
+        phase, out_dir, total, image, namespace, error, report_file."""
+        with self._lock:
+            import time
+            state = str(info.get("state") or "running")
+            prev = self._external or {}
+            ext = {
+                "name": str(info.get("name") or prev.get("name") or "candidate"),
+                "state": state,
+                "phase": str(info.get("phase") or prev.get("phase") or ""),
+                "out_dir": str(info.get("out_dir") or prev.get("out_dir") or ""),
+                "total": int(info.get("total") or prev.get("total") or 0),
+                "image": str(info.get("image") or prev.get("image") or ""),
+                "namespace": str(info.get("namespace")
+                                 or prev.get("namespace") or self._namespace),
+                "pr_number": str(info.get("pr_number") or prev.get("pr_number") or ""),
+                "error": str(info.get("error") or ""),
+                "report_file": str(info.get("report_file")
+                                   or prev.get("report_file") or ""),
+                "started_at": prev.get("started_at") or time.time(),
+                "updated_at": time.time(),
+            }
+            if state != "running":
+                ext["ended_at"] = time.time()
+            self._external = ext
+            return dict(ext)
+
+    def _external_status(self) -> dict | None:
+        """Render the external run as a status() payload, or None if absent."""
+        ext = self._external
+        if not ext:
+            return None
+        out_dir = Path(ext["out_dir"]) if ext.get("out_dir") else None
+        progress = self._scan_progress(out_dir, int(ext.get("total") or 0))
+        started = ext.get("started_at") or 0.0
+        ended = ext.get("ended_at") or 0.0
+        elapsed = round((ended or ext.get("updated_at", started)) - started, 1) \
+            if started else 0.0
+        label_bits = [ext["name"], "docker/k8s candidate"]
+        if ext.get("phase"):
+            label_bits.append(ext["phase"])
+        return {
+            "state": ext["state"],
+            "label": " · ".join(label_bits),
+            "name": ext["name"],
+            "executor": "bench-candidate",
+            "external": True,
+            "phase": ext.get("phase", ""),
+            "image": ext.get("image", ""),
+            "namespace": ext.get("namespace", ""),
+            "harness_secret": self._harness_secret,
+            "harness_cmd": "(secret default)",
+            "testcase_count": progress["total"],
+            "testcases": [r["testcase_id"] for r in progress["results"]],
+            "progress": progress,
+            "cmd": "",
+            "started_at": started or None,
+            "elapsed": elapsed,
+            "returncode": None,
+            "report_file": ext.get("report_file") or None,
+            "report_ready": bool(ext.get("report_file")),
+            "error": ext.get("error", ""),
+            "log_tail": "",
+        }
+
     def status(self) -> dict:
         with self._lock:
+            # If this manager isn't itself running a run, surface the externally
+            # launched candidate (webhook receiver) so the UI shows it. A local
+            # Run-tab run always takes precedence while active.
+            if self._state != "running" and self._external is not None:
+                ext = self._external_status()
+                if ext is not None:
+                    return ext
             if self._state == "running" and self._started_mono:
                 elapsed = self._monotonic() - self._started_mono
             elif self._ended_at and self._started_at:
@@ -1984,13 +2094,18 @@ def serve_cmd(reports_dir: str, testcases_dir: str | None, port: int, host: str,
             parsed = urlparse(self.path)
             path = parsed.path
             # Run-control endpoints are gated on --allow-run only.
-            if path in ("/api/runs/start", "/api/runs/stop"):
+            if path in ("/api/runs/start", "/api/runs/stop", "/api/runs/external"):
                 if job_manager is None:
                     self._json({"error": "running is disabled "
                                 "(run serve with --allow-run)"}, code=403)
                     return
                 if path == "/api/runs/stop":
                     self._json(job_manager.stop())
+                    return
+                if path == "/api/runs/external":
+                    # The webhook receiver reports its externally-launched
+                    # candidate run here so the Live status / Status tab shows it.
+                    self._json(job_manager.register_external(self._read_json_body()))
                     return
                 body = self._read_json_body()
                 try:

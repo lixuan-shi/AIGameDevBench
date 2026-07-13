@@ -1430,6 +1430,8 @@ function renderStatusView(s) {
   $("#st-bar-num").textContent = `${p.completed||0} / ${p.total||0}` +
     (p.total ? `  (${pct}%)` : "");
   const meta = [];
+  if (s && s.external) meta.push("source=webhook PR candidate");
+  if (s && s.phase) meta.push("phase=" + s.phase);
   if (s && s.image) meta.push("image=" + s.image);
   if (s && s.namespace) meta.push("ns=" + s.namespace);
   if (s && s.report_ready && s.report_file) meta.push("report=" + s.report_file);

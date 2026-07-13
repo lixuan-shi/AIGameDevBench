@@ -245,7 +245,8 @@ elif [[ "$AUTORUN_MODE" == "candidate" ]]; then
               --image-testcases-dir "$IMAGE_TESTCASES_DIR"
               --local-testcases-dir "$LOCAL_TESTCASES_DIR"
               --namespace "$K8S_NAMESPACE" --results-root "$RESULTS_ROOT"
-              --reports-dir "$REPORTS_DIR")
+              --reports-dir "$REPORTS_DIR"
+              --dashboard-url "http://127.0.0.1:$PORT/api/runs/external")
   [[ "$WEBHOOK_AUTO_RELEASE" == "1" ]] && RECV_ARGS+=(--auto-release)
 fi
 

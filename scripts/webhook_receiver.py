@@ -51,6 +51,8 @@ def make_handler(log_path: Path, token: str, autorun_mode: str = "off",
     cand_lock = threading.Lock()
     cand_state = {"running": False, "seen": set()}
 
+    dashboard_url = candidate_opts.get("dashboard_url", "")
+
     def record(rec: dict) -> None:
         rec.setdefault("time", time.time())
         rec.setdefault("source", "receiver")
@@ -59,6 +61,19 @@ def make_handler(log_path: Path, token: str, autorun_mode: str = "off",
                 f.write(json.dumps(rec, ensure_ascii=False) + "\n")
         except OSError as e:
             sys.stderr.write(f"[receiver] could not write log: {e}\n")
+
+    def post_external(info: dict) -> None:
+        """Tell the dashboard about the externally-launched candidate run so its
+        Live status / Status tab can show it (best-effort; never raises)."""
+        if not dashboard_url:
+            return
+        try:
+            req = urllib.request.Request(
+                dashboard_url, data=json.dumps(info).encode(), method="POST",
+                headers={"Content-Type": "application/json"})
+            urllib.request.urlopen(req, timeout=10).read()
+        except Exception as e:  # noqa: BLE001
+            sys.stderr.write(f"[receiver] external-status post failed: {e}\n")
 
     def kick_benchmark(delivery: str, pr_number: str, head_sha: str,
                        repo: str) -> None:
@@ -118,6 +133,18 @@ def make_handler(log_path: Path, token: str, autorun_mode: str = "off",
         out_dir = results_root / (delivery or key)
         out_dir.mkdir(parents=True, exist_ok=True)
         cand_log = out_dir / "candidate.log"
+        # The matrix writes per-testcase JSONs here (bench-candidate uses
+        # results_root/cand-<delivery>); the dashboard scans it for live progress.
+        sha8 = (head_sha or "")[:8]
+        matrix_out = results_root / f"cand-{delivery or key}"
+        run_name = f"pr-{pr_number or '?'}-{sha8 or 'cand'}"
+        # Count local testcases so the dashboard progress bar has a denominator.
+        total_tc = 0
+        ltd = Path(candidate_opts.get("local_testcases_dir", ""))
+        if ltd.is_dir():
+            total_tc = sum(1 for p in ltd.iterdir()
+                           if p.is_dir() and not p.name.startswith("_")
+                           and p.name != "README")
 
         cmd = [
             "bash", str(script),
@@ -140,6 +167,12 @@ def make_handler(log_path: Path, token: str, autorun_mode: str = "off",
             cmd.append("--auto-release")
 
         def _run():
+            post_external({"name": run_name, "state": "running",
+                           "phase": "building candidate image",
+                           "out_dir": str(matrix_out), "total": total_tc,
+                           "namespace": candidate_opts.get("namespace", ""),
+                           "image": f"{candidate_opts['image_repo']}:{sha8}",
+                           "pr_number": pr_number})
             try:
                 with open(cand_log, "wb") as lf:
                     rc = subprocess.call(cmd, cwd=str(repo_root),
@@ -147,9 +180,21 @@ def make_handler(log_path: Path, token: str, autorun_mode: str = "off",
                 sys.stderr.write(
                     f"[receiver] candidate PR#{pr_number} rc={rc} (log {cand_log})\n")
                 # Surface the candidate's report in the dashboard Reports tab.
-                _publish_report(out_dir, pr_number, head_sha)
+                # bench-candidate writes report.json into the matrix out dir.
+                published = _publish_report(matrix_out, pr_number, head_sha)
+                post_external({"name": run_name,
+                               "state": "done" if rc == 0 else "failed",
+                               "phase": "finished",
+                               "out_dir": str(matrix_out), "total": total_tc,
+                               "pr_number": pr_number,
+                               "report_file": published or "",
+                               "error": "" if rc == 0 else f"candidate exit {rc}"})
             except Exception as e:  # noqa: BLE001
                 sys.stderr.write(f"[receiver] candidate PR#{pr_number} failed: {e}\n")
+                post_external({"name": run_name, "state": "failed",
+                               "phase": "error", "out_dir": str(matrix_out),
+                               "total": total_tc, "pr_number": pr_number,
+                               "error": str(e)})
             finally:
                 with cand_lock:
                     cand_state["running"] = False
@@ -157,13 +202,16 @@ def make_handler(log_path: Path, token: str, autorun_mode: str = "off",
         threading.Thread(target=_run, daemon=True).start()
         return "candidate benchmark launched (main + PR plugin)"
 
-    def _publish_report(out_dir: Path, pr_number: str, head_sha: str) -> None:
+    def _publish_report(out_dir: Path, pr_number: str, head_sha: str) -> str:
         """Copy bench-candidate's report.json into --reports-dir, stamped with a
-        pr-<n>-<sha8> harness label so it shows in the Reports tab like any run."""
+        pr-<n>-<sha8> harness label so it shows in the Reports tab like any run.
+        Returns the published filename (or "" if there was nothing to publish).
+        NOTE: bench-candidate writes its report to results_root/cand-<delivery>,
+        so out_dir here must be that matrix out dir."""
         reports_dir = candidate_opts.get("reports_dir")
         src = out_dir / "report.json"
         if not reports_dir or not src.is_file():
-            return
+            return ""
         sha8 = (head_sha or "")[:8]
         name = f"pr-{pr_number or '?'}-{sha8 or 'cand'}"
         try:
@@ -171,11 +219,14 @@ def make_handler(log_path: Path, token: str, autorun_mode: str = "off",
             data["harness"] = name
             data.setdefault("run_name", name)
             data["executor"] = "bench-candidate"
-            dest = Path(reports_dir) / f"report-{name}.json"
-            dest.write_text(json.dumps(data, indent=2), encoding="utf-8")
-            sys.stderr.write(f"[receiver] candidate report published: {dest}\n")
+            fname = f"report-{name}.json"
+            (Path(reports_dir) / fname).write_text(
+                json.dumps(data, indent=2), encoding="utf-8")
+            sys.stderr.write(f"[receiver] candidate report published: {fname}\n")
+            return fname
         except (OSError, ValueError) as e:
             sys.stderr.write(f"[receiver] could not publish candidate report: {e}\n")
+            return ""
 
     class Handler(BaseHTTPRequestHandler):
         def _send(self, code: int, obj: dict) -> None:
@@ -307,6 +358,10 @@ def main() -> None:
     ap.add_argument("--namespace", default="default")
     ap.add_argument("--results-root", default="./results")
     ap.add_argument("--reports-dir", default="./dashboard_reports")
+    ap.add_argument("--dashboard-url", default="",
+                    help="dashboard /api/runs/external URL; when set, candidate "
+                         "runs are reported there so the Live status / Status tab "
+                         "shows the receiver-launched benchmark")
     ap.add_argument("--bump", default="patch")
     ap.add_argument("--auto-release", action="store_true",
                     help="candidate mode: merge+release if it beats the best")
@@ -326,6 +381,7 @@ def main() -> None:
         "namespace": args.namespace,
         "results_root": args.results_root,
         "reports_dir": args.reports_dir,
+        "dashboard_url": args.dashboard_url,
         "bump": args.bump,
         "auto_release": args.auto_release,
     }
