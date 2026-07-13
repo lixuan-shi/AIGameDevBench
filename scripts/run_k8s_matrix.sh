@@ -66,7 +66,13 @@ ACTIVE_DEADLINE="${ACTIVE_DEADLINE:-}"
 TTL_AFTER_FINISHED="${TTL_AFTER_FINISHED:-14400}"
 HARNESS_SECRET="${HARNESS_SECRET:-}"
 HARNESS_INSTALL="${HARNESS_INSTALL:-}"
-CPU_REQ="${CPU_REQ:-500m}"; MEM_REQ="${MEM_REQ:-1Gi}"
+# CPU request is a SCHEDULING RESERVATION, not real usage. The harness is
+# I/O-bound (waits on the AI API + Godot), using ~6% CPU in practice, so a large
+# request needlessly serializes Jobs on a small node (a 2-core node fits only ~3
+# Jobs at 500m -> the rest sit Pending). 250m lets ~2x more run concurrently
+# while the 2-core limit still caps real CPU bursts. Raise via --cpu-req if a
+# testcase is genuinely CPU-bound.
+CPU_REQ="${CPU_REQ:-250m}"; MEM_REQ="${MEM_REQ:-1Gi}"
 CPU_LIM="${CPU_LIM:-2}";    MEM_LIM="${MEM_LIM:-4Gi}"
 TESTCASES=""
 DO_BUILD=1; DO_PUSH=1; KEEP_JOBS=0

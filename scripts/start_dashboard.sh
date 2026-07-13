@@ -62,7 +62,11 @@ WEBHOOK_TOKEN="${WEBHOOK_TOKEN:-}"
 #   off -> record only.
 WEBHOOK_AUTORUN_MODE="${WEBHOOK_AUTORUN_MODE:-candidate}"
 WEBHOOK_AUTO_RELEASE="${WEBHOOK_AUTO_RELEASE:-1}"   # candidate: merge+release winners
-AUTORUN_JOBS="${AUTORUN_JOBS:-16}"
+# Max concurrent k8s Jobs. Match the node's real capacity: on a 2-core node with
+# 250m CPU requests (see run_k8s_matrix.sh), ~6 Jobs fit after system pods.
+# Setting this far above capacity just parks the excess in Pending. Raise on a
+# bigger cluster.
+AUTORUN_JOBS="${AUTORUN_JOBS:-6}"
 # Per-testcase harness timeout for auto-runs. The matrix sets each k8s Job's
 # activeDeadlineSeconds = TIMEOUT + 300, so this also bounds the hard kill.
 # 2400s (40 min) leaves headroom for the heavy git-type survey-history_* cases
@@ -79,7 +83,7 @@ LOCAL_TESTCASES_DIR="${LOCAL_TESTCASES_DIR:-$TESTCASES_DIR}"
 K8S_NAMESPACE="${K8S_NAMESPACE:-default}"
 HARNESS_SECRET="${HARNESS_SECRET:-aigdbench-harness}"
 IMAGE_TESTCASES_DIR="${IMAGE_TESTCASES_DIR:-/app/testcases_filtered}"
-JOBS="${JOBS:-16}"
+JOBS="${JOBS:-6}"   # Run-tab concurrency; match node capacity (see AUTORUN_JOBS)
 
 # By default the script does NOT touch iptables: :8000 is opened permanently at
 # the OS level (persisted in /etc/iptables/rules.v4), so the script must not
