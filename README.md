@@ -381,11 +381,17 @@ aigdbench serve --reports-dir . --testcases-dir ./testcases_filtered
 - **Run** —— **在网页上手动发起一次正式 benchmark**（默认开启，`--allow-run`）。**跑的是真实的
   docker + Kubernetes 并行**（`scripts/run_k8s_matrix.sh`：一 testcase 一 k8s Job，跑在共享 runner
   镜像上，harness 取自集群 Secret），**不是本机跑**——与 PR 候选流走同一条生产路径。表单里填：
-  **run 名称（必填，自定义）**、可选 `testcases`（留空=全部，空格/逗号分隔 id）、`jobs`（k8s 并发上限）、
-  单 testcase `timeout`。点 **Start benchmark**（一次只允许一个），**Live status** 每 2 秒轮询显示
-  状态徽章 / 经过秒数 / **docker 环境信息**（镜像、namespace、Secret、testcase 数）/ matrix 日志 tail，
-  可随时 **Stop**。跑完把聚合出的 `report.json` **打上你的自定义 run 名称**（作为 `harness` 标签）复制进
-  `--reports-dir`，于是和正常流程一样出现在 Reports tab——「正在跑 / 已经跑过」的数据和报告都能实时看到。
+  **run 名称（必填，自定义）**、可选 `testcases`（留空=全部，空格/逗号分隔 id）、可选
+  **harness 命令**（留空=用 Secret 里的默认；填写则覆盖每个 Job 的 `HARNESS_CMD`，Secret 仍供 API key，
+  `{task}` 由 runner 替换）、`jobs`（k8s 并发上限）、单 testcase `timeout`。点 **Start benchmark**
+  （一次只允许一个），**Live status** 每 2 秒轮询显示状态徽章 / 经过秒数 /
+  **docker 环境信息**（镜像、namespace、Secret、harness、testcase 数）/ matrix 日志 tail，可随时 **Stop**。
+  跑完把聚合出的 `report.json` **打上你的自定义 run 名称**（作为 `harness` 标签）复制进 `--reports-dir`，
+  于是和正常流程一样出现在 Reports tab——「正在跑 / 已经跑过」的数据和报告都能实时看到。
+- **Status** —— **专门看「当前是否有测试在跑 / 进度到哪了」**。大进度条（已完成 / 总数 + 百分比）、
+  状态徽章、经过秒数、docker 环境信息，以及**每个 testcase 的实时格子**（pending → running → pass/fail 及分数，
+  随各 k8s Job 结束而点亮）。此外**页头有一个常驻的运行指示灯**（在任意 tab 都可见）：有 run 在跑时脉冲显示
+  `running x/y`，跑完显示 `done x/y`。后台每 2 秒（运行中）/ 8 秒（空闲）轮询，无需刷新。
 
 参数：`--testcases-dir` 缺省用 `./testcases`（若存在）；`--port` / `--host` / `--no-open-browser` 可选；
 `--editable` 开启后可在 dashboard 内新建/编辑/删除 testcase（默认只读）；
@@ -652,21 +658,29 @@ scripts/bench-orchestrator.sh --mode http --port 8899 --token <shared-token> \
 - `--auto-release`：**打开**才会真正 `gh pr merge` + bump + push；不加则跑到门禁为止、只
   上报候选是否达标、不改动 main（安全默认）。
 
-### Webhook 消息查看（集成在 dashboard 的 Webhooks tab）
+### Webhook 接收与查看（dashboard 的 Webhooks tab）
 
-orchestrator（`--mode http` 和 `--mode watch-logs` 都一样）把收到的每一条 webhook 追加到
-JSONL（`<state-dir>/webhooks.jsonl`，默认 `.orchestrator/webhooks.jsonl`）。**不再单独起一个查看进程**——
-直接用 dashboard 的 **Webhooks tab** 查看：启动 dashboard 时把这个日志传进去即可：
+`scripts/start_dashboard.sh` 会自动起一个 **webhook 接收器**（`scripts/webhook_receiver.py`，默认
+`0.0.0.0:8899`），接住 k8s github-webhook receiver 转发来的 `POST /trigger`
+（`BENCH_TRIGGER_URL=http://<本机>:8899/trigger`），把每一条**完整**追加到 JSONL
+（默认 `.orchestrator/webhooks.jsonl`，全量长期保存）。若这个端口没有进程在听，转发会
+`fetch failed` 而丢弃——这正是「触发了 webhook 但页面为空」的根因。
+
+- **自动触发 benchmark**：接收器收到 `action=opened` 的 PR 时，默认会 fire-and-forget 调用
+  dashboard 的 `/api/runs/start`，对**全部** testcase 跑一次 docker/k8s matrix（run 名 `pr-<号>-<sha8>`）。
+  dashboard 一次只跑一个，重复触发返回 409 被忽略。用 `WEBHOOK_AUTORUN=0` 可只记录不执行。
+- **查看**：dashboard 的 **Webhooks tab** 每 3 秒自动刷新，每条显示**判定**
+  （accepted / skipped+原因 / error）、event/action、delivery id、来源 IP、时间，点开看完整 body。
+  默认展示最新 200 条；点 **Load all** 加载全部（`GET /api/webhooks?limit=all`，响应含 `total`）。
 
 ```bash
-aigdbench serve --host 0.0.0.0 --port 8000 \
-  --reports-dir ./dashboard_reports --testcases-dir ./testcases_filtered \
-  --webhook-log ./.orchestrator/webhooks.jsonl --no-open-browser
-# 或直接:  scripts/start_dashboard.sh   （已默认带上 --webhook-log）
+# 一键：dashboard + 接收器(8899) 一起起，Webhooks tab 直接可见
+scripts/start_dashboard.sh
+# 手动指定日志（不带接收器时）：
+aigdbench serve --host 0.0.0.0 --port 8000 --webhook-log ./.orchestrator/webhooks.jsonl --no-open-browser
 ```
 
-Webhooks tab 每 3 秒自动刷新，每条显示**判定**（accepted / skipped+原因 / error）、event/action、
-delivery id、来源 IP、时间，点开看完整 body。JSON 接口在 `GET /api/webhooks`。
+> bench-orchestrator.sh 的 http/watch-logs 模式也会写同一个 `webhooks.jsonl`；两者择一即可。
 
 探活与手动触发（本机自测）：
 

@@ -1516,6 +1516,7 @@ class BenchJobManager:
         self._cmd: list[str] = []
         self._label = ""
         self._name = ""
+        self._harness_cmd = ""
         self._testcases: list[str] = []
         self._started_at = 0.0
         self._started_mono = 0.0
@@ -1580,6 +1581,12 @@ class BenchJobManager:
             jobs = _num("jobs", self._default_jobs, int)
             timeout = _num("timeout", int(DEFAULT_TIMEOUT), int)
 
+            # Optional custom harness command. Empty => use the Secret's default
+            # HARNESS_CMD. When set, it overrides the command per Job while the
+            # Secret still supplies provider API keys ({task} is substituted by
+            # the runner). Mirrors run_k8s_matrix.sh -c.
+            harness_cmd = str(opts.get("harness_cmd") or "").strip()
+
             # Testcase selection: explicit ids (space/comma separated) or all.
             raw_tc = str(opts.get("testcases") or opts.get("testcase") or "").strip()
             if raw_tc:
@@ -1616,6 +1623,8 @@ class BenchJobManager:
             ]
             if ids:
                 cmd += ["-t", " ".join(ids)]
+            if harness_cmd:
+                cmd += ["-c", harness_cmd]
 
             logf = open(log_path, "wb")
             try:
@@ -1632,6 +1641,7 @@ class BenchJobManager:
             self._state = "running"
             self._cmd = cmd
             self._name = name
+            self._harness_cmd = harness_cmd
             n = len(ids) if ids else 0
             self._label = (f"{name} · docker/k8s · ns={self._namespace} · "
                            f"{n if n else 'all'} testcase(s)")
@@ -1670,6 +1680,8 @@ class BenchJobManager:
         data["harness"] = self._name
         data.setdefault("run_name", self._name)
         data["executor"] = "k8s-matrix"
+        if self._harness_cmd:
+            data["harness_cmd"] = self._harness_cmd
         data["created_at"] = time.time()
         try:
             self._report_path.write_text(
@@ -1723,6 +1735,44 @@ class BenchJobManager:
             text = text.split("\n", 1)[1]
         return text
 
+    def _progress(self) -> dict:
+        """Scan the matrix out dir for per-testcase result JSONs to derive live
+        progress. The matrix writes ``<out>/<sanitized-id>.json`` per Job as it
+        finishes (and ``report.json`` at the very end), so counting those files
+        gives completed/total without parsing the streaming log."""
+        import json as _json
+        total = len(self._testcases)
+        done: list[dict] = []
+        if self._out_dir and self._out_dir.is_dir():
+            for p in sorted(self._out_dir.glob("*.json")):
+                if p.name == "report.json":
+                    continue
+                try:
+                    d = _json.loads(p.read_text(encoding="utf-8"))
+                except (OSError, ValueError):
+                    continue
+                # per-testcase files look like {"testcases":[{...}]} or a bare
+                # record; normalize to the first record's id/score/status.
+                rec = None
+                if isinstance(d, dict) and isinstance(d.get("testcases"), list) \
+                        and d["testcases"]:
+                    rec = d["testcases"][0]
+                elif isinstance(d, dict):
+                    rec = d
+                if not isinstance(rec, dict):
+                    continue
+                done.append({
+                    "testcase_id": rec.get("testcase_id") or p.stem,
+                    "score": rec.get("score"),
+                    "status": rec.get("status"),
+                })
+        completed = len(done)
+        if not total:
+            total = completed  # "all" runs: total unknown until files land
+        pct = round(100.0 * completed / total, 1) if total else 0.0
+        return {"total": total, "completed": completed, "percent": pct,
+                "results": done}
+
     def status(self) -> dict:
         with self._lock:
             if self._state == "running" and self._started_mono:
@@ -1733,6 +1783,7 @@ class BenchJobManager:
                 elapsed = 0.0
             report_name = self._report_path.name if self._report_path else None
             report_exists = bool(self._report_path and self._report_path.is_file())
+            progress = self._progress()
             return {
                 "state": self._state,
                 "label": self._label,
@@ -1741,7 +1792,10 @@ class BenchJobManager:
                 "image": self._runner_image,
                 "namespace": self._namespace,
                 "harness_secret": self._harness_secret,
+                "harness_cmd": self._harness_cmd or "(secret default)",
                 "testcase_count": len(self._testcases),
+                "testcases": list(self._testcases),
+                "progress": progress,
                 "cmd": " ".join(self._cmd),
                 "started_at": self._started_at or None,
                 "elapsed": round(elapsed, 1),
@@ -1865,15 +1919,21 @@ def serve_cmd(reports_dir: str, testcases_dir: str | None, port: int, host: str,
                 return
             if path == "/api/webhooks":
                 if webhook_log_path is None:
-                    self._json({"disabled": True, "webhooks": [], "count": 0})
+                    self._json({"disabled": True, "webhooks": [],
+                                "count": 0, "total": 0})
                     return
                 q = parse_qs(parsed.query)
-                try:
-                    limit = int((q.get("limit") or ["500"])[0])
-                except ValueError:
-                    limit = 500
-                hooks = load_webhooks(webhook_log_path, limit=limit)
-                self._json({"webhooks": hooks, "count": len(hooks)})
+                raw_limit = (q.get("limit") or ["200"])[0]
+                if raw_limit in ("all", "0", "-1"):
+                    limit = None  # everything
+                else:
+                    try:
+                        limit = int(raw_limit)
+                    except ValueError:
+                        limit = 200
+                hooks, total = load_webhooks(webhook_log_path, limit=limit)
+                self._json({"webhooks": hooks, "count": len(hooks),
+                            "total": total})
                 return
             if path == "/api/runs/status":
                 if job_manager is None:

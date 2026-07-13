@@ -1,26 +1,34 @@
 #!/usr/bin/env bash
 # One-shot launcher for the AIGameDevBench web dashboard.
 #
-# The dashboard (Reports + Testcases + Contents + Run + Webhooks tabs) is one
+# The dashboard (Reports + Testcases + Contents + Run + Status + Webhooks tabs) is one
 # server on :8000, run in a detached tmux session so it survives your shell
 # closing. Webhook messages are shown IN the dashboard's Webhooks tab (reading
 # .orchestrator/webhooks.jsonl). The Run tab launches the REAL production
 # benchmark: docker image (reused) + one Kubernetes Job per testcase, harness
 # from the cluster Secret -- NOT a local run. Results become a normal report.
 #
+# It ALSO starts a webhook receiver on :8899 (POST /trigger) that captures the
+# k8s github-webhook receiver's forwarded deliveries into the same log the
+# Webhooks tab reads (record-only, no benchmark auto-run). The k8s receiver
+# forwards to BENCH_TRIGGER_URL = http://<this-host>:8899/trigger; if nothing
+# listens there the deliveries are lost ("fetch failed"), so this keeps them.
+#
 # Port :8000 is opened PERMANENTLY at the OS level (iptables INPUT ACCEPT,
 # persisted in /etc/iptables/rules.v4), so by default this script does NOT touch
 # iptables. Pass --firewall to have the script open/close the port itself.
+# (:8899 is already firewalled to the receiver's subnet 10.0.21.0/24.)
 #
 # Usage (from anywhere):
 #   scripts/start_dashboard.sh                 # start (port already open)
 #   scripts/start_dashboard.sh --stop          # stop (leaves port open)
-#   scripts/start_dashboard.sh --foreground    # run in the foreground
+#   scripts/start_dashboard.sh --foreground    # dashboard only, foreground (no receiver)
 #   scripts/start_dashboard.sh --firewall      # ALSO open/close the port in iptables
 #
 # Env overrides:
 #   PORT(8000) HOST(0.0.0.0) REPORTS_DIR TESTCASES_DIR SESSION(aigdbench-web)
 #   ALLOW_RUN(1) WEBHOOK_LOG(.orchestrator/webhooks.jsonl)
+#   WEBHOOK_RECV_PORT(8899; 0=off) WEBHOOK_TOKEN(empty=accept all)
 #   RUNNER_IMAGE K8S_NAMESPACE(default) HARNESS_SECRET(aigdbench-harness)
 #   IMAGE_TESTCASES_DIR(/app/testcases_filtered) JOBS(16)
 #   ALLOW_CIDR(0.0.0.0/0 => open to everyone; set e.g. 10.0.21.0/24 to restrict)
@@ -36,6 +44,19 @@ SESSION="${SESSION:-aigdbench-web}"
 ALLOW_RUN="${ALLOW_RUN:-1}"
 WEBHOOK_LOG="${WEBHOOK_LOG:-$REPO_ROOT/.orchestrator/webhooks.jsonl}"
 ALLOW_CIDR="${ALLOW_CIDR:-0.0.0.0/0}"
+# Webhook receiver: listens for the k8s github-webhook receiver's forwarded
+# deliveries (BENCH_TRIGGER_URL = http://<this-host>:8899/trigger) and appends
+# them to $WEBHOOK_LOG so the dashboard's Webhooks tab shows them.
+# Set WEBHOOK_RECV_PORT=0 to disable. WEBHOOK_TOKEN (empty = accept all; the
+# port is already firewalled to the receiver subnet).
+WEBHOOK_RECV_PORT="${WEBHOOK_RECV_PORT:-8899}"
+WEBHOOK_TOKEN="${WEBHOOK_TOKEN:-}"
+# WEBHOOK_AUTORUN=1 -> on each accepted opened PR, the receiver kicks the
+# dashboard's /api/runs/start (real docker/k8s matrix over all filtered
+# testcases). 0 -> record only. AUTORUN_JOBS/AUTORUN_TIMEOUT tune the run.
+WEBHOOK_AUTORUN="${WEBHOOK_AUTORUN:-1}"
+AUTORUN_JOBS="${AUTORUN_JOBS:-16}"
+AUTORUN_TIMEOUT="${AUTORUN_TIMEOUT:-1200}"
 # Run tab = real docker + k8s matrix (one Job per testcase on this image).
 RUNNER_IMAGE="${RUNNER_IMAGE:-harbor.omgwow.ai/beaver_hub-public/aigdbench-runner:latest}"
 K8S_NAMESPACE="${K8S_NAMESPACE:-default}"
@@ -90,8 +111,11 @@ if [[ "$STOP" == "1" ]]; then
   if command -v tmux >/dev/null 2>&1 && tmux has-session -t "$SESSION" 2>/dev/null; then
     tmux kill-session -t "$SESSION" && echo "stopped tmux session '$SESSION'"
   else
-    pid="$(ss -ltnp 2>/dev/null | grep ":$PORT " | grep -oP 'pid=\K[0-9]+' | head -1 || true)"
-    [[ -n "$pid" ]] && kill "$pid" && echo "killed pid $pid on :$PORT"
+    for p in "$PORT" "$WEBHOOK_RECV_PORT"; do
+      [[ "$p" =~ ^[0-9]+$ && "$p" -gt 0 ]] || continue
+      pid="$(ss -ltnp 2>/dev/null | grep ":$p " | grep -oP 'pid=\K[0-9]+' | head -1 || true)"
+      [[ -n "$pid" ]] && kill "$pid" && echo "killed pid $pid on :$p"
+    done
   fi
   fw_close "$PORT"
   exit 0
@@ -136,13 +160,47 @@ fi
 
 lan_ip="$(hostname -I 2>/dev/null | awk '{print $1}')"
 url_host="${lan_ip:-<this-node-ip>}"
+
+# Whether to run the webhook receiver (records forwarded deliveries to the log
+# the dashboard reads). Disabled if WEBHOOK_RECV_PORT is 0 or the port is busy.
+RECV_ON=0
+if [[ "$WEBHOOK_RECV_PORT" =~ ^[0-9]+$ && "$WEBHOOK_RECV_PORT" -gt 0 ]]; then
+  if ss -ltn 2>/dev/null | grep -q ":$WEBHOOK_RECV_PORT "; then
+    echo "WARNING: webhook receiver port $WEBHOOK_RECV_PORT is busy; receiver NOT started." >&2
+  else
+    RECV_ON=1
+  fi
+fi
+# Build the receiver argv (used by both tmux + nohup paths).
+RECV_ARGS=("$REPO_ROOT/scripts/webhook_receiver.py"
+           --host 0.0.0.0 --port "$WEBHOOK_RECV_PORT" --log "$WEBHOOK_LOG")
+[[ -n "$WEBHOOK_TOKEN" ]] && RECV_ARGS+=(--token "$WEBHOOK_TOKEN")
+# Auto-run: only when the Run tab is enabled (there is a /api/runs/start to hit).
+# Target the dashboard over loopback (same host).
+AUTORUN_ON=0
+if [[ "$WEBHOOK_AUTORUN" == "1" && "$ALLOW_RUN" == "1" ]]; then
+  AUTORUN_ON=1
+  RECV_ARGS+=(--autorun-url "http://127.0.0.1:$PORT/api/runs/start"
+              --autorun-jobs "$AUTORUN_JOBS" --autorun-timeout "$AUTORUN_TIMEOUT")
+fi
+
 banner() {
   echo "--- AIGameDevBench dashboard"
   echo "    local:    http://127.0.0.1:$PORT/"
   [[ "$HOST" == "0.0.0.0" || "$HOST" == "::" ]] && \
     echo "    network:  http://$url_host:$PORT/"
-  echo "    tabs:     Reports · Testcases · Contents · Run · Webhooks"
+  echo "    tabs:     Reports · Testcases · Contents · Run · Status · Webhooks"
   echo "    webhooks: $WEBHOOK_LOG"
+  if [[ "$RECV_ON" == "1" ]]; then
+    echo "    receiver: POST http://$url_host:$WEBHOOK_RECV_PORT/trigger -> Webhooks tab"
+    if [[ "$AUTORUN_ON" == "1" ]]; then
+      echo "    auto-run: opened PR -> benchmark all testcases (jobs=$AUTORUN_JOBS)"
+    else
+      echo "    auto-run: off (record only; run manually from the Run tab)"
+    fi
+  else
+    echo "    receiver: off (webhooks only appear if something else writes the log)"
+  fi
   echo "    reports:  $REPORTS_DIR"
   if [[ "$ALLOW_RUN" == "1" ]]; then
     echo "    run tab:  docker+k8s matrix (image=$RUNNER_IMAGE ns=$K8S_NAMESPACE secret=$HARNESS_SECRET)"
@@ -173,6 +231,11 @@ if command -v tmux >/dev/null 2>&1; then
   for a in "${ARGS[@]}"; do dash_cmd+=" $(printf %q "$a")"; done
   tmux new-session -d -s "$SESSION" -n dashboard "$dash_cmd"
   fw_open "$PORT"
+  if [[ "$RECV_ON" == "1" ]]; then
+    recv_cmd="cd $(printf %q "$REPO_ROOT") && $(printf %q "$PYBIN")"
+    for a in "${RECV_ARGS[@]}"; do recv_cmd+=" $(printf %q "$a")"; done
+    tmux new-window -t "$SESSION" -n webhook-receiver "$recv_cmd"
+  fi
   sleep 1
   banner
   echo "    tmux:     attach with 'tmux attach -t $SESSION' ; stop with '$0 --stop'"
@@ -183,6 +246,10 @@ fi
 LOG="$REPO_ROOT/dashboard.log"
 nohup setsid "$PYBIN" "${ARGS[@]}" >"$LOG" 2>&1 < /dev/null &
 fw_open "$PORT"
+if [[ "$RECV_ON" == "1" ]]; then
+  nohup setsid "$PYBIN" "${RECV_ARGS[@]}" \
+      >"$REPO_ROOT/webhook_receiver.log" 2>&1 < /dev/null &
+fi
 sleep 1
 banner
 echo "    log:      $LOG (no tmux; stop with '$0 --stop')"

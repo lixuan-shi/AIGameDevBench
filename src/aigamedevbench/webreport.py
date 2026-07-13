@@ -190,7 +190,8 @@ INDEX_HTML = r"""<!DOCTYPE html>
               grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); }
   .run-form label { display:flex; flex-direction:column; gap:4px;
                     font-size:12px; color:var(--muted); }
-  .run-form .run-cmd-row, .run-form .run-patch-row { grid-column:1/-1; }
+  .run-form .run-cmd-row, .run-form .run-patch-row,
+  .run-form .run-harness-row { grid-column:1/-1; }
   .run-form input, .run-form select { background:#0c0e14; border:1px solid var(--line);
               border-radius:6px; color:var(--fg); padding:6px 9px; font:inherit; }
   .run-actions { display:flex; align-items:center; gap:12px; margin-top:14px; }
@@ -212,6 +213,38 @@ INDEX_HTML = r"""<!DOCTYPE html>
   .badge.done { background:#16301f; color:#74d99f; }
   .badge.failed { background:#3a1818; color:#f0b0b0; }
   .badge.idle { background:#222634; color:#aeb6c6; }
+  /* header live indicator (shown on every tab) */
+  .live-indicator { display:none; align-items:center; gap:6px; font-size:12px;
+                    padding:3px 9px; border-radius:12px; border:1px solid var(--line); }
+  .live-indicator.show { display:inline-flex; }
+  .live-indicator .dot { width:8px; height:8px; border-radius:50%; background:var(--muted); }
+  .live-indicator.running { border-color:#3a5da8; color:#8fc0ff; }
+  .live-indicator.running .dot { background:#6ea8fe; animation:pulse 1.2s ease-in-out infinite; }
+  .live-indicator.done { border-color:#2c6b45; color:#74d99f; }
+  .live-indicator.done .dot { background:#74d99f; }
+  .live-indicator.failed { border-color:#7a3a3a; color:#f0b0b0; }
+  .live-indicator.failed .dot { background:#f06e6e; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+  /* Status tab */
+  .st-head { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+  .st-title { font-weight:600; }
+  .st-bar-wrap { display:flex; align-items:center; gap:12px; }
+  .st-bar-track { flex:1; background:#0c0e14; border:1px solid var(--line);
+                  border-radius:6px; height:22px; overflow:hidden; }
+  .st-bar-fill { height:100%; width:0%; background:linear-gradient(90deg,#3a5da8,#6ea8fe);
+                 transition:width .4s ease; }
+  .st-bar-num { color:var(--muted); font-variant-numeric:tabular-nums; min-width:70px;
+                text-align:right; }
+  .st-grid { display:grid; gap:6px;
+             grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); }
+  .st-cell { display:flex; align-items:center; gap:8px; border:1px solid var(--line);
+             border-radius:6px; padding:6px 10px; font-size:12px; background:#0c0e14; }
+  .st-cell .nm { flex:1; word-break:break-all; }
+  .st-cell .sc { font-variant-numeric:tabular-nums; color:var(--muted); }
+  .st-cell.pending { opacity:.55; }
+  .st-cell.pass { border-left:3px solid #74d99f; }
+  .st-cell.fail { border-left:3px solid #f06e6e; }
+  .st-cell.run  { border-left:3px solid #6ea8fe; }
   /* Webhooks tab */
   .wh-toolbar { display:flex; align-items:center; gap:12px; flex-wrap:wrap;
                 margin-bottom:12px; }
@@ -245,8 +278,10 @@ INDEX_HTML = r"""<!DOCTYPE html>
     <button id="tab-testcases" class="tab">Testcases</button>
     <button id="tab-contents" class="tab">Contents</button>
     <button id="tab-run" class="tab">Run</button>
+    <button id="tab-status" class="tab">Status</button>
     <button id="tab-webhooks" class="tab">Webhooks</button>
   </nav>
+  <span id="live-indicator" class="live-indicator" title="Benchmark run status"></span>
   <button id="refresh">Refresh</button>
   <span id="status" style="color:var(--muted)"></span>
 </header>
@@ -317,6 +352,10 @@ INDEX_HTML = r"""<!DOCTYPE html>
       <label>testcases (blank = all; space/comma-separated ids)
         <input id="run-testcases" type="text" placeholder="leave blank for all">
       </label>
+      <label class="run-harness-row">harness command (blank = Secret default; {task} is substituted)
+        <input id="run-harness" type="text"
+               placeholder="e.g. claude -p {task} --dangerously-skip-permissions">
+      </label>
       <label>jobs (max concurrent k8s Jobs)
         <input id="run-jobs" type="number" value="16" min="1">
       </label>
@@ -345,18 +384,39 @@ INDEX_HTML = r"""<!DOCTYPE html>
   </div>
 </div>
 
+<div id="view-status" class="wrap" style="display:none">
+  <div class="panel">
+    <div class="st-head">
+      <span id="st-badge" class="badge idle">idle</span>
+      <span id="st-title" class="st-title">No benchmark running</span>
+      <span style="flex:1"></span>
+      <span id="st-elapsed" class="tc-count"></span>
+    </div>
+    <div class="st-bar-wrap">
+      <div class="st-bar-track"><div id="st-bar-fill" class="st-bar-fill"></div></div>
+      <span id="st-bar-num" class="st-bar-num">0 / 0</span>
+    </div>
+    <div id="st-meta" class="run-cmdline"></div>
+  </div>
+  <div class="panel">
+    <h2>Per-testcase progress</h2>
+    <div id="st-grid" class="st-grid"><span class="empty">No run yet.</span></div>
+  </div>
+</div>
+
 <div id="view-webhooks" class="wrap" style="display:none">
   <div class="panel">
     <div class="wh-toolbar">
       <h2 style="margin:0">Received webhooks</h2>
       <span id="wh-count" class="tc-count"></span>
       <span style="flex:1"></span>
+      <button id="wh-loadall" class="sm">Load all</button>
       <label class="wh-auto"><input id="wh-auto" type="checkbox" checked> auto-refresh (3s)</label>
       <button id="wh-refresh" class="sm">Refresh</button>
     </div>
     <div id="wh-disabled" class="empty" style="display:none">
       No webhook log configured. Restart the dashboard with
-      <code>--webhook-log &lt;path&gt;</code> (bench-orchestrator.sh writes
+      <code>--webhook-log &lt;path&gt;</code> (the webhook receiver writes
       <code>.orchestrator/webhooks.jsonl</code>).
     </div>
     <div id="wh-list"><span class="empty">Loading...</span></div>
@@ -1018,13 +1078,14 @@ async function renderContentsDetail(id) {
 function showView(which) {
   const views = {reports:"#view-reports", testcases:"#view-testcases",
                  testcase:"#view-testcase", contents:"#view-contents",
-                 run:"#view-run", webhooks:"#view-webhooks"};
+                 run:"#view-run", status:"#view-status", webhooks:"#view-webhooks"};
   for (const [k, sel] of Object.entries(views))
     $(sel).style.display = (k === which) ? "" : "none";
   $("#tab-reports").classList.toggle("active", which === "reports");
   $("#tab-testcases").classList.toggle("active", which === "testcases" || which === "testcase");
   $("#tab-contents").classList.toggle("active", which === "contents");
   $("#tab-run").classList.toggle("active", which === "run");
+  $("#tab-status").classList.toggle("active", which === "status");
   $("#tab-webhooks").classList.toggle("active", which === "webhooks");
 }
 
@@ -1047,6 +1108,9 @@ function route() {
   } else if (h === "run") {
     showView("run");
     enterRunTab();
+  } else if (h === "status") {
+    showView("status");
+    enterStatusTab();
   } else if (h === "webhooks") {
     showView("webhooks");
     enterWebhooksTab();
@@ -1060,6 +1124,7 @@ $("#tab-reports").addEventListener("click", () => { location.hash = "reports"; }
 $("#tab-testcases").addEventListener("click", () => { location.hash = "testcases"; });
 $("#tab-contents").addEventListener("click", () => { location.hash = "contents"; });
 $("#tab-run").addEventListener("click", () => { location.hash = "run"; });
+$("#tab-status").addEventListener("click", () => { location.hash = "status"; });
 $("#tab-webhooks").addEventListener("click", () => { location.hash = "webhooks"; });
 $("#tc-back").addEventListener("click", () => { location.hash = "testcases"; });
 
@@ -1132,6 +1197,7 @@ async function startRun() {
   const payload = {
     name: name,
     testcases: $("#run-testcases").value.trim(),
+    harness_cmd: $("#run-harness").value.trim(),
     jobs: $("#run-jobs").value,
     timeout: $("#run-timeout").value,
   };
@@ -1201,6 +1267,7 @@ function applyRunStatus(s) {
                       : ("report (pending): " + s.report_file)) : "";
   const metaBits = [];
   if (s.name) metaBits.push("name=" + s.name);
+  if (s.harness_cmd) metaBits.push("harness=" + s.harness_cmd);
   if (s.image) metaBits.push("image=" + s.image);
   if (s.namespace) metaBits.push("ns=" + s.namespace);
   if (s.testcase_count) metaBits.push(s.testcase_count + " testcase(s)");
@@ -1230,6 +1297,7 @@ function applyRunStatus(s) {
 // ---- Webhooks tab: show deliveries received by bench-orchestrator.sh ----
 let WH_POLL = null;
 let WH_INIT = false;
+let WH_ALL = false;   // true once "Load all" is clicked -> fetch full history
 
 function whBadge(h) {
   if (h.decision === "accepted") return '<span class="badge b-accepted">accepted</span>';
@@ -1245,9 +1313,14 @@ function whTime(ts) {
   try { return new Date(ts * 1000).toLocaleString(); } catch (e) { return String(ts); }
 }
 
-function renderWebhooks(hooks) {
+function renderWebhooks(hooks, total) {
   const list = $("#wh-list");
-  $("#wh-count").textContent = hooks.length + " received";
+  const t = (typeof total === "number") ? total : hooks.length;
+  $("#wh-count").textContent = (hooks.length < t)
+    ? `showing ${hooks.length} of ${t}` : `${t} received`;
+  // Hide "Load all" once everything is shown.
+  const btn = $("#wh-loadall");
+  if (btn) btn.style.display = (hooks.length < t) ? "" : "none";
   if (!hooks.length) {
     list.innerHTML = '<span class="empty">No webhooks received yet.</span>';
     return;
@@ -1280,15 +1353,17 @@ function renderWebhooks(hooks) {
 
 async function loadWebhooks() {
   try {
-    const d = await (await fetch("/api/webhooks")).json();
+    const q = WH_ALL ? "?limit=all" : "";
+    const d = await (await fetch("/api/webhooks" + q)).json();
     if (d && d.disabled) {
       $("#wh-disabled").style.display = "";
       $("#wh-list").innerHTML = "";
       $("#wh-count").textContent = "";
+      const btn = $("#wh-loadall"); if (btn) btn.style.display = "none";
       return;
     }
     $("#wh-disabled").style.display = "none";
-    renderWebhooks((d && d.webhooks) || []);
+    renderWebhooks((d && d.webhooks) || [], d && d.total);
   } catch (e) {
     $("#wh-list").innerHTML = '<span class="empty">Failed to load: ' + esc(e) + '</span>';
   }
@@ -1303,30 +1378,142 @@ function enterWebhooksTab() {
   if (!WH_INIT) {
     WH_INIT = true;
     $("#wh-refresh").addEventListener("click", loadWebhooks);
+    $("#wh-loadall").addEventListener("click", () => { WH_ALL = true; loadWebhooks(); });
     $("#wh-auto").addEventListener("change", e => whSetAuto(e.target.checked));
   }
   loadWebhooks();
   whSetAuto($("#wh-auto").checked);
 }
 
+// ---- Status tab + always-on header indicator ----
+// A single background poller (started once) drives BOTH the header live dot
+// (visible on every tab) and the Status tab detail. It polls faster while a
+// run is active, slower when idle, so an in-flight benchmark is always visible.
+let ST_TIMER = null;
+let ST_LAST = null;
+
+function renderLiveIndicator(s) {
+  const el = $("#live-indicator");
+  if (!el) return;
+  if (!s || s.state === "disabled" || s.state === "idle") {
+    // Only keep showing a finished run's dot; hide when never run / idle.
+    if (!s || s.state === "idle" || s.state === "disabled") {
+      el.className = "live-indicator"; el.innerHTML = ""; el.classList.remove("show");
+      return;
+    }
+  }
+  const p = s.progress || {};
+  let text;
+  if (s.state === "running") {
+    text = `running ${p.completed||0}/${p.total||0}`;
+  } else if (s.state === "done") {
+    text = `done ${p.completed||0}/${p.total||0}`;
+  } else if (s.state === "failed") {
+    text = "run failed";
+  } else { text = s.state; }
+  el.className = "live-indicator show " + s.state;
+  el.innerHTML = `<span class="dot"></span><span>${esc(s.name ? s.name+": " : "")}${esc(text)}</span>`;
+}
+
+function renderStatusView(s) {
+  const badge = $("#st-badge");
+  const p = (s && s.progress) || {total:0, completed:0, percent:0, results:[]};
+  const st = s ? s.state : "idle";
+  badge.className = "badge " + (st === "running" ? "run" : st);
+  badge.textContent = st;
+  $("#st-title").textContent = (s && s.name)
+    ? (st === "running" ? `Running “${s.name}”` : `“${s.name}” — ${st}`)
+    : "No benchmark running";
+  $("#st-elapsed").textContent = (s && s.elapsed) ? (s.elapsed + "s") : "";
+  const pct = p.percent || 0;
+  $("#st-bar-fill").style.width = pct + "%";
+  $("#st-bar-num").textContent = `${p.completed||0} / ${p.total||0}` +
+    (p.total ? `  (${pct}%)` : "");
+  const meta = [];
+  if (s && s.image) meta.push("image=" + s.image);
+  if (s && s.namespace) meta.push("ns=" + s.namespace);
+  if (s && s.report_ready && s.report_file) meta.push("report=" + s.report_file);
+  if (s && s.error) meta.push("⚠ " + s.error);
+  $("#st-meta").textContent = meta.join("  ·  ");
+
+  // Per-testcase grid: show every planned id, mark done ones with their score.
+  const grid = $("#st-grid");
+  const ids = (s && s.testcases) || [];
+  const byId = {};
+  for (const r of (p.results || [])) byId[r.testcase_id] = r;
+  const list = ids.length ? ids : (p.results || []).map(r => r.testcase_id);
+  if (!list.length) {
+    grid.innerHTML = '<span class="empty">No run yet. Start one from the Run tab.</span>';
+    return;
+  }
+  grid.innerHTML = list.map(id => {
+    const r = byId[id];
+    let cls = "pending", sc = "…";
+    if (r) {
+      const passed = (typeof r.score === "number") ? r.score >= 1.0 : false;
+      cls = (r.status === "pass" || passed) ? "pass"
+          : (r.status === "error" || r.status === "fail" || r.score === 0) ? "fail" : "pass";
+      sc = (typeof r.score === "number") ? r.score.toFixed(2) : (r.status || "done");
+    } else if (st === "running") {
+      cls = "run"; sc = "running";
+    }
+    return `<div class="st-cell ${cls}"><span class="nm">${esc(id)}</span>` +
+           `<span class="sc">${esc(sc)}</span></div>`;
+  }).join("");
+}
+
+async function pollStatus() {
+  try {
+    const s = await (await fetch("/api/runs/status")).json();
+    ST_LAST = s;
+    renderLiveIndicator(s);
+    // Only repaint the Status view when it's the visible tab (cheap guard).
+    if (location.hash.replace(/^#/, "") === "status") renderStatusView(s);
+    // A run just finished -> refresh Reports so the new report shows.
+    if (window.__ST_PREV === "running" && s.state !== "running") load();
+    window.__ST_PREV = s.state;
+    // Adapt cadence: fast while running, slow when idle.
+    const want = (s.state === "running") ? 2000 : 8000;
+    if (ST_TIMER && ST_TIMER._ms !== want) {
+      clearInterval(ST_TIMER); ST_TIMER = null;
+    }
+    if (!ST_TIMER) { ST_TIMER = setInterval(pollStatus, want); ST_TIMER._ms = want; }
+  } catch (e) { /* ignore transient errors */ }
+}
+
+function enterStatusTab() {
+  renderStatusView(ST_LAST);   // paint immediately from last known
+  pollStatus();                // then refresh
+}
+
+// Kick off the background poller once (drives the header dot on every tab),
+// but only if the Run feature is enabled.
+async function initStatusPoller() {
+  if (!CONFIG) await loadConfig();
+  if (CONFIG && CONFIG.allow_run) pollStatus();
+}
+
 load();
 route();
+initStatusPoller();
 </script>
 </body>
 </html>
 """
 
 
-def load_webhooks(log_path: Path, limit: int = 500) -> list[dict]:
-    """Read a JSONL webhook log (written by bench-orchestrator.sh), newest first.
+def load_webhooks(log_path: Path, limit: int | None = 500) -> tuple[list[dict], int]:
+    """Read a JSONL webhook log (written by the webhook receiver), newest first.
 
+    Returns (rows, total) where total is the count of all valid records in the
+    file and rows is the newest `limit` of them (or all when limit is None).
     Each line is one received webhook delivery. Tolerates partial/garbage lines
-    and a missing file (returns []). Used by the dashboard's Webhooks tab so the
-    same data the standalone webhook_viewer showed is visible in-dashboard.
+    and a missing file (returns ([], 0)). The full history is always kept in the
+    file; the dashboard can load a slice or everything via the Webhooks tab.
     """
     log_path = Path(log_path)
     if not log_path.exists():
-        return []
+        return [], 0
     out: list[dict] = []
     try:
         with open(log_path, "r", encoding="utf-8", errors="replace") as f:
@@ -1341,9 +1528,12 @@ def load_webhooks(log_path: Path, limit: int = 500) -> list[dict]:
                 if isinstance(obj, dict):
                     out.append(obj)
     except OSError:
-        return []
+        return [], 0
+    total = len(out)
     out.reverse()
-    return out[:limit]
+    if limit is not None:
+        out = out[:limit]
+    return out, total
 
 
 def load_reports(reports_dir: Path) -> list[dict]:
