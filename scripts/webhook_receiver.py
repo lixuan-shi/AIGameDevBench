@@ -44,7 +44,7 @@ from pathlib import Path
 
 def make_handler(log_path: Path, token: str, autorun_mode: str = "off",
                  autorun_url: str = "", autorun_jobs: int = 16,
-                 autorun_timeout: int = 1200, candidate_opts: dict | None = None):
+                 autorun_timeout: int = 2400, candidate_opts: dict | None = None):
     candidate_opts = candidate_opts or {}
     # Single in-flight candidate at a time + de-dupe by head sha across the
     # receiver's lifetime (a PR's redelivery / reopen shouldn't double-run).
@@ -293,8 +293,9 @@ def main() -> None:
                     help="matrix mode: the dashboard's /api/runs/start URL")
     ap.add_argument("--autorun-jobs", type=int, default=16,
                     help="jobs (max concurrent k8s Jobs) for auto-run")
-    ap.add_argument("--autorun-timeout", type=int, default=1200,
-                    help="per-testcase timeout (s) for auto-run")
+    ap.add_argument("--autorun-timeout", type=int, default=2400,
+                    help="per-testcase timeout (s) for auto-run; the matrix sets "
+                         "each Job's activeDeadlineSeconds = timeout + 300")
     # candidate-mode plumbing (passed straight through to bench-candidate.sh):
     ap.add_argument("--repo-root", default=".")
     ap.add_argument("--plugin-repo", default="../agentic-game-development")

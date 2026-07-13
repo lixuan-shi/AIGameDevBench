@@ -63,7 +63,13 @@ WEBHOOK_TOKEN="${WEBHOOK_TOKEN:-}"
 WEBHOOK_AUTORUN_MODE="${WEBHOOK_AUTORUN_MODE:-candidate}"
 WEBHOOK_AUTO_RELEASE="${WEBHOOK_AUTO_RELEASE:-1}"   # candidate: merge+release winners
 AUTORUN_JOBS="${AUTORUN_JOBS:-16}"
-AUTORUN_TIMEOUT="${AUTORUN_TIMEOUT:-1200}"
+# Per-testcase harness timeout for auto-runs. The matrix sets each k8s Job's
+# activeDeadlineSeconds = TIMEOUT + 300, so this also bounds the hard kill.
+# 2400s (40 min) leaves headroom for the heavy git-type survey-history_* cases
+# (godot-open-rpg + Dialogic; ~6 min harness even when passing) which, under
+# concurrency, exceeded the old 1200s default and were killed with
+# DeadlineExceeded -> empty pod log -> spurious score 0.
+AUTORUN_TIMEOUT="${AUTORUN_TIMEOUT:-2400}"
 # Run tab = real docker + k8s matrix (one Job per testcase on this image).
 RUNNER_IMAGE="${RUNNER_IMAGE:-harbor.omgwow.ai/beaver_hub-public/aigdbench-runner:latest}"
 IMAGE_REPO="${IMAGE_REPO:-harbor.omgwow.ai/beaver_hub-public/aigdbench-runner}"
