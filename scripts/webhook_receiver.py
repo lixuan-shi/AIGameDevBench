@@ -52,6 +52,11 @@ def make_handler(log_path: Path, token: str, autorun_mode: str = "off",
     cand_state = {"running": False, "seen": set()}
 
     dashboard_url = candidate_opts.get("dashboard_url", "")
+    # PRs whose head branch starts with this prefix are our own release-bump PRs
+    # (opened by bench-candidate.sh to land the version bump on protected main);
+    # they must NOT trigger a benchmark. Keep in sync with bench-candidate.sh's
+    # BUMP_BRANCH ("release-v...").
+    bump_branch_prefix = candidate_opts.get("bump_branch_prefix", "release-v")
 
     def record(rec: dict) -> None:
         rec.setdefault("time", time.time())
@@ -286,6 +291,10 @@ def make_handler(log_path: Path, token: str, autorun_mode: str = "off",
                            or (pr.get("head") or {}).get("sha") or "").strip()
             base_ref = str(o.get("base_ref")
                            or (pr.get("base") or {}).get("ref") or "main").strip()
+            # Head branch name (the PR's source branch). Flat forwards put it in
+            # "ref"/"head_ref"; nested payloads under pull_request.head.ref.
+            head_ref = str(o.get("head_ref") or o.get("ref")
+                           or (pr.get("head") or {}).get("ref") or "").strip()
             action = str(o.get("action") or "").strip().lower()
             is_pr = event in ("pull_request", "pr") or bool(pr_number and head_sha)
             base = {"delivery": delivery, "client": client,
@@ -293,7 +302,7 @@ def make_handler(log_path: Path, token: str, autorun_mode: str = "off",
                     "action": action, "repo": str(o.get("repo")
                                                    or o.get("repository") or ""),
                     "pr_number": pr_number, "head_sha": head_sha,
-                    "base_ref": base_ref, "body": o}
+                    "head_ref": head_ref, "base_ref": base_ref, "body": o}
 
             if is_pr:
                 if action and action != "opened":
@@ -305,6 +314,17 @@ def make_handler(log_path: Path, token: str, autorun_mode: str = "off",
                             "error": "missing pr_number/head_sha"})
                     self._send(400,
                                {"error": "pull_request missing pr_number/head_sha"})
+                    return
+                # Skip our OWN release-bump PRs: bench-candidate opens a
+                # release-v<ver>-<sha> PR to land the version bump on protected
+                # main. Benchmarking that would be a wasteful feedback loop (and
+                # it just cherry-pick-conflicts). Match by head branch prefix.
+                if head_ref and head_ref.startswith(bump_branch_prefix):
+                    record({**base, "decision": "skipped",
+                            "skipped_reason": "release-bump PR (%s)" % head_ref})
+                    self._send(202, {"accepted": False,
+                                     "skipped": "release-bump PR",
+                                     "head_ref": head_ref})
                     return
                 record({**base, "decision": "accepted"})
                 note = "recorded (no auto-run)"
