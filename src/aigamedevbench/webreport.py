@@ -349,6 +349,9 @@ INDEX_HTML = r"""<!DOCTYPE html>
       <label>run name (required)
         <input id="run-name" type="text" placeholder="e.g. claude-2026-07-13">
       </label>
+      <label>runner image (tag from beaver_hub-public)
+        <select id="run-image"><option value="">loading…</option></select>
+      </label>
       <label>testcases (blank = all; space/comma-separated ids)
         <input id="run-testcases" type="text" placeholder="leave blank for all">
       </label>
@@ -1184,7 +1187,30 @@ async function enterRunTab() {
     $("#run-stop").addEventListener("click", stopRun);
   }
   renderRunInfra();
+  loadRunImages();
   refreshRunStatus();
+}
+
+// Populate the runner-image dropdown with tags from beaver_hub-public (Harbor).
+async function loadRunImages() {
+  const sel = $("#run-image");
+  try {
+    const d = await (await fetch("/api/images")).json();
+    const tags = (d && d.tags) || [];
+    if (!tags.length) {
+      sel.innerHTML = '<option value="">' +
+        (d && d.error ? "error: " + esc(d.error) : "no images") + '</option>';
+      return;
+    }
+    const def = (d && d.default) || "";
+    sel.innerHTML = tags.map(t => {
+      const label = t.tag + (t.pushed ? "  (" + t.pushed.replace("T", " ") + ")" : "")
+        + (t.tag === def ? "  — default" : "");
+      return `<option value="${esc(t.tag)}"${t.tag === def ? " selected" : ""}>${esc(label)}</option>`;
+    }).join("");
+  } catch (e) {
+    sel.innerHTML = '<option value="">failed to load images</option>';
+  }
 }
 
 async function startRun() {
@@ -1196,6 +1222,7 @@ async function startRun() {
   }
   const payload = {
     name: name,
+    image: $("#run-image").value,
     testcases: $("#run-testcases").value.trim(),
     harness_cmd: $("#run-harness").value.trim(),
     jobs: $("#run-jobs").value,

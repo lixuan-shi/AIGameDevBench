@@ -77,6 +77,10 @@ AUTORUN_TIMEOUT="${AUTORUN_TIMEOUT:-2400}"
 # Run tab = real docker + k8s matrix (one Job per testcase on this image).
 RUNNER_IMAGE="${RUNNER_IMAGE:-harbor.omgwow.ai/beaver_hub-public/aigdbench-runner:latest}"
 IMAGE_REPO="${IMAGE_REPO:-harbor.omgwow.ai/beaver_hub-public/aigdbench-runner}"
+# Harbor host + k8s docker-registry secret with the robot cred, used to (a) log
+# docker in for candidate push and (b) list Run-tab selectable image tags.
+HARBOR_HOST="${HARBOR_HOST:-harbor.omgwow.ai}"
+HARBOR_PULL_SECRET="${HARBOR_PULL_SECRET:-harbor-cred}"
 PLUGIN_REPO="${PLUGIN_REPO:-$REPO_ROOT/../agentic-game-development}"
 RESULTS_ROOT="${RESULTS_ROOT:-$REPO_ROOT/results}"
 LOCAL_TESTCASES_DIR="${LOCAL_TESTCASES_DIR:-$TESTCASES_DIR}"
@@ -168,6 +172,7 @@ ARGS=(-m aigamedevbench.cli serve
       --webhook-log "$WEBHOOK_LOG"
       --runner-image "$RUNNER_IMAGE" --k8s-namespace "$K8S_NAMESPACE"
       --harness-secret "$HARNESS_SECRET" --image-testcases-dir "$IMAGE_TESTCASES_DIR"
+      --image-repo "$IMAGE_REPO" --harbor-secret "$HARBOR_PULL_SECRET"
       --jobs "$JOBS"
       --no-open-browser)
 [[ "$ALLOW_RUN" == "1" ]] && ARGS+=(--allow-run) || ARGS+=(--no-allow-run)
@@ -201,9 +206,7 @@ RECV_ARGS=("$REPO_ROOT/scripts/webhook_receiver.py"
 # logged in as a pull-only human account the push fails and every candidate
 # aborts (this bit us on PR #31). Reuse the SAME robot the cluster's harbor-cred
 # pull secret uses (it has pull+push+delete). Idempotent: skip if a push-scoped
-# token is already obtainable. HARBOR_HOST/HARBOR_PULL_SECRET override the source.
-HARBOR_HOST="${HARBOR_HOST:-harbor.omgwow.ai}"
-HARBOR_PULL_SECRET="${HARBOR_PULL_SECRET:-harbor-cred}"
+# token is already obtainable. (HARBOR_HOST/HARBOR_PULL_SECRET defined up top.)
 ensure_harbor_push_login() {
   command -v docker >/dev/null 2>&1 || return 1
   command -v kubectl >/dev/null 2>&1 || return 1

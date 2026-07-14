@@ -1497,12 +1497,17 @@ class BenchJobManager:
     def __init__(self, reports_dir: Path, *, repo_root: Path,
                  runner_image: str, namespace: str, harness_secret: str,
                  image_testcases_dir: str, local_testcases_dir: Path | None,
-                 default_jobs: int = 16):
+                 default_jobs: int = 16, image_repo: str = "",
+                 harbor_secret: str = "harbor-cred"):
         import threading as _threading
         self._reports_dir = Path(reports_dir)
         self._runs_dir = self._reports_dir / "_runs"
         self._repo_root = Path(repo_root)
         self._runner_image = runner_image
+        # Image repo (no tag) the Run tab lists selectable tags from. Derive it
+        # from runner_image ("repo:tag" -> "repo") if not given explicitly.
+        self._image_repo = image_repo or runner_image.rsplit(":", 1)[0]
+        self._harbor_secret = harbor_secret
         self._namespace = namespace
         self._harness_secret = harness_secret
         self._image_testcases_dir = image_testcases_dir
@@ -1517,6 +1522,7 @@ class BenchJobManager:
         self._label = ""
         self._name = ""
         self._harness_cmd = ""
+        self._image = runner_image
         self._testcases: list[str] = []
         self._started_at = 0.0
         self._started_mono = 0.0
@@ -1540,6 +1546,7 @@ class BenchJobManager:
         """Infra defaults surfaced to the UI (read-only)."""
         return {
             "runner_image": self._runner_image,
+            "image_repo": self._image_repo,
             "namespace": self._namespace,
             "harness_secret": self._harness_secret,
             "image_testcases_dir": self._image_testcases_dir,
@@ -1547,6 +1554,69 @@ class BenchJobManager:
                 str(self._local_testcases_dir) if self._local_testcases_dir else ""),
             "default_jobs": self._default_jobs,
         }
+
+    def list_images(self, limit: int = 40) -> dict:
+        """List selectable runner-image tags from the Harbor project, newest
+        first, for the Run tab dropdown. Reads the robot cred from the
+        harbor-cred k8s secret (pull+push scope) and queries Harbor's v2 API.
+        Returns {"repo", "default", "tags":[{tag, pushed}], "error"?}."""
+        import base64
+        import json as _json
+        import subprocess
+        import urllib.request
+        import urllib.error
+
+        repo = self._image_repo                       # e.g. host/project/name
+        default_tag = self._runner_image.rsplit(":", 1)[-1] \
+            if ":" in self._runner_image else "latest"
+        out = {"repo": repo, "default": default_tag, "tags": []}
+        # repo = <host>/<project>/<name>
+        parts = repo.split("/", 2)
+        if len(parts) < 3:
+            out["error"] = f"cannot parse host/project/name from {repo!r}"
+            return out
+        host, project, name = parts[0], parts[1], parts[2]
+
+        # Robot credential from the cluster's harbor pull secret.
+        try:
+            raw = subprocess.check_output(
+                ["kubectl", "-n", self._namespace, "get", "secret",
+                 self._harbor_secret, "-o",
+                 "jsonpath={.data.\\.dockerconfigjson}"],
+                stderr=subprocess.DEVNULL)
+            cfg = _json.loads(base64.b64decode(raw).decode())
+            entry = cfg.get("auths", {}).get(host, {})
+            user = entry.get("username", "")
+            pw = entry.get("password", "")
+            if not user and entry.get("auth"):
+                user, _, pw = base64.b64decode(entry["auth"]).decode().partition(":")
+        except Exception as e:  # noqa: BLE001
+            out["error"] = f"cannot read {self._harbor_secret}: {e}"
+            return out
+
+        api = (f"https://{host}/api/v2.0/projects/{project}/repositories/"
+               f"{name}/artifacts?with_tag=true&page_size={int(limit)}"
+               f"&sort=-push_time")
+        try:
+            req = urllib.request.Request(api)
+            token = base64.b64encode(f"{user}:{pw}".encode()).decode()
+            req.add_header("Authorization", f"Basic {token}")
+            with urllib.request.urlopen(req, timeout=15) as r:
+                arts = _json.loads(r.read().decode())
+        except Exception as e:  # noqa: BLE001
+            out["error"] = f"harbor API failed: {e}"
+            return out
+
+        tags = []
+        for a in arts:
+            for t in (a.get("tags") or []):
+                tags.append({"tag": t.get("name"),
+                             "pushed": (a.get("push_time") or "")[:19]})
+        # Ensure the configured default tag is present and first.
+        if default_tag not in [t["tag"] for t in tags]:
+            tags.insert(0, {"tag": default_tag, "pushed": ""})
+        out["tags"] = tags
+        return out
 
     def _enumerate_local_ids(self) -> list[str]:
         """Testcase ids from the local dir (skip _snapshots/README), for -t."""
@@ -1586,6 +1656,15 @@ class BenchJobManager:
             jobs = _num("jobs", self._default_jobs, int)
             timeout = _num("timeout", int(DEFAULT_TIMEOUT), int)
 
+            # Runner image: opts["image"] may be a bare tag ("latest",
+            # "6776e740") resolved against the configured image repo, or a full
+            # "registry/repo:tag" ref. Empty -> the configured default image.
+            image = str(opts.get("image") or "").strip()
+            if not image:
+                image = self._runner_image
+            elif "/" not in image:
+                image = f"{self._image_repo}:{image.lstrip(':')}"  # bare tag
+
             # Optional custom harness command. Empty => use the Secret's default
             # HARNESS_CMD. When set, it overrides the command per Job while the
             # Secret still supplies provider API keys ({task} is substituted by
@@ -1616,7 +1695,7 @@ class BenchJobManager:
             # one k8s Job per testcase. Mirrors bench-candidate.sh's invocation.
             cmd = [
                 "bash", str(matrix),
-                "-i", self._runner_image,
+                "-i", image,
                 "-d", "command",
                 "-s", self._harness_secret,
                 "-j", str(jobs),
@@ -1647,6 +1726,7 @@ class BenchJobManager:
             self._cmd = cmd
             self._name = name
             self._harness_cmd = harness_cmd
+            self._image = image
             n = len(ids) if ids else 0
             self._label = (f"{name} · docker/k8s · ns={self._namespace} · "
                            f"{n if n else 'all'} testcase(s)")
@@ -1899,7 +1979,7 @@ class BenchJobManager:
                 "label": self._label,
                 "name": self._name,
                 "executor": "k8s-matrix",
-                "image": self._runner_image,
+                "image": self._image,
                 "namespace": self._namespace,
                 "harness_secret": self._harness_secret,
                 "harness_cmd": self._harness_cmd or "(secret default)",
@@ -1951,10 +2031,17 @@ class BenchJobManager:
               help="Testcases dir path INSIDE the runner image (matrix -D).")
 @click.option("--jobs", "default_jobs", default=16, type=int,
               help="Default max concurrent k8s Jobs for a Run-tab run.")
+@click.option("--image-repo", "image_repo", default="",
+              help="Runner image repo (no tag) the Run tab lists selectable "
+                   "tags from. Default: derived from --runner-image.")
+@click.option("--harbor-secret", "harbor_secret", default="harbor-cred",
+              help="k8s docker-registry Secret with the Harbor robot cred, used "
+                   "to list image tags for the Run tab dropdown.")
 def serve_cmd(reports_dir: str, testcases_dir: str | None, port: int, host: str,
               open_browser: bool, editable: bool, allow_run: bool,
               webhook_log: str | None, runner_image: str, k8s_namespace: str,
-              harness_secret: str, image_testcases_dir: str, default_jobs: int):
+              harness_secret: str, image_testcases_dir: str, default_jobs: int,
+              image_repo: str, harbor_secret: str):
     """Serve a local web dashboard to view and compare benchmark reports.
 
     Scans --reports-dir for report JSON files on every request, so re-running a
@@ -1994,7 +2081,8 @@ def serve_cmd(reports_dir: str, testcases_dir: str | None, port: int, host: str,
             root, repo_root=repo_root, runner_image=runner_image,
             namespace=k8s_namespace, harness_secret=harness_secret,
             image_testcases_dir=image_testcases_dir,
-            local_testcases_dir=tc_root, default_jobs=default_jobs)
+            local_testcases_dir=tc_root, default_jobs=default_jobs,
+            image_repo=image_repo, harbor_secret=harbor_secret)
         if allow_run else None)
 
     class Handler(BaseHTTPRequestHandler):
@@ -2050,6 +2138,12 @@ def serve_cmd(reports_dir: str, testcases_dir: str | None, port: int, host: str,
                     self._json({"state": "disabled"})
                 else:
                     self._json(job_manager.status())
+                return
+            if path == "/api/images":
+                if job_manager is None:
+                    self._json({"disabled": True, "tags": []})
+                else:
+                    self._json(job_manager.list_images())
                 return
             if path == "/api/summary":
                 self._json(build_summary(load_reports(root)))
