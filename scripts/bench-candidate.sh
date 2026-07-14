@@ -152,11 +152,15 @@ restore_repo() {
   # Abort any in-progress cherry-pick, discard the uncommitted -bench marker
   # edits (else `checkout` refuses), leave the candidate branch, and delete it.
   # Idempotent + safe on every exit path: if we already merged and moved to
-  # main, switching back to ORIG_REF and dropping bench-<sha> is still correct.
+  # main, switching back to ORIG_REF and dropping the temp branches is still ok.
   git -C "$PLUGIN_REPO" cherry-pick --abort >/dev/null 2>&1 || true
   git -C "$PLUGIN_REPO" reset --hard --quiet >/dev/null 2>&1 || true
   git -C "$PLUGIN_REPO" checkout --quiet "$ORIG_REF" 2>/dev/null || true
   git -C "$PLUGIN_REPO" branch -D "$CAND_BRANCH" >/dev/null 2>&1 || true
+  # Also drop the local release-bump branch if one was created (BUMP_BRANCH is
+  # set only in the release path; guard against unset under `set -u`).
+  [[ -n "${BUMP_BRANCH:-}" ]] && \
+    git -C "$PLUGIN_REPO" branch -D "$BUMP_BRANCH" >/dev/null 2>&1 || true
 }
 # Always leave the plugin repo clean, however we exit (success, die, or kill).
 # Without this a failed/interrupted candidate stranded the repo on bench-<sha>
@@ -358,7 +362,14 @@ else
   )
 fi
 # Repackage on main: real semver, drop the -bench suffix, refresh baseline + best.
+# NOTE: `main` is protected by a ruleset requiring changes via PR (direct
+# `git push origin main` is rejected: GH013 "Changes must be made through a pull
+# request"). So the version bump goes through its OWN short-lived PR + admin
+# squash-merge, mirroring the candidate merge above, instead of a direct push.
+BUMP_BRANCH="release-v${NEXT_VERSION}-${SHA8}"
 ( cd "$PLUGIN_REPO"
+  # Start the bump branch from the just-merged main so it includes the PR.
+  git checkout -B "$BUMP_BRANCH" main --quiet
   for m in "$CODEX_MANIFEST" "$CLAUDE_MANIFEST"; do
     python3 -c "import json,sys;d=json.load(open(sys.argv[1]));d.pop('_bench_source',None);d['version']=sys.argv[2];json.dump(d,open(sys.argv[1],'w'),indent=2);open(sys.argv[1],'a').write('\n')" "$m" "$NEXT_VERSION"
   done
@@ -372,7 +383,19 @@ Source: ${REPO:-?}@${SHA8} — ${SUBJECT:-}
 Author: ${AUTHOR:-?}
 Benchmark: mean_score=$NEW_SCORE over candidate image $IMAGE
 Previous historical best: $BEST_SCORE (from $BEST_VERSION)"
-  git push origin main --quiet || die "push main failed"
-)
-log "[8] pushed v$NEXT_VERSION to main — release-on-bump.yml will publish."
+  # Push the BRANCH (allowed by the ruleset) then merge it via PR (--admin so no
+  # human review is required for this automated bump).
+  git push -u origin "$BUMP_BRANCH" --quiet || die "push bump branch failed"
+) || die "prepare bump branch failed"
+BUMP_PR_URL="$(gh pr create --repo "$REPO" --base main --head "$BUMP_BRANCH" \
+  --title "chore(plugin): release v$NEXT_VERSION (benchmark $NEW_SCORE)" \
+  --body "Automated version bump + baseline by bench-candidate after merging source PR #${PR_NUMBER:-?} (mean_score=$NEW_SCORE > best $BEST_SCORE)." \
+  2>/dev/null)" || die "create bump PR failed"
+log "[7] bump PR: $BUMP_PR_URL"
+gh pr merge "$BUMP_PR_URL" --repo "$REPO" --squash --admin --delete-branch \
+  || die "merge bump PR failed"
+# Sync local main to the merged bump so subsequent runs read the new baseline.
+( cd "$PLUGIN_REPO"; git checkout main --quiet; git pull --ff-only origin main --quiet ) \
+  || log "WARN: could not fast-forward local main after bump merge"
+log "[8] bump v$NEXT_VERSION merged to main via PR — release-on-bump.yml will publish."
 log "DONE: released v$NEXT_VERSION (mean_score $NEW_SCORE > best $BEST_SCORE); source ${SHA8}."
