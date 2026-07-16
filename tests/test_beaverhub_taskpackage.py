@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -339,7 +340,10 @@ def _os_path() -> str:
     return os.environ.get("PATH", "")
 
 
-@pytest.mark.skipif(sys.platform == "win32" and not RUN_SH.exists(), reason="entrypoint missing")
+@pytest.mark.skipif(
+    shutil.which("bash") is None or not RUN_SH.exists(),
+    reason="needs a bash on PATH to run run.sh",
+)
 class TestRunShConfigErrorPaths:
     """None of these need a Godot binary or the aigamedevbench package: every
     case here is rejected by run.sh's own input-validation layer before it
@@ -387,6 +391,45 @@ class TestRunShConfigErrorPaths:
         proc = _run(tmp_path, {"driver": "noop", "testcase": "does-not-exist-anywhere"})
         assert proc.returncode == 2, proc.stderr
         assert "unknown testcase" in proc.stderr
+
+
+def test_no_console_script_fallback_actually_invokes_main() -> None:
+    """Regression test for the run.sh fallback bug: `python3 -m
+    aigamedevbench.cli` only imports the module and exits 0 -- cli.py's
+    main() is a click group with no `if __name__ == "__main__"` guard, so
+    -m never actually invokes it. run.sh's no-console-script branch now
+    calls `python3 -c "from aigamedevbench.cli import main; main()"`
+    instead; assert that form really does reach and run main(), and that
+    the old -m form really is the silent no-op it was fixed because of
+    (so this test fails loudly, not silently, if either regresses)."""
+    import os
+
+    env = dict(os.environ)
+    src_dir = str(REPO_ROOT / "src")
+    env["PYTHONPATH"] = (
+        f"{src_dir}{os.pathsep}{env['PYTHONPATH']}" if env.get("PYTHONPATH") else src_dir
+    )
+
+    fixed = subprocess.run(
+        [sys.executable, "-c", "from aigamedevbench.cli import main; main()", "--help"],
+        env=env, capture_output=True, text=True, timeout=30,
+    )
+    assert fixed.returncode == 0, fixed.stderr
+    assert "AIGameDevBench" in fixed.stdout, (
+        f"main() did not appear to run: stdout={fixed.stdout!r} stderr={fixed.stderr!r}"
+    )
+
+    broken = subprocess.run(
+        [sys.executable, "-m", "aigamedevbench.cli", "--help"],
+        env=env, capture_output=True, text=True, timeout=30,
+    )
+    assert broken.returncode == 0
+    assert broken.stdout == "", (
+        "cli.py grew a __main__ guard (or -m now behaves differently) -- if "
+        "`python3 -m aigamedevbench.cli` actually runs main() now, run.sh's "
+        "fallback can go back to the simpler -m form and this assertion "
+        "should be updated"
+    )
 
 
 # --- optional real end-to-end smoke, only when a Godot binary is supplied ---

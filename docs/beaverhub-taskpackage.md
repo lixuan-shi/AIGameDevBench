@@ -51,7 +51,7 @@ Same wire shape as BeaverHub's current `beaver-godot` binding
 (`images/beaver-godot/description.md` `## Contract` in the BeaverHub repo):
 
 ```json
-{ "driver": "noop" | "patch", "testcase": "<id>" }
+{ "driver": "noop" | "patch", "testcase"?: "<id>" }
 ```
 
 - `driver` (required): `noop` scores the unmodified baseline (contract:
@@ -70,7 +70,7 @@ Same wire shape as BeaverHub's current `beaver-godot` binding
   "status": "success",
   "exit_code": 0,
   "mean_score": 1.0,
-  "checks": [{"name": "...", "passed": true, "detail": "..."}],
+  "checks"?: [{"name": "...", "passed": true, "detail": "..."}],
   "stdout_path": "/out/aigdbench.stdout",
   "stderr_path": "/out/aigdbench.stderr"
 }
@@ -199,9 +199,14 @@ what it did not:
 Local, offline, in this repo's own sandbox (see the PR body for the exact
 commands and their full output):
 
-- `uv sync --extra dev && uv run pytest` — this repo's existing test suite
-  (226 passed, 1 skipped on this branch's base) is unaffected by this change
-  (nothing under `src/` was modified).
+- `uv sync --extra dev && uv run pytest tests/ -q` — **254 passed** (this
+  repo's pre-existing 226-passed baseline, unaffected since nothing under
+  `src/` was modified, plus 28 new cases from
+  `tests/test_beaverhub_taskpackage.py` below), **2 skipped** without a
+  local Godot binary on `PATH`/`AIGDBENCH_TEST_GODOT_BINARY` (the
+  pre-existing baseline's 1 skip, plus this suite's own
+  `test_real_noop_and_patch_scoring_when_godot_available`) — **255 passed,
+  1 skipped** when one is available.
 - `tests/test_beaverhub_taskpackage.py` — schema-shape validation of
   `task.yaml`/`input.schema.json`/`result.schema.json` (see "Known gaps"
   above for exactly what this does and does not prove), plus an offline
@@ -212,7 +217,7 @@ commands and their full output):
   Godot 4.6.2 binary (not part of the automated test — a real Godot engine
   is not assumed present in every environment that runs `pytest`): `driver:
   noop` scored `mean_score: 0.0`, `driver: patch` (with
-  `testcase/collision-layer-precise-edit/fix.diff`) scored `mean_score: 1.0`,
+  `testcases/collision-layer-precise-edit/fix.diff`) scored `mean_score: 1.0`,
   both `status: "success"`, `exit_code: 0`. This is the same
   noop=0/patch=1 contract BeaverHub's `beaver-godot` binding already claims,
   now reproduced entirely from this repo's own `.beaver/tasks/aigdbench/`

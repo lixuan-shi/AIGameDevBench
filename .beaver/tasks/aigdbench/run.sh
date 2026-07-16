@@ -57,7 +57,7 @@ OUT_DIR="$(cd "$OUT_DIR" && pwd)" || fail_config "cannot resolve OUT_DIR '$OUT_D
 PARSED_FILE="$(mktemp)" || fail_config "cannot allocate a temp file"
 trap 'rm -f "$PARSED_FILE"' EXIT
 if ! python3 - "$IN" "$DEFAULT_TESTCASE" >"$PARSED_FILE" <<'PY'
-import json, sys
+import json, re, sys
 
 path, default_tc = sys.argv[1], sys.argv[2]
 try:
@@ -82,18 +82,16 @@ if driver not in ("noop", "patch"):
     sys.stderr.write("input.json 'driver' must be one of: noop, patch\n")
     sys.exit(3)
 
-testcase = inp.get("testcase") or default_tc
-if not isinstance(testcase, str) or not testcase:
-    sys.stderr.write("input.json 'testcase' must be a bare testcase id\n")
-    sys.exit(3)
+# input.schema.json only defaults testcase when the key is absent -- an
+# explicit falsy value ("", null, false) is a malformed input, not a request
+# for the default, so `or default_tc` must not swallow it here.
+testcase = default_tc if "testcase" not in inp else inp["testcase"]
 
-# A testcase id indexes testcases/<id> directly; reject anything that is not
-# a bare, single-segment id so it cannot escape that dir: no path separators,
-# no leading dot, no control/whitespace chars.
-has_sep = "/" in testcase or "\\" in testcase
-has_ctrl = any(ord(ch) < 0x20 for ch in testcase)
-has_ws = any(ch.isspace() for ch in testcase)
-if testcase.startswith(".") or has_sep or has_ctrl or has_ws:
+# Enforce the exact id shape input.schema.json declares
+# (^[A-Za-z0-9_][A-Za-z0-9_.-]*$) rather than a separately maintained
+# blacklist, so this runtime check can't silently drift from the schema
+# that documents this TaskPackage's actual contract.
+if not isinstance(testcase, str) or not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.-]*", testcase):
     sys.stderr.write("input.json 'testcase' must be a bare testcase id\n")
     sys.exit(3)
 
