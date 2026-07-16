@@ -125,7 +125,12 @@ TESTCASE="${TESTCASE%$'\r'}"
 if command -v aigdbench >/dev/null 2>&1; then
     AIGDBENCH=(aigdbench)
 elif PYTHONPATH="$REPO_ROOT/src${PYTHONPATH:+:$PYTHONPATH}" python3 -c "import aigamedevbench" >/dev/null 2>&1; then
-    AIGDBENCH=(env "PYTHONPATH=$REPO_ROOT/src${PYTHONPATH:+:$PYTHONPATH}" python3 -m aigamedevbench.cli)
+    # `-m aigamedevbench.cli` would only import the module and exit 0 --
+    # cli.py's `main()` is a click entry point with no `if __name__ ==
+    # "__main__"` guard, so `-m` never actually invokes it. Call main()
+    # explicitly so this fallback runs the benchmark instead of silently
+    # no-op'ing (gemini-code-assist finding on PR #11).
+    AIGDBENCH=(env "PYTHONPATH=$REPO_ROOT/src${PYTHONPATH:+:$PYTHONPATH}" python3 -c "from aigamedevbench.cli import main; main()")
 else
     fail_config "the 'aigamedevbench' package is not installed on this runtime (need an equivalent of 'pip install .' from $REPO_ROOT baked into the runtime image; this script does not install packages over the network -- see docs/beaverhub-taskpackage.md)"
 fi
