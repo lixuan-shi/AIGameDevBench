@@ -1,20 +1,29 @@
-# BeaverHub EnvironmentProfile for the beaver-godot scorer (task: aigdbench).
+# BeaverHub EnvironmentProfile TEMPLATE for the beaver-godot scorer (task:
+# aigdbench). This is an EXAMPLE, not a deployment requirement: every value
+# below is a placeholder an operator must supply for their own environment.
+# None of the names shown here (pool label, PVC claim name, etc.) are stable
+# public defaults mandated by any schema — they are illustrative only.
 #
-# This is the owning-repo copy of the profile the BeaverHub catalog binding
-# expects; keep it in sync with beaverhub `examples/profiles/beaver-godot.example.yaml`.
+# This is the owning-repo copy of the profile shape the BeaverHub catalog
+# binding expects; keep it in sync with beaverhub's own
+# `examples/profiles/beaver-godot.example.yaml`.
 #
-# Value-free: context / namespace / image are ${PLACEHOLDERS}; claimName and
-# the node-pool label are NAME references, never secrets or host paths.
+# Value-free (ADR-0003 in the beaverhub repo): every field below is a NAME
+# reference or a ${PLACEHOLDER} — never a secret, credential, or host path.
 #
-# NOTE (operator): the stable `beaver` Python CLI does NOT expand ${VAR}
-# placeholders from the environment — materialize a concrete profile first:
+# NOTE (operator): the current stable `beaver` Python CLI does NOT expand
+# ${VAR} placeholders from the environment on its own — materialize a
+# concrete profile first, e.g.:
 #
 #   export BEAVER_K8S_CONTEXT=<your-context> \
 #          BEAVER_K8S_NAMESPACE=<your-namespace> \
-#          BEAVER_GODOT_IMAGE=<registry>/beaver_hub-public/beaver-godot@sha256:<catalog-digest>
+#          BEAVER_NODE_POOL=<your-node-pool-label-value> \
+#          BEAVER_WORKSPACE_PVC_CLAIM=<your-existing-pvc-name> \
+#          BEAVER_WORKSPACE_MOUNT_PATH=<your-mount-path> \
+#          BEAVER_GODOT_IMAGE=<registry>/<space>/beaver-godot@sha256:<catalog-digest>
 #   envsubst < profile-beaver-godot.example.yaml > profiles/beaver-godot.yaml
 #
-# The catalog (beaverhub images/beavers.yaml) owns the real digest; pin it,
+# The catalog (beaverhub `images/beavers.yaml`) owns the real digest; pin it,
 # never a mutable tag.
 apiVersion: beaverhub.dev/v1alpha1
 kind: EnvironmentProfile
@@ -25,10 +34,12 @@ spec:
   kubernetes:
     context: "${BEAVER_K8S_CONTEXT}"
     namespace: "${BEAVER_K8S_NAMESPACE}"
-  # The shared `games` RWX PVC only binds on this node pool, so the scorer
-  # must schedule there (spec-level nodeSelector — NOT under spec.kubernetes).
+  # If the workspace PVC below only binds on a specific node pool in your
+  # cluster, set that constraint here (spec-level nodeSelector — NOT under
+  # spec.kubernetes). Omit this block entirely if your cluster has no such
+  # constraint.
   nodeSelector:
-    pool: "pool_dev"
+    pool: "${BEAVER_NODE_POOL}"
   container:
     image: "${BEAVER_GODOT_IMAGE}"
   resources:
@@ -37,10 +48,11 @@ spec:
   lifecycle:
     activeDeadlineSeconds: 1800
     ttlSecondsAfterFinished: 120
-  # Durable-storage workspace: testcase corpus PVC, mounted read-only.
-  # NAME-only reference; BeaverHub never creates or deletes this PVC.
+  # Durable-storage workspace: an EXISTING PVC (never created/deleted by
+  # BeaverHub) carrying the testcase corpus, mounted read-only. Substitute
+  # your own PVC's claim name and desired mount path.
   workspace:
     mode: "pvc-existing"
-    claimName: "games"
-    mountPath: "/cg/games"
+    claimName: "${BEAVER_WORKSPACE_PVC_CLAIM}"
+    mountPath: "${BEAVER_WORKSPACE_MOUNT_PATH}"
     readOnly: true

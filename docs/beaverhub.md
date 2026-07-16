@@ -38,9 +38,12 @@ beaver run cleanup <run-id> --namespace <ns> --context <ctx> --confirm
 ## Profile
 
 模板在 [`beaverhub/profile-beaver-godot.example.yaml`](beaverhub/profile-beaver-godot.example.yaml)。
-里面只有 NAME 引用（namespace / PVC claim / node-pool label / 镜像占位符），没有任何
-secret。**稳定版 Python CLI 不做 `${VAR}` 环境变量展开**——先用 `envsubst` 物化成
-具体 profile 再传 `--profile-dir`（模板头部有完整命令）。
+**这是一个 example，不是部署要求**：里面所有值（context / namespace / node-pool
+label / PVC claim / mount path / 镜像）都是 `${PLACEHOLDER}`，没有任何一个是
+schema 规定的稳定公共默认值，也没有任何 secret。**稳定版 Python CLI 不做 `${VAR}`
+环境变量展开**——先用 `envsubst` 物化成具体 profile 再传 `--profile-dir`（模板头部
+有完整命令、含每个占位符的说明）。具体的 namespace / PVC / node-pool 取值由
+operator 按自己的集群环境决定并下发，不应该写死在仓库里。
 
 ## 已知边界（截至 2026-07）
 
