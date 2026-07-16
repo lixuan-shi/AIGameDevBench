@@ -246,7 +246,11 @@ echo ">>> waiting for and collecting ${#JOBNAME[@]} Job(s) as they finish..."
 deadline_wait=$((ACTIVE_DEADLINE + 120))
 extract_report() {
   # stdin: full pod log. stdout: the JSON between the markers (first match).
+  # Some clusters (e.g. OKE virtual nodes) hand back raw CRI-formatted lines
+  # ("<rfc3339> stdout F <content>") through `kubectl logs`; strip that prefix
+  # first or the extracted JSON lines won't parse. Clean logs are unaffected.
   awk '
+    { sub(/^[0-9][^ ]* (stdout|stderr) [FP] /, "") }
     /<<<AIGDBENCH_REPORT_BEGIN/ {grab=1; next}
     /<<<AIGDBENCH_REPORT_END/   {grab=0}
     grab {print}
