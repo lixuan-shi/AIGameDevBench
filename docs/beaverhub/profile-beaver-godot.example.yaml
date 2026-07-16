@@ -1,0 +1,46 @@
+# BeaverHub EnvironmentProfile for the beaver-godot scorer (task: aigdbench).
+#
+# This is the owning-repo copy of the profile the BeaverHub catalog binding
+# expects; keep it in sync with beaverhub `examples/profiles/beaver-godot.example.yaml`.
+#
+# Value-free: context / namespace / image are ${PLACEHOLDERS}; claimName and
+# the node-pool label are NAME references, never secrets or host paths.
+#
+# NOTE (operator): the stable `beaver` Python CLI does NOT expand ${VAR}
+# placeholders from the environment — materialize a concrete profile first:
+#
+#   export BEAVER_K8S_CONTEXT=<your-context> \
+#          BEAVER_K8S_NAMESPACE=<your-namespace> \
+#          BEAVER_GODOT_IMAGE=<registry>/beaver_hub-public/beaver-godot@sha256:<catalog-digest>
+#   envsubst < profile-beaver-godot.example.yaml > profiles/beaver-godot.yaml
+#
+# The catalog (beaverhub images/beavers.yaml) owns the real digest; pin it,
+# never a mutable tag.
+apiVersion: beaverhub.dev/v1alpha1
+kind: EnvironmentProfile
+metadata:
+  name: beaver-godot
+  description: "AIGameDevBench Godot scoring beaver (offline, no-secret)"
+spec:
+  kubernetes:
+    context: "${BEAVER_K8S_CONTEXT}"
+    namespace: "${BEAVER_K8S_NAMESPACE}"
+  # The shared `games` RWX PVC only binds on this node pool, so the scorer
+  # must schedule there (spec-level nodeSelector — NOT under spec.kubernetes).
+  nodeSelector:
+    pool: "pool_dev"
+  container:
+    image: "${BEAVER_GODOT_IMAGE}"
+  resources:
+    cpu: "2"
+    memory: "4Gi"
+  lifecycle:
+    activeDeadlineSeconds: 1800
+    ttlSecondsAfterFinished: 120
+  # Durable-storage workspace: testcase corpus PVC, mounted read-only.
+  # NAME-only reference; BeaverHub never creates or deletes this PVC.
+  workspace:
+    mode: "pvc-existing"
+    claimName: "games"
+    mountPath: "/cg/games"
+    readOnly: true
