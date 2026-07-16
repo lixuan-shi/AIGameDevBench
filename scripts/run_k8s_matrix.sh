@@ -105,9 +105,15 @@ while [[ $# -gt 0 ]]; do
 done
 
 # --- Preflight ---------------------------------------------------------------
-for bin in docker kubectl envsubst python3; do
+for bin in kubectl envsubst python3; do
   command -v "$bin" >/dev/null 2>&1 || { echo "ERROR: '$bin' not found on PATH" >&2; exit 1; }
 done
+# docker is only exercised by build, push, and in-image testcase discovery
+# (-t skips discovery), so a kubectl-only host can fan out a prebuilt,
+# already-pushed image with: --no-build --no-push -t "id id ...".
+if [[ "$DO_BUILD" == "1" || "$DO_PUSH" == "1" || -z "$TESTCASES" ]]; then
+  command -v docker >/dev/null 2>&1 || { echo "ERROR: 'docker' not found on PATH (needed by build/push/testcase discovery; pass --no-build --no-push and -t to run without it)" >&2; exit 1; }
+fi
 [[ -n "$IMAGE" ]] || { echo "ERROR: -i IMAGE (full registry ref) is required" >&2; exit 2; }
 kubectl get ns "$NAMESPACE" >/dev/null 2>&1 || {
   echo "ERROR: namespace '$NAMESPACE' not reachable (is kubectl configured?)" >&2; exit 1; }
