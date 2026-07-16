@@ -257,10 +257,18 @@ extract_report() {
   '
 }
 collect_one() {
-  local tc="$1" jn="$2" tcl raw rep st
+  local tc="$1" jn="$2" tcl raw rep st tries
   tcl="$(sanitize "$tc")"
   raw="$OUT_DIR/logs/${tcl}.pod.log"
-  kubectl -n "$NAMESPACE" logs "job/$jn" --tail=-1 > "$raw" 2>/dev/null || true
+  # The log pipeline on some clusters (observed on OKE virtual nodes) lags the
+  # Job's terminal condition: an immediate fetch intermittently returns an
+  # EMPTY log for a pod that did print its report. Retry a few times until the
+  # report marker shows up; a genuinely reportless pod just costs ~30s extra.
+  for tries in 1 2 3 4 5 6; do
+    kubectl -n "$NAMESPACE" logs "job/$jn" --tail=-1 > "$raw" 2>/dev/null || true
+    grep -q '<<<AIGDBENCH_REPORT_BEGIN' "$raw" 2>/dev/null && break
+    sleep 5
+  done
   rep="$OUT_DIR/${tcl}.json"
   if extract_report < "$raw" | python3 -c 'import sys,json;json.load(sys.stdin)' 2>/dev/null; then
     extract_report < "$raw" > "$rep"
